@@ -18,6 +18,7 @@
         {{~#if rel}} rel="{{rel}}"{{/if}}
         {{~#if tooltip}} data-bs-toggle="tooltip" data-bs-placement="top" title="{{tooltip}}"{{/if}}
         {{~#if modal}} data-bs-toggle="modal" data-bs-target="#{{modal}}"{{/if}}
+        {{~#if confirm}} data-confirm="{{confirm}}"{{/if}}
         role="button">
         {{~#if image~}}
             <span {{~#if title}} class="me-1"{{/if}}>

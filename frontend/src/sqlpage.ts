@@ -578,3 +578,51 @@ function open_modal_for_hash() {
 
 window.addEventListener("hashchange", open_modal_for_hash);
 window.addEventListener("DOMContentLoaded", open_modal_for_hash);
+
+function ask_confirmation(action: HTMLElement, question: string) {
+  const dialog = document.createElement("div");
+  dialog.className = "modal";
+  dialog.tabIndex = -1;
+  dialog.setAttribute("aria-label", question);
+  dialog.innerHTML = `<div class="modal-dialog modal-sm modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cancel"></button>
+      <div class="modal-body text-center py-4"><p class="mb-0"></p></div>
+      <div class="modal-footer"></div>
+    </div>
+  </div>`;
+  const text = dialog.querySelector("p");
+  const footer = dialog.querySelector(".modal-footer");
+  if (!text || !footer) throw new Error("Invalid confirmation dialog");
+  text.textContent = question;
+  const confirmed_action = action.cloneNode(true);
+  if (!(confirmed_action instanceof HTMLElement))
+    throw new Error("Invalid confirmed action");
+  for (const attribute of [
+    "id",
+    "data-confirm",
+    "data-bs-toggle",
+    "data-bs-target",
+  ])
+    confirmed_action.removeAttribute(attribute);
+  confirmed_action.classList.remove("me-auto");
+  footer.appendChild(confirmed_action);
+  document.body.appendChild(dialog);
+  const modal = new (page_bootstrap().Modal)(dialog);
+  // Hiding removes the dialog at once, and a removed button no longer submits
+  // its form, so the dialog closes only after the click has done its work.
+  confirmed_action.addEventListener("click", () =>
+    setTimeout(() => modal.hide()),
+  );
+  dialog.addEventListener("hidden.bs.modal", () => dialog.remove());
+  modal.show();
+}
+
+document.addEventListener("click", (event) => {
+  if (!(event.target instanceof Element)) return;
+  const action = event.target.closest<HTMLElement>("[data-confirm]");
+  const question = action?.dataset.confirm;
+  if (!action || !question) return;
+  event.preventDefault();
+  ask_confirmation(action, question);
+});
