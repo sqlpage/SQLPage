@@ -22,6 +22,8 @@
 
 - Each item of the tracking component accepts a `link`. ([#900](https://github.com/sqlpage/SQLPage/issues/900))
 
+- Each button of the button component accepts a `confirm` question, such as `'Delete this movie?' AS confirm`. ([#831](https://github.com/sqlpage/SQLPage/issues/831))
+
 - Custom components can call inline partials inside `each_row` and after it, when the partials are defined before `each_row`. ([#846](https://github.com/sqlpage/SQLPage/issues/846))
 
 ## v0.47.0 (2026-10-15)
