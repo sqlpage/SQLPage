@@ -10,7 +10,8 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{default (default close_label close) "close"}}"></button>
             </div>
             <div class="modal-body">
-                <div class="card bg-transparent border-0"
+                <div class="card bg-transparent border-0{{#if height}} overflow-auto{{/if}}"
+                    {{~#if height}} style="height: {{height}}px"{{/if~}}
                     {{~#if (and embed (ne embed_mode "iframe"))}} data-pre-init="card" data-embed="{{embed}}"{{/if ~}}
                 >
                     <div class="card-body p-0">
