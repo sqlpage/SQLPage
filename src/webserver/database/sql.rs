@@ -660,6 +660,62 @@ mod tests {
     }
 
     #[test]
+    fn quoted_form_parameters_keep_their_name_and_source() {
+        use SupportedDatabase::{
+            Duckdb, Generic, Mssql, MySql, Oracle, Postgres, Snowflake, Sqlite,
+        };
+
+        for db in [
+            Duckdb, Generic, Mssql, MySql, Oracle, Postgres, Snowflake, Sqlite,
+        ] {
+            let database = database(db);
+            let quote = if db == MySql { '`' } else { '"' };
+            let name = format!("First {quote}name{quote}");
+            let quoted_name = name.replace(quote, &format!("{quote}{quote}"));
+            let sql = format!("SELECT :{quote}{quoted_name}{quote} FROM t");
+            let file = SqlFile::from_db_info(&database, &sql, Path::new("quoted.sql"));
+            let [
+                FileStatement::Query(Query {
+                    body: QueryBody::Database(query),
+                    ..
+                }),
+            ] = file.statements.as_ref()
+            else {
+                panic!("{db:?}: {:?}", file.statements);
+            };
+            assert_eq!(
+                query.bindings.as_ref(),
+                [SqlPageExpr::Variable(VariableRef {
+                    name,
+                    source: VariableSource::SetOrForm,
+                })],
+                "{db:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn json_object_colon_preserves_quoted_columns() {
+        let database = database(SupportedDatabase::Mssql);
+        let file = SqlFile::from_db_info(
+            &database,
+            r#"SELECT JSON_OBJECT('key':"Column") AS data FROM t"#,
+            Path::new("quoted.sql"),
+        );
+        let [
+            FileStatement::Query(Query {
+                body: QueryBody::Database(query),
+                ..
+            }),
+        ] = file.statements.as_ref()
+        else {
+            panic!("{:?}", file.statements);
+        };
+        assert!(query.sql.contains(r#""Column""#), "{}", query.sql);
+        assert!(query.bindings.is_empty());
+    }
+
+    #[test]
     fn placeholder_like_literal_is_not_rewritten() {
         let database = database(SupportedDatabase::MySql);
         let statement = parse_sql(

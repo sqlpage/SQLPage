@@ -78,6 +78,7 @@ actix-http = { version = "3", optional = true }
 actix-service = { version = "2", optional = true }
 http-body-util = { version = "0.1", optional = true }
 sqlparser = { version = "0.64.0", default-features = false, features = [
+    "derive-dialect",
     "std",
     "visitor",
 ] }
