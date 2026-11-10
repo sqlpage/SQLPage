@@ -7,6 +7,27 @@ const MARKS =
 const RED = "#f03e3e";
 const ORANGE = "#f76707";
 const GREEN = "#37b24d";
+
+test("renders HTML in chart labels as text", async ({ page }) => {
+  await page.goto("/chart/html-labels.sql");
+  const chart = page.locator("#test-chart");
+  await expect(chart.locator(".apexcharts-canvas")).toBeVisible();
+  await expect(chart.locator(".apexcharts-legend-text").first()).toHaveText(
+    '<img src=x onerror="document.body.dataset.chartLabelExecuted=1">',
+  );
+  await expect(chart.locator(".apexcharts-xaxis-label")).toHaveText(
+    "<b>Paid</b>",
+  );
+  await chart.locator(".apexcharts-bar-area").first().hover();
+  await expect(chart.locator(".apexcharts-tooltip")).toContainText(
+    "<b>Paid</b>",
+  );
+  await expect(chart.locator("img, b")).toHaveCount(0);
+  await expect(page.locator("body")).not.toHaveAttribute(
+    "data-chart-label-executed",
+  );
+});
+
 async function renderChart(page: Page, fixture: string) {
   const failures: string[] = [];
   const recordError = (message: ConsoleMessage) => {
@@ -234,7 +255,7 @@ test("keeps irregular numeric x values proportionately spaced", async ({
 
   expect(chart.failures).toEqual([]);
   expect(chart.xaxis.type).toBe("numeric");
-  expect(chart.generatedLabels).toEqual([0.25, 1.63, 3.01]);
+  expect(chart.generatedLabels).toEqual([0.25, 1.63, 3]);
   expect(chart.axisLabels.map(({ text }) => text)).toEqual([
     "0.3",
     "1.6",

@@ -2,6 +2,10 @@
 
 ## unreleased
 
+## v0.48.0 (2026-11-10)
+
+- Updated Rust and browser dependencies, including SQL parser 0.64, ApexCharts 8.8.1, Tabler 1.7.4, Tabler icons 3.51, and Tom Select 2.7. Chart series names and labels now display HTML as text, fixing upstream script injection in legends and tooltips.
+
 - SQLPage no longer trusts the compromised eMudhra certificates. ([nixpkgs#576544](https://github.com/NixOS/nixpkgs/issues/576544))
 
 - Now a tab with a `color` is underlined only when it is active. ([#791](https://github.com/sqlpage/SQLPage/issues/791))
