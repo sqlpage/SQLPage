@@ -2,6 +2,8 @@
 
 ## unreleased
 
+- SQLPage no longer trusts the compromised eMudhra certificates. ([nixpkgs#576544](https://github.com/NixOS/nixpkgs/issues/576544))
+
 - Now a tab with a `color` is underlined only when it is active. ([#791](https://github.com/sqlpage/SQLPage/issues/791))
 
 - Striped table rows are visible in dark mode again. Tabler was updated to [v1.7.3](https://github.com/tabler/tabler/releases/tag/%40tabler%2Fcore%401.7.3) to fix this. ([#957](https://github.com/sqlpage/SQLPage/issues/957))
