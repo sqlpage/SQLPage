@@ -90,11 +90,11 @@ pub(super) fn extract_csv_copy_statement(stmt: &mut Statement) -> Option<CsvImpo
         target: source,
         options,
         legacy_options,
-        payload,
+        values,
     } = stmt
     {
-        if payload.is_some() {
-            log::warn!("COPY with inline data not compatible with SQLPage: {stmt}");
+        if !values.is_empty() {
+            log::warn!("COPY ... VALUES not compatible with SQLPage: {stmt}");
             return None;
         }
         let uploaded_file = match std::mem::replace(source, CopyTarget::Stdin) {
