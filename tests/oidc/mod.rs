@@ -870,7 +870,7 @@ async fn test_oidc_logout_is_session_bound() {
         .expect("victim should be authenticated")
         .value()
         .to_string();
-    assert!(!victim_auth.is_empty());
+    assert_ne!(victim_auth, "");
 
     // A logout URL bound to a DIFFERENT session must not clear the victim's
     // cookie when the victim's browser follows it.

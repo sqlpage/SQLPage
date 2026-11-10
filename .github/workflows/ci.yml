@@ -58,7 +58,7 @@ jobs:
       - uses: ./.github/actions/install-frontend-dependencies
       - run: npm test
       - name: Set up cargo cache
-        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0
         env:
           NODE_OPTIONS: --no-deprecation
         with:
@@ -92,7 +92,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/install-frontend-dependencies
       - name: Set up cargo cache
-        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0
         env:
           NODE_OPTIONS: --no-deprecation
         with:
@@ -113,7 +113,7 @@ jobs:
       - uses: ./.github/actions/install-frontend-dependencies
       - run: rustup toolchain install "$FUZZ_TOOLCHAIN" --profile minimal --component rust-src
       - name: Set up cargo cache
-        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0
         with:
           shared-key: rust-sqlpage-fuzz
           workspaces: fuzz -> target
@@ -199,7 +199,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/install-frontend-dependencies
       - name: Set up cargo cache
-        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0
         env:
           NODE_OPTIONS: --no-deprecation
       - name: Set up Windows incremental cache

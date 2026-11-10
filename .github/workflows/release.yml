@@ -31,7 +31,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Set up cargo cache
-        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0
         env:
           NODE_OPTIONS: --no-deprecation
       - uses: ./.github/actions/install-frontend-dependencies
@@ -98,7 +98,7 @@ jobs:
       - name: Submit signing request to SignPath
         if: matrix.os == 'windows-latest'
         id: signpath
-        uses: signpath/github-action-submit-signing-request@v2.2
+        uses: signpath/github-action-submit-signing-request@v3.0
         with:
           api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
           organization-id: '45fd8443-c7ca-4d29-a68b-608948185335'
@@ -139,7 +139,7 @@ jobs:
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain none
           echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
       - name: Set up cargo cache
-        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0
         env:
           NODE_OPTIONS: --no-deprecation
       - uses: ./.github/actions/install-frontend-dependencies
@@ -185,7 +185,7 @@ jobs:
           zip -r sqlpage-windows.zip sqlpage.exe sqlpage/migrations sqlpage/templates sqlpage/sqlpage.json;
       - name: Create Release
         id: create_release
-        uses: softprops/action-gh-release@v3.0.0
+        uses: softprops/action-gh-release@v3.0.4
         with:
           name: ${{ github.ref_name }}
           tag_name: ${{ github.ref_name }}
@@ -204,7 +204,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Set up cargo cache
-        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0
         env:
           NODE_OPTIONS: --no-deprecation
       - run: sudo apt-get update && sudo apt-get install -y unixodbc-dev

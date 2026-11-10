@@ -43,8 +43,11 @@
 
       cargoEdition = (lib.importTOML ./Cargo.toml).package.edition;
 
+      lockedPackages = (lib.importJSON ./package-lock.json).packages;
       lockedPlaywrightVersion =
-        (lib.importJSON ./package-lock.json).packages."node_modules/playwright-core".version;
+        (lockedPackages."node_modules/playwright-core"
+          or lockedPackages."tests/end-to-end/node_modules/playwright-core"
+        ).version;
 
       formatterFor =
         pkgs:

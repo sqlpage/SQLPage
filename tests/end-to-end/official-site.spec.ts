@@ -239,14 +239,15 @@ test("form select combines initial options with remote search results", async ({
   await select.evaluate((element: HTMLSelectElement) =>
     element.tomselect?.focus(),
   );
-  await page.keyboard.type("form");
-  await page.waitForResponse((response) =>
+  const formResponse = page.waitForResponse((response) =>
     response
       .url()
       .includes(
         "examples/from_component_options_source.sql?category=component&search=form",
       ),
   );
+  await page.keyboard.type("form");
+  await formResponse;
   await expect
     .poll(async () =>
       select.evaluate((element: HTMLSelectElement) => ({
@@ -262,14 +263,15 @@ test("form select combines initial options with remote search results", async ({
   await select.evaluate((element: HTMLSelectElement) =>
     element.tomselect?.setTextboxValue(""),
   );
-  await page.keyboard.type("map");
-  await page.waitForResponse((response) =>
+  const mapResponse = page.waitForResponse((response) =>
     response
       .url()
       .includes(
         "examples/from_component_options_source.sql?category=component&search=map",
       ),
   );
+  await page.keyboard.type("map");
+  await mapResponse;
   await expect
     .poll(async () =>
       select.evaluate((element: HTMLSelectElement) => ({

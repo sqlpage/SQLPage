@@ -4,6 +4,9 @@
     "includes": [
       "**",
       "!**/*.svg",
+      "!**/*.md",
+      "!**/*.yml",
+      "!**/*.yaml",
       "!frontend/dist",
       "!examples/official-site/pgconf",
       "!tests/end-to-end/test-results",
@@ -26,11 +29,13 @@
       "nursery": {
         "noFloatingPromises": "error",
         "noMisusedPromises": "error",
-        "useAwaitThenable": "error",
-        "noPlaywrightMissingAwait": "error"
+        "useAwaitThenable": "error"
       },
       "suspicious": {
         "noImportCycles": "error"
+      },
+      "correctness": {
+        "noPlaywrightMissingAwait": "error"
       }
     }
   }

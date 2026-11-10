@@ -4,6 +4,12 @@
 
 - Modals can set a header `color`, and `visible` opens that dialog once when the page loads. The page address stays unchanged, and closing it does not open it again when later content loads.
 
+## v0.48.0 (2026-11-10)
+
+- Updated Rust and browser dependencies, including ApexCharts 8.8.1, Tabler 1.7.4, Tabler icons 3.51, and Tom Select 2.7. Chart series names and labels now display HTML as text, fixing upstream script injection in legends and tooltips.
+
+- SQLPage no longer trusts the compromised eMudhra certificates. ([nixpkgs#576544](https://github.com/NixOS/nixpkgs/issues/576544))
+
 - Now a tab with a `color` is underlined only when it is active. ([#791](https://github.com/sqlpage/SQLPage/issues/791))
 
 - Striped table rows are visible in dark mode again. Tabler was updated to [v1.7.3](https://github.com/tabler/tabler/releases/tag/%40tabler%2Fcore%401.7.3) to fix this. ([#957](https://github.com/sqlpage/SQLPage/issues/957))
@@ -25,6 +31,8 @@
 - Each item of the tracking component accepts a `link`. ([#900](https://github.com/sqlpage/SQLPage/issues/900))
 
 - Each card of the card component accepts a `target`, such as `_blank` to open its link in a new tab. ([#820](https://github.com/sqlpage/SQLPage/issues/820))
+
+- The `height` of the modal component sets the height of its content. Overflow content scrolls. ([#1046](https://github.com/sqlpage/SQLPage/issues/1046))
 
 - Custom components can call inline partials inside `each_row` and after it, when the partials are defined before `each_row`. ([#846](https://github.com/sqlpage/SQLPage/issues/846))
 
