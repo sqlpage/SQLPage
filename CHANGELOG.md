@@ -2,7 +2,7 @@
 
 ## unreleased
 
-## v0.48.0 (2026-11-10)
+## v0.48.0 (2026-11-12)
 
 - Updated Rust and browser dependencies, including ApexCharts 8.8.1, Tabler 1.7.4, Tabler icons 3.51, and Tom Select 2.7. Chart series names and labels now display HTML as text, fixing upstream script injection in legends and tooltips.
 
