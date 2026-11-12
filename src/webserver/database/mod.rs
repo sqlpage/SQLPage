@@ -10,6 +10,8 @@ mod sqlpage_functions;
 
 mod error_highlighting;
 mod sql_to_json;
+#[cfg(feature = "unstable-sqlx-next")]
+mod sqlx_next;
 
 pub use sql::SqlFile;
 use sqlx::any::AnyKind;
@@ -137,6 +139,16 @@ pub struct DbInfo {
     pub database_type: SupportedDatabase,
     /// The sqlx database backend we are using. Can be "Odbc", in which case we need to use `database_type` to know what database we are actually using.
     pub kind: AnyKind,
+}
+
+impl DbInfo {
+    fn new(dbms_name: String, kind: AnyKind) -> Self {
+        Self {
+            database_type: SupportedDatabase::from_dbms_name(&dbms_name),
+            dbms_name,
+            kind,
+        }
+    }
 }
 
 impl Database {

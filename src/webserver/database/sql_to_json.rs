@@ -73,16 +73,19 @@ pub(super) fn row_to_json_with_inputs(
 }
 
 fn canonical_col_name(col: &AnyColumn) -> String {
-    // Some databases fold all unquoted identifiers to uppercase but SQLPage uses lowercase property names
-    if matches!(col.type_info().0, AnyTypeInfoKind::Odbc(_))
-        && col
-            .name()
-            .chars()
-            .all(|c| c.is_ascii_uppercase() || c == '_')
-    {
-        col.name().to_ascii_lowercase()
+    if matches!(col.type_info().0, AnyTypeInfoKind::Odbc(_)) {
+        odbc_column_name(col.name())
     } else {
         col.name().to_owned()
+    }
+}
+
+/// Some databases fold all unquoted identifiers to uppercase but `SQLPage` uses lowercase property names.
+pub(super) fn odbc_column_name(name: &str) -> String {
+    if name.chars().all(|c| c.is_ascii_uppercase() || c == '_') {
+        name.to_ascii_lowercase()
+    } else {
+        name.to_owned()
     }
 }
 
@@ -139,7 +142,7 @@ where
     }
 }
 
-fn decimal_to_json(decimal: &BigDecimal) -> Value {
+pub(super) fn decimal_to_json(decimal: &BigDecimal) -> Value {
     // to_plain_string always returns a valid JSON string
     Value::Number(serde_json::Number::from_string_unchecked(
         decimal.normalized().to_plain_string(),

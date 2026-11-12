@@ -35,8 +35,13 @@ fn app_config_option_names() -> BTreeSet<String> {
     collector
         .names
         .iter()
+        .filter(|name| !is_unreleased(name))
         .map(|name| (*name).to_owned())
         .collect()
+}
+
+fn is_unreleased(option_name: &str) -> bool {
+    option_name.starts_with("unstable_")
 }
 
 /// Serde hands the names it expects, renames included, to `deserialize_struct`.

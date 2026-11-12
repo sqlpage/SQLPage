@@ -12,7 +12,7 @@ use actix_web::{
 };
 use sqlpage::{
     AppState,
-    app_config::{AppConfig, test_database_url},
+    app_config::{AppConfig, test_database_url, test_unstable_sqlx_next},
     telemetry,
     webserver::http::create_app,
 };
@@ -112,6 +112,7 @@ pub(crate) async fn make_app_data() -> Data<AppState> {
 pub(crate) fn test_config() -> AppConfig {
     serde_json::from_value(serde_json::json!({
         "database_url": test_database_url(),
+        "unstable_sqlx_next": test_unstable_sqlx_next(),
         "max_database_pool_connections": 1,
         "database_connection_retries": 3,
         "database_connection_acquire_timeout_seconds": 15,

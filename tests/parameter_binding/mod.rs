@@ -26,7 +26,14 @@ async fn test_parameterized_pages_leave_a_prepared_statement_in_the_cache() -> a
         );
     }
 
-    let connection = data.db.connection.as_old_api().acquire().await.unwrap();
+    let connection = data
+        .db
+        .connection
+        .as_old_api()
+        .unwrap()
+        .acquire()
+        .await
+        .unwrap();
     assert!(
         connection.cached_statements_size() > 0,
         "{:?} ran a parameterized query three times without caching a prepared statement",
