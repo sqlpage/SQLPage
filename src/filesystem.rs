@@ -1,5 +1,6 @@
 use crate::webserver::ErrorWithStatus;
 use crate::webserver::database::SupportedDatabase;
+use crate::webserver::database::driver::unsupported_by_sqlx_next;
 use crate::webserver::{Database, StatusCodeResultExt, make_placeholder};
 use crate::{AppState, TEMPLATES_DIR};
 use anyhow::Context;
@@ -338,7 +339,11 @@ impl DbFsQueries {
 
     async fn init(db: &Database) -> anyhow::Result<Self> {
         log::debug!("Initializing database filesystem queries");
-        let pool = db.connection.as_old_api().clone();
+        let pool = db
+            .connection
+            .as_old_api()
+            .ok_or_else(|| unsupported_by_sqlx_next("database-backed files"))?
+            .clone();
         Self::check_table_available(&pool).await?;
         Ok(Self {
             pool,
@@ -484,7 +489,7 @@ async fn test_sql_file_read_utf8() -> anyhow::Result<()> {
 
     let create_table_sql = DbFsQueries::get_create_table_sql(state.db.info.database_type);
     let db = &state.db;
-    let conn = db.connection.as_old_api();
+    let conn = db.connection.as_old_api().unwrap();
     // Other tests share this database, so never drop a table their initialized state may use.
     if conn
         .execute("SELECT 1 FROM sqlpage_files WHERE 1 = 0")

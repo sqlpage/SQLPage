@@ -2,11 +2,7 @@ use std::{future::Future, mem::take, sync::Arc, time::Duration};
 
 use super::Database;
 use super::driver::DatabasePool;
-use crate::{
-    ON_CONNECT_FILE, ON_RESET_FILE,
-    app_config::AppConfig,
-    webserver::database::{DbInfo, SupportedDatabase},
-};
+use crate::{ON_CONNECT_FILE, ON_RESET_FILE, app_config::AppConfig, webserver::database::DbInfo};
 use anyhow::Context;
 use futures_util::future::BoxFuture;
 use sqlx::connection::{ConnectOptions, Connection};
@@ -24,6 +20,12 @@ impl Database {
         let mut connect_options: AnyConnectOptions = database_url
             .parse()
             .with_context(|| format!("\"{database_url}\" is not a valid database URL. Please change the \"database_url\" option in the configuration file."))?;
+        #[cfg(feature = "unstable-sqlx-next")]
+        if config.unstable_sqlx_next
+            && let Some(driver) = super::sqlx_next::Driver::serving(connect_options.kind())
+        {
+            return Self::init_sqlx_next(config, driver, connect_options.kind()).await;
+        }
         if let Some(password) = &config.database_password {
             set_database_password(&mut connect_options, password);
         }
@@ -39,7 +41,6 @@ impl Database {
         let mut conn: AnyConnection =
             retry_connecting(config, || AnyConnection::connect_with(&connect_options)).await?;
         let dbms_name: String = conn.dbms_name().await?;
-        let database_type = SupportedDatabase::from_dbms_name(&dbms_name);
         drop(conn);
 
         let db_kind = connect_options.kind();
@@ -51,11 +52,22 @@ impl Database {
         log::debug!("Initialized {dbms_name:?} database pool: {pool:#?}");
         Ok(Database {
             connection: DatabasePool::OldApi(pool),
-            info: DbInfo {
-                dbms_name,
-                database_type,
-                kind: db_kind,
-            },
+            info: DbInfo::new(dbms_name, db_kind),
+        })
+    }
+
+    #[cfg(feature = "unstable-sqlx-next")]
+    async fn init_sqlx_next(
+        config: &AppConfig,
+        driver: super::sqlx_next::Driver,
+        kind: AnyKind,
+    ) -> anyhow::Result<Self> {
+        log::warn!("Connecting to the {kind:?} database through the unstable sqlx 0.9 drivers");
+        let (pool, dbms_name) = driver.connect(config).await?;
+        log::debug!("Initialized {dbms_name:?} database pool: {pool:#?}");
+        Ok(Database {
+            connection: DatabasePool::SqlxNext(pool),
+            info: DbInfo::new(dbms_name, kind),
         })
     }
 
@@ -77,7 +89,7 @@ impl Database {
     }
 }
 
-async fn retry_connecting<C, E, F>(
+pub(super) async fn retry_connecting<C, E, F>(
     config: &AppConfig,
     mut connect: impl FnMut() -> F,
 ) -> anyhow::Result<C>
@@ -104,7 +116,7 @@ where
     }
 }
 
-fn max_connections(config: &AppConfig, kind: AnyKind) -> u32 {
+pub(super) fn max_connections(config: &AppConfig, kind: AnyKind) -> u32 {
     if let Some(max) = config.max_database_pool_connections {
         return max;
     }
@@ -123,13 +135,13 @@ fn max_connections(config: &AppConfig, kind: AnyKind) -> u32 {
     }
 }
 
-struct ConnectionHooks {
-    on_connect: Option<Arc<String>>,
-    on_reset: Option<Arc<String>>,
+pub(super) struct ConnectionHooks {
+    pub(super) on_connect: Option<Arc<String>>,
+    pub(super) on_reset: Option<Arc<String>>,
 }
 
 impl ConnectionHooks {
-    fn read(config: &AppConfig) -> Self {
+    pub(super) fn read(config: &AppConfig) -> Self {
         Self {
             on_connect: read_hook(config, ON_CONNECT_FILE, "database connection handler"),
             on_reset: read_hook(config, ON_RESET_FILE, "connection cleanup handler"),
@@ -312,7 +324,7 @@ mod tests {
             .await
             .unwrap();
         let value: String = sqlx::query::query("SELECT value FROM on_connect_marker")
-            .fetch_one(db.connection.as_old_api())
+            .fetch_one(db.connection.as_old_api().unwrap())
             .await
             .unwrap()
             .try_get(0)
@@ -341,7 +353,7 @@ mod tests {
         let db = Database::init(&config).await.unwrap();
         drop(db.connection.acquire().await.unwrap());
         let resets: i64 = sqlx::query::query("SELECT COUNT(*) FROM reset_log")
-            .fetch_one(db.connection.as_old_api())
+            .fetch_one(db.connection.as_old_api().unwrap())
             .await
             .unwrap()
             .try_get(0)

@@ -19,7 +19,7 @@ use crate::webserver::ErrorWithStatus;
 use crate::webserver::http_request_info::ExecutionContext;
 use crate::webserver::single_or_vec::SingleOrVec;
 
-use super::driver::{DriverError, FetchedItem, PooledConnection};
+use super::driver::{DriverError, FetchedItem, PooledConnection, unsupported_by_sqlx_next};
 use super::{Database, DbItem, ScalarSubqueryBehavior, error_highlighting::display_db_error};
 use sqlx::any::{AnyStatement, AnyTypeInfo};
 use sqlx::executor::Executor;
@@ -185,6 +185,7 @@ impl Database {
     ) -> anyhow::Result<AnyStatement<'static>> {
         self.connection
             .as_old_api()
+            .ok_or_else(|| unsupported_by_sqlx_next("database-backed files"))?
             .prepare_with(query, param_types)
             .await
             .map(|s| s.to_owned())
@@ -204,7 +205,8 @@ pub fn stream_query_results_with_conn<'a>(
             match res {
                 FileStatement::CsvImport(csv_import) => {
                     let connection = take_connection(&request.app_state.db, db_connection, request).await?
-                        .as_old_api();
+                        .as_old_api()
+                        .ok_or_else(|| unsupported_by_sqlx_next("CSV import"))?;
                     log::debug!("Executing CSV import: {csv_import:?}");
                     run_csv_import(connection, csv_import, request).await.with_context(|| format!("Failed to import the CSV file {:?} into the table {:?}", csv_import.uploaded_file, csv_import.table_name))?;
                 },

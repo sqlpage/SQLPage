@@ -215,6 +215,10 @@ pub struct AppConfig {
     /// A separate field for the database password. If set, this will override any password specified in the `database_url`.
     #[serde(default)]
     pub database_password: Option<String>,
+    /// Connects to SQL Server and ODBC databases through sqlx 0.9 instead of sqlx-oldapi.
+    #[cfg(feature = "unstable-sqlx-next")]
+    #[serde(default)]
+    pub unstable_sqlx_next: bool,
     pub max_database_pool_connections: Option<u32>,
     #[serde(
         default,
@@ -813,16 +817,23 @@ pub fn test_database_url() -> String {
     std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite::memory:".to_string())
 }
 
+#[must_use]
+pub fn test_unstable_sqlx_next() -> bool {
+    std::env::var("SQLPAGE_UNSTABLE_SQLX_NEXT").is_ok_and(|value| value == "true")
+}
+
 #[cfg(test)]
 pub mod tests {
     use super::AppConfig;
     pub use super::test_database_url;
+    use super::test_unstable_sqlx_next;
 
     #[must_use]
     pub fn test_config() -> AppConfig {
         let mut config = serde_json::from_str::<AppConfig>(
             &serde_json::json!({
                 "database_url": test_database_url(),
+                "unstable_sqlx_next": test_unstable_sqlx_next(),
                 "listen_on": "localhost:8080"
             })
             .to_string(),

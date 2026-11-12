@@ -17,7 +17,7 @@ async fn store_file_in_db(state: &AppState, path: &str, contents: &[u8]) {
 
     let create_table_sql =
         sqlpage::filesystem::DbFsQueries::get_create_table_sql(state.db.info.database_type);
-    let pool = state.db.connection.as_old_api();
+    let pool = state.db.connection.as_old_api().unwrap();
     if pool
         .execute("SELECT 1 FROM sqlpage_files WHERE 1 = 0")
         .await

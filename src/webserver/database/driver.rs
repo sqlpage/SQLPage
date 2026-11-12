@@ -10,13 +10,27 @@ use sqlx::pool::PoolConnection;
 use sqlx::row::Row;
 use sqlx::value::ValueRef;
 
+#[cfg(feature = "unstable-sqlx-next")]
+use super::sqlx_next;
+
 #[derive(Clone, Debug)]
 pub enum DatabasePool {
     OldApi(AnyPool),
+    #[cfg(feature = "unstable-sqlx-next")]
+    SqlxNext(sqlx_next::Pool),
 }
 
+#[cfg_attr(
+    feature = "unstable-sqlx-next",
+    allow(
+        clippy::large_enum_variant,
+        reason = "boxing the default driver's connection would allocate on every acquire"
+    )
+)]
 pub enum PooledConnection {
     OldApi(PoolConnection<Any>),
+    #[cfg(feature = "unstable-sqlx-next")]
+    SqlxNext(sqlx_next::PooledConnection),
 }
 
 /// One physical result of a statement, with each column already decoded to JSON.
@@ -28,12 +42,16 @@ pub(super) enum FetchedItem {
 #[derive(Debug)]
 pub enum DriverError {
     OldApi(sqlx::error::Error),
+    #[cfg(feature = "unstable-sqlx-next")]
+    SqlxNext(sqlx_next::Error),
 }
 
 impl DatabasePool {
     pub(super) async fn acquire(&self) -> anyhow::Result<PooledConnection> {
         match self {
             Self::OldApi(pool) => Ok(PooledConnection::OldApi(pool.acquire().await?)),
+            #[cfg(feature = "unstable-sqlx-next")]
+            Self::SqlxNext(pool) => Ok(PooledConnection::SqlxNext(pool.acquire().await?)),
         }
     }
 
@@ -41,6 +59,8 @@ impl DatabasePool {
     pub fn size(&self) -> u32 {
         match self {
             Self::OldApi(pool) => pool.size(),
+            #[cfg(feature = "unstable-sqlx-next")]
+            Self::SqlxNext(pool) => pool.size(),
         }
     }
 
@@ -48,19 +68,25 @@ impl DatabasePool {
     pub fn num_idle(&self) -> usize {
         match self {
             Self::OldApi(pool) => pool.num_idle(),
+            #[cfg(feature = "unstable-sqlx-next")]
+            Self::SqlxNext(pool) => pool.num_idle(),
         }
     }
 
     pub(super) async fn close(&self) {
         match self {
             Self::OldApi(pool) => pool.close().await,
+            #[cfg(feature = "unstable-sqlx-next")]
+            Self::SqlxNext(pool) => pool.close().await,
         }
     }
 
     #[must_use]
-    pub fn as_old_api(&self) -> &AnyPool {
+    pub fn as_old_api(&self) -> Option<&AnyPool> {
         match self {
-            Self::OldApi(pool) => pool,
+            Self::OldApi(pool) => Some(pool),
+            #[cfg(feature = "unstable-sqlx-next")]
+            Self::SqlxNext(_) => None,
         }
     }
 }
@@ -81,6 +107,11 @@ impl PooledConnection {
                         .map_err(DriverError::OldApi)
                 })
                 .boxed(),
+            #[cfg(feature = "unstable-sqlx-next")]
+            Self::SqlxNext(connection) => connection
+                .fetch_many(sql, params)
+                .map(|result| result.map_err(DriverError::SqlxNext))
+                .boxed(),
         }
     }
 
@@ -91,18 +122,35 @@ impl PooledConnection {
                 .await
                 .map(drop)
                 .map_err(DriverError::OldApi),
+            #[cfg(feature = "unstable-sqlx-next")]
+            Self::SqlxNext(connection) => {
+                connection.execute(sql).await.map_err(DriverError::SqlxNext)
+            }
         }
     }
 
-    pub fn as_old_api(&mut self) -> &mut PoolConnection<Any> {
+    pub fn as_old_api(&mut self) -> Option<&mut PoolConnection<Any>> {
         match self {
-            Self::OldApi(connection) => connection,
+            Self::OldApi(connection) => Some(connection),
+            #[cfg(feature = "unstable-sqlx-next")]
+            Self::SqlxNext(_) => None,
         }
     }
 }
 
+pub(crate) fn unsupported_by_sqlx_next(capability: &str) -> anyhow::Error {
+    anyhow::anyhow!(
+        "The unstable sqlx 0.9 database drivers do not support {capability} yet. \
+        Set unstable_sqlx_next to false to use it."
+    )
+}
+
 #[must_use]
 pub fn is_pool_timeout(error: &anyhow::Error) -> bool {
+    #[cfg(feature = "unstable-sqlx-next")]
+    if let Some(sqlx_next::Error::PoolTimedOut) = error.downcast_ref() {
+        return true;
+    }
     matches!(error.downcast_ref(), Some(sqlx::error::Error::PoolTimedOut))
 }
 
@@ -112,6 +160,8 @@ impl DriverError {
         match self {
             Self::OldApi(sqlx::error::Error::Database(error)) => error.offset(),
             Self::OldApi(_) => None,
+            #[cfg(feature = "unstable-sqlx-next")]
+            Self::SqlxNext(_) => None,
         }
     }
 }
@@ -126,6 +176,8 @@ impl std::fmt::Display for DriverError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::OldApi(error) => error.fmt(f),
+            #[cfg(feature = "unstable-sqlx-next")]
+            Self::SqlxNext(error) => error.fmt(f),
         }
     }
 }
@@ -134,6 +186,8 @@ impl std::error::Error for DriverError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::OldApi(error) => error.source(),
+            #[cfg(feature = "unstable-sqlx-next")]
+            Self::SqlxNext(error) => error.source(),
         }
     }
 }
