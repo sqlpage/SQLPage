@@ -1,4 +1,4 @@
-use std::{mem::take, time::Duration};
+use std::{future::Future, mem::take, sync::Arc, time::Duration};
 
 use super::Database;
 use crate::{
@@ -35,22 +35,8 @@ impl Database {
         );
         set_custom_connect_options(&mut connect_options, config);
         log::debug!("Connecting to database: {database_url}");
-        let mut retries = config.database_connection_retries;
-
-        let mut conn: AnyConnection = loop {
-            match AnyConnection::connect_with(&connect_options).await {
-                Ok(c) => break c,
-                Err(e) => {
-                    if retries == 0 {
-                        return Err(anyhow::Error::new(e)
-                            .context(format!("Unable to open connection to {database_url}")));
-                    }
-                    log::warn!("Failed to connect to the database: {e:#}. Retrying in 5 seconds.");
-                    retries -= 1;
-                    tokio::time::sleep(Duration::from_secs(5)).await;
-                }
-            }
-        };
+        let mut conn: AnyConnection =
+            retry_connecting(config, || AnyConnection::connect_with(&connect_options)).await?;
         let dbms_name: String = conn.dbms_name().await?;
         let database_type = SupportedDatabase::from_dbms_name(&dbms_name);
         drop(conn);
@@ -73,64 +59,112 @@ impl Database {
     }
 
     fn create_pool_options(config: &AppConfig, kind: AnyKind) -> PoolOptions<Any> {
+        let ConnectionHooks {
+            on_connect,
+            on_reset,
+        } = ConnectionHooks::read(config);
         let mut pool_options = PoolOptions::new()
-            .max_connections(if let Some(max) = config.max_database_pool_connections {
-                max
-            } else {
-                // Different databases have a different number of max concurrent connections allowed by default
-                match kind {
-                    AnyKind::Postgres | AnyKind::Odbc => 50, // Default to PostgreSQL-like limits for Generic
-                    AnyKind::MySql => 75,
-                    AnyKind::Sqlite => {
-                        if config.database_url.contains(":memory:") {
-                            128
-                        } else {
-                            16
-                        }
-                    }
-                    AnyKind::Mssql => 100,
-                }
-            })
+            .max_connections(max_connections(config, kind))
             .idle_timeout(config.database_connection_idle_timeout)
             .max_lifetime(config.database_connection_max_lifetime)
             .acquire_timeout(Duration::from_secs_f64(
                 config.database_connection_acquire_timeout_seconds,
             ));
-        pool_options = add_on_return_to_pool(config, pool_options);
-        pool_options = add_on_connection_handler(config, pool_options);
+        pool_options = add_on_return_to_pool(pool_options, on_reset);
+        pool_options = add_on_connection_handler(config, pool_options, on_connect);
         pool_options
     }
 }
 
-fn add_on_return_to_pool(config: &AppConfig, pool_options: PoolOptions<Any>) -> PoolOptions<Any> {
-    let on_disconnect_file = config.configuration_directory.join(ON_RESET_FILE);
-    let sql = if on_disconnect_file.exists() {
-        log::info!(
-            "Creating a custom SQL connection cleanup handler from {}",
-            on_disconnect_file.display()
-        );
-        match std::fs::read_to_string(&on_disconnect_file) {
-            Ok(sql) => {
-                log::trace!("The custom SQL connection cleanup handler is:\n{sql}");
-                Some(std::sync::Arc::new(sql))
-            }
+async fn retry_connecting<C, E, F>(
+    config: &AppConfig,
+    mut connect: impl FnMut() -> F,
+) -> anyhow::Result<C>
+where
+    F: Future<Output = Result<C, E>>,
+    E: std::error::Error + Send + Sync + 'static,
+{
+    let mut retries = config.database_connection_retries;
+    loop {
+        match connect().await {
+            Ok(connection) => return Ok(connection),
             Err(e) => {
-                log::error!(
-                    "Unable to read the file {}: {}",
-                    on_disconnect_file.display(),
-                    e
-                );
-                None
+                if retries == 0 {
+                    return Err(anyhow::Error::new(e).context(format!(
+                        "Unable to open connection to {}",
+                        config.database_url
+                    )));
+                }
+                log::warn!("Failed to connect to the database: {e:#}. Retrying in 5 seconds.");
+                retries -= 1;
+                tokio::time::sleep(Duration::from_secs(5)).await;
             }
         }
-    } else {
-        log::debug!(
-            "Not creating a custom SQL connection cleanup handler because {} does not exist",
-            on_disconnect_file.display()
-        );
-        None
-    };
+    }
+}
 
+fn max_connections(config: &AppConfig, kind: AnyKind) -> u32 {
+    if let Some(max) = config.max_database_pool_connections {
+        return max;
+    }
+    // Different databases have a different number of max concurrent connections allowed by default
+    match kind {
+        AnyKind::Postgres | AnyKind::Odbc => 50, // Default to PostgreSQL-like limits for Generic
+        AnyKind::MySql => 75,
+        AnyKind::Sqlite => {
+            if config.database_url.contains(":memory:") {
+                128
+            } else {
+                16
+            }
+        }
+        AnyKind::Mssql => 100,
+    }
+}
+
+struct ConnectionHooks {
+    on_connect: Option<Arc<str>>,
+    on_reset: Option<Arc<str>>,
+}
+
+impl ConnectionHooks {
+    fn read(config: &AppConfig) -> Self {
+        Self {
+            on_connect: read_hook(config, ON_CONNECT_FILE, "database connection handler"),
+            on_reset: read_hook(config, ON_RESET_FILE, "connection cleanup handler"),
+        }
+    }
+}
+
+fn read_hook(config: &AppConfig, file_name: &str, handler: &str) -> Option<Arc<str>> {
+    let hook_file = config.configuration_directory.join(file_name);
+    if !hook_file.exists() {
+        log::debug!(
+            "Not creating a custom SQL {handler} because {} does not exist",
+            hook_file.display()
+        );
+        return None;
+    }
+    log::info!(
+        "Creating a custom SQL {handler} from {}",
+        hook_file.display()
+    );
+    match std::fs::read_to_string(&hook_file) {
+        Ok(sql) => {
+            log::trace!("The custom SQL {handler} is:\n{sql}");
+            Some(Arc::from(sql))
+        }
+        Err(e) => {
+            log::error!("Unable to read the file {}: {}", hook_file.display(), e);
+            None
+        }
+    }
+}
+
+fn add_on_return_to_pool(
+    pool_options: PoolOptions<Any>,
+    sql: Option<Arc<str>>,
+) -> PoolOptions<Any> {
     pool_options.after_release(move |conn, meta| {
         let sql = sql.clone();
         Box::pin(async move {
@@ -146,12 +180,12 @@ fn add_on_return_to_pool(config: &AppConfig, pool_options: PoolOptions<Any>) -> 
 fn on_return_to_pool(
     conn: &mut AnyConnection,
     meta: sqlx::pool::PoolConnectionMetadata,
-    sql: std::sync::Arc<String>,
+    sql: Arc<str>,
 ) -> BoxFuture<'_, Result<bool, sqlx::error::Error>> {
     use sqlx::row::Row;
     Box::pin(async move {
         log::trace!("Running the custom SQL connection cleanup handler. {meta:?}");
-        let query_result = conn.fetch_optional(sql.as_str()).await?;
+        let query_result = conn.fetch_optional(&*sql).await?;
         if let Some(query_result) = query_result {
             let is_healthy = query_result.try_get::<bool, _>(0);
             log::debug!("Is the connection healthy? {is_healthy:?}");
@@ -166,43 +200,20 @@ fn on_return_to_pool(
 fn add_on_connection_handler(
     config: &AppConfig,
     pool_options: PoolOptions<Any>,
+    sql: Option<Arc<str>>,
 ) -> PoolOptions<Any> {
-    let on_connect_file = config.configuration_directory.join(ON_CONNECT_FILE);
-    let on_connect_file_display = on_connect_file.display().to_string();
-    let sql = if on_connect_file.exists() {
-        log::info!(
-            "Creating a custom SQL database connection handler from {}",
-            on_connect_file.display()
-        );
-        match std::fs::read_to_string(&on_connect_file) {
-            Ok(sql) => {
-                log::trace!("The custom SQL database connection handler is:\n{sql}");
-                Some(std::sync::Arc::new(sql))
-            }
-            Err(e) => {
-                log::error!(
-                    "Unable to read the file {}: {}",
-                    on_connect_file.display(),
-                    e
-                );
-                None
-            }
-        }
-    } else {
-        log::debug!(
-            "Not creating a custom SQL database connection handler because {} does not exist",
-            on_connect_file.display()
-        );
-        None
-    };
-
+    let on_connect_file_display = config
+        .configuration_directory
+        .join(ON_CONNECT_FILE)
+        .display()
+        .to_string();
     pool_options.after_connect(move |conn, _| {
         let sql = sql.clone();
         let on_connect_file_display = on_connect_file_display.clone();
         Box::pin(async move {
             if let Some(sql) = sql {
                 log::debug!("Running {on_connect_file_display} on new connection");
-                let r = conn.execute(sql.as_str()).await?;
+                let r = conn.execute(&*sql).await?;
                 log::debug!("Finished running connection handler on new connection: {r:?}");
             }
             Ok(())
