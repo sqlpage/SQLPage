@@ -44,29 +44,32 @@ pub(super) fn row_to_json(row: &AnyRow) -> Value {
     Object(map)
 }
 
-/// Decodes a row into user-visible columns and a private trailing input suffix.
+/// Decodes a database row into (key, value) pairs
+pub(super) fn decode_columns(row: &AnyRow) -> impl ExactSizeIterator<Item = (String, Value)> {
+    row.columns()
+        .iter()
+        .map(|column| (canonical_col_name(column), sql_to_json(row, column)))
+}
+
+/// A row returned by the database starts with a certain number of user-accessible "public" values,
+/// followed by values generated internally by sqlpage's query rewriting engine to serve as inputs to
+/// sqlpage functions.
 ///
-/// Every SQL value is decoded exactly once. Private values are addressed by
-/// ordinal, so their generated SQL aliases cannot collide with user columns.
+/// Given `[(public_key_1, public_val_1), (public_key_2, public_val_2), (internal_key_1, internal_val_1)], 1`
+/// This function returns `{public_key_1:public_val_1, public_key_2:public_val_2}, [internal_val_1]`
+///
+/// If there are fewer than `internal_count` columns, all columns are considered internal
 pub(super) fn row_to_json_with_inputs(
     row: &AnyRow,
-    input_count: usize,
+    internal_count: usize,
 ) -> anyhow::Result<(Value, Vec<Value>)> {
-    let columns = row.columns();
-    let public_count = columns
-        .len()
-        .checked_sub(input_count)
-        .ok_or_else(|| anyhow::anyhow!("The query returned fewer columns than SQLPage expected"))?;
+    let mut db_pairs = decode_columns(row);
     let mut map = Map::new();
-    let mut inputs = Vec::with_capacity(input_count);
-    for column in &columns[..public_count] {
-        let key = canonical_col_name(column);
-        let value = sql_to_json(row, column);
-        map = add_value_to_map(map, (key, value));
+    while db_pairs.len() > internal_count {
+        map = add_value_to_map(map, db_pairs.next().expect("len was checked"));
     }
-    for column in &columns[public_count..] {
-        inputs.push(sql_to_json(row, column));
-    }
+    anyhow::ensure!(db_pairs.len() == internal_count, "missing internal columns");
+    let inputs = db_pairs.map(|(_, value)| value).collect();
     Ok((Value::Object(map), inputs))
 }
 
