@@ -1,6 +1,7 @@
 pub mod blob_to_data_url;
 mod connect;
 mod csv_import;
+pub mod driver;
 pub mod execute_queries;
 pub mod migrations;
 mod sql;
@@ -125,7 +126,7 @@ impl From<AnyKind> for SupportedDatabase {
 }
 
 pub struct Database {
-    pub connection: sqlx::any::AnyPool,
+    pub connection: driver::DatabasePool,
     pub info: DbInfo,
 }
 
@@ -155,7 +156,7 @@ pub enum DbItem {
 
 impl std::fmt::Display for Database {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self.connection.any_kind())
+        write!(f, "{:?}", self.info.kind)
     }
 }
 
