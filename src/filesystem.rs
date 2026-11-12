@@ -4,7 +4,7 @@ use crate::webserver::{Database, StatusCodeResultExt, make_placeholder};
 use crate::{AppState, TEMPLATES_DIR};
 use anyhow::Context;
 use chrono::{DateTime, Utc};
-use sqlx::any::{AnyStatement, AnyTypeInfo};
+use sqlx::any::{AnyPool, AnyStatement, AnyTypeInfo};
 use sqlx::executor::Executor;
 use sqlx::postgres::types::PgTimeTz;
 use sqlx::{postgres::Postgres, statement::Statement, types::Type};
@@ -85,9 +85,7 @@ impl FileSystem {
             (Ok(modified), _) => Ok(modified),
             (Err(e), Some(db_fs)) if is_path_missing_error(&e) => {
                 // no local file, try the database
-                db_fs
-                    .file_modified_since_in_db(app_state, path, since)
-                    .await
+                db_fs.file_modified_since_in_db(path, since).await
             }
             (Err(e), _) => {
                 let status = io_error_status(&local_path, &e).await;
@@ -143,7 +141,7 @@ impl FileSystem {
             (Ok(f), _) => Ok(f),
             (Err(e), Some(db_fs)) if is_path_missing_error(&e) => {
                 // no local file, try the database
-                db_fs.read_file(app_state, path.as_ref()).await
+                db_fs.read_file(path.as_ref()).await
             }
             (Err(e), _) => {
                 let status = io_error_status(&local_path, &e).await;
@@ -201,7 +199,7 @@ impl FileSystem {
                 path.display()
             );
             if let Some(db_fs) = &self.db_fs_queries {
-                return db_fs.file_exists(app_state, path).await;
+                return db_fs.file_exists(path).await;
             }
         }
         Ok(local_exists)
@@ -313,6 +311,7 @@ async fn file_modified_since_local(path: &Path, since: DateTime<Utc>) -> tokio::
 }
 
 pub struct DbFsQueries {
+    pool: AnyPool,
     was_modified: AnyStatement<'static>,
     read_file: AnyStatement<'static>,
     exists: AnyStatement<'static>,
@@ -339,17 +338,18 @@ impl DbFsQueries {
 
     async fn init(db: &Database) -> anyhow::Result<Self> {
         log::debug!("Initializing database filesystem queries");
-        Self::check_table_available(db).await?;
+        let pool = db.connection.as_old_api().clone();
+        Self::check_table_available(&pool).await?;
         Ok(Self {
+            pool,
             was_modified: Self::make_was_modified_query(db).await?,
             read_file: Self::make_read_file_query(db).await?,
             exists: Self::make_exists_query(db).await?,
         })
     }
 
-    async fn check_table_available(db: &Database) -> anyhow::Result<()> {
-        db.connection
-            .execute("SELECT 1 FROM sqlpage_files WHERE 1 = 0")
+    async fn check_table_available(pool: &AnyPool) -> anyhow::Result<()> {
+        pool.execute("SELECT 1 FROM sqlpage_files WHERE 1 = 0")
             .await
             .map(|_| ())
             .context("Unable to access sqlpage_files")?;
@@ -391,7 +391,6 @@ impl DbFsQueries {
 
     async fn file_modified_since_in_db(
         &self,
-        app_state: &AppState,
         path: &Path,
         since: DateTime<Utc>,
     ) -> anyhow::Result<bool> {
@@ -409,15 +408,12 @@ impl DbFsQueries {
             self.was_modified.sql(),
             (since, path)
         );
-        let was_modified_i32 = query
-            .fetch_optional(&app_state.db.connection)
-            .await
-            .with_context(|| {
-                format!(
-                    "Unable to check when {} was last modified in the database",
-                    path.display()
-                )
-            })?;
+        let was_modified_i32 = query.fetch_optional(&self.pool).await.with_context(|| {
+            format!(
+                "Unable to check when {} was last modified in the database",
+                path.display()
+            )
+        })?;
         log::trace!(
             "DB File {} was modified result: {was_modified_i32:?}",
             path.display()
@@ -425,12 +421,12 @@ impl DbFsQueries {
         Ok(was_modified_i32 == Some((1,)))
     }
 
-    async fn read_file(&self, app_state: &AppState, path: &Path) -> anyhow::Result<Vec<u8>> {
+    async fn read_file(&self, path: &Path) -> anyhow::Result<Vec<u8>> {
         log::debug!("Reading file {} from the database", path.display());
         self.read_file
             .query_as::<(Vec<u8>,)>()
             .bind(path.display().to_string())
-            .fetch_optional(&app_state.db.connection)
+            .fetch_optional(&self.pool)
             .await
             .map_err(anyhow::Error::from)
             .and_then(|modified| {
@@ -446,7 +442,7 @@ impl DbFsQueries {
             .with_context(|| format!("Unable to read {} from the database", path.display()))
     }
 
-    async fn file_exists(&self, app_state: &AppState, path: &Path) -> anyhow::Result<bool> {
+    async fn file_exists(&self, path: &Path) -> anyhow::Result<bool> {
         let query = self
             .exists
             .query_as::<(i32,)>()
@@ -459,7 +455,7 @@ impl DbFsQueries {
             self.exists.sql(),
             (path,)
         );
-        let result = query.fetch_optional(&app_state.db.connection).await;
+        let result = query.fetch_optional(&self.pool).await;
         log::debug!("DB File exists result: {result:?}");
         result.map(|result| result.is_some()).with_context(|| {
             format!(
@@ -488,7 +484,7 @@ async fn test_sql_file_read_utf8() -> anyhow::Result<()> {
 
     let create_table_sql = DbFsQueries::get_create_table_sql(state.db.info.database_type);
     let db = &state.db;
-    let conn = &db.connection;
+    let conn = db.connection.as_old_api();
     // Other tests share this database, so never drop a table their initialized state may use.
     if conn
         .execute("SELECT 1 FROM sqlpage_files WHERE 1 = 0")
