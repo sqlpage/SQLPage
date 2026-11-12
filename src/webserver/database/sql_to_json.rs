@@ -44,31 +44,32 @@ pub(super) fn row_to_json(row: &AnyRow) -> Value {
     Object(map)
 }
 
-pub(super) fn decode_columns(row: &AnyRow) -> Vec<(String, Value)> {
+/// Decodes a database row into (key, value) pairs
+pub(super) fn decode_columns(row: &AnyRow) -> impl ExactSizeIterator<Item = (String, Value)> {
     row.columns()
         .iter()
         .map(|column| (canonical_col_name(column), sql_to_json(row, column)))
-        .collect()
 }
 
-/// Splits decoded columns into user-visible columns and a private trailing input suffix.
+/// A row returned by the database starts with a certain number of user-accessible "public" values,
+/// followed by values generated internally by sqlpage's query rewriting engine to serve as inputs to
+/// sqlpage functions.
 ///
-/// Private values are addressed by ordinal, so their generated SQL aliases
-/// cannot collide with user columns.
+/// Given `[(public_key_1, public_val_1), (public_key_2, public_val_2), (internal_key_1, internal_val_1)], 1`
+/// This function returns `{public_key_1:public_val_1, public_key_2:public_val_2}, [internal_val_1]`
+///
+/// If there are fewer than `internal_count` columns, all columns are considered internal
 pub(super) fn row_to_json_with_inputs(
-    mut columns: Vec<(String, Value)>,
-    input_count: usize,
+    row: &AnyRow,
+    internal_count: usize,
 ) -> anyhow::Result<(Value, Vec<Value>)> {
-    let public_count = columns
-        .len()
-        .checked_sub(input_count)
-        .ok_or_else(|| anyhow::anyhow!("The query returned fewer columns than SQLPage expected"))?;
-    let inputs = columns
-        .split_off(public_count)
-        .into_iter()
-        .map(|(_, value)| value)
-        .collect();
-    let map = columns.into_iter().fold(Map::new(), add_value_to_map);
+    let mut db_pairs = decode_columns(row);
+    let mut map = Map::new();
+    while db_pairs.len() > internal_count {
+        map = add_value_to_map(map, db_pairs.next().expect("len was checked"));
+    }
+    anyhow::ensure!(db_pairs.len() == internal_count, "missing internal columns");
+    let inputs = db_pairs.map(|(_, value)| value).collect();
     Ok((Value::Object(map), inputs))
 }
 
@@ -265,7 +266,7 @@ mod tests {
         )
         .fetch_one(&mut connection)
         .await?;
-        let (public, inputs) = row_to_json_with_inputs(decode_columns(&row), 1)?;
+        let (public, inputs) = row_to_json_with_inputs(&row, 1)?;
         expect_json_object_equal(
             &public,
             &serde_json::json!({ "__sqlpage_input_0": "public" }),
