@@ -123,8 +123,8 @@ fn max_connections(config: &AppConfig, kind: AnyKind) -> u32 {
 }
 
 struct ConnectionHooks {
-    on_connect: Option<Arc<String>>,
-    on_reset: Option<Arc<String>>,
+    on_connect: Option<Arc<str>>,
+    on_reset: Option<Arc<str>>,
 }
 
 impl ConnectionHooks {
@@ -136,7 +136,7 @@ impl ConnectionHooks {
     }
 }
 
-fn read_hook(config: &AppConfig, file_name: &str, handler: &str) -> Option<Arc<String>> {
+fn read_hook(config: &AppConfig, file_name: &str, handler: &str) -> Option<Arc<str>> {
     let hook_file = config.configuration_directory.join(file_name);
     if !hook_file.exists() {
         log::debug!(
@@ -152,7 +152,7 @@ fn read_hook(config: &AppConfig, file_name: &str, handler: &str) -> Option<Arc<S
     match std::fs::read_to_string(&hook_file) {
         Ok(sql) => {
             log::trace!("The custom SQL {handler} is:\n{sql}");
-            Some(Arc::new(sql))
+            Some(Arc::from(sql))
         }
         Err(e) => {
             log::error!("Unable to read the file {}: {}", hook_file.display(), e);
@@ -163,7 +163,7 @@ fn read_hook(config: &AppConfig, file_name: &str, handler: &str) -> Option<Arc<S
 
 fn add_on_return_to_pool(
     pool_options: PoolOptions<Any>,
-    sql: Option<Arc<String>>,
+    sql: Option<Arc<str>>,
 ) -> PoolOptions<Any> {
     pool_options.after_release(move |conn, meta| {
         let sql = sql.clone();
@@ -180,12 +180,12 @@ fn add_on_return_to_pool(
 fn on_return_to_pool(
     conn: &mut AnyConnection,
     meta: sqlx::pool::PoolConnectionMetadata,
-    sql: Arc<String>,
+    sql: Arc<str>,
 ) -> BoxFuture<'_, Result<bool, sqlx::error::Error>> {
     use sqlx::row::Row;
     Box::pin(async move {
         log::trace!("Running the custom SQL connection cleanup handler. {meta:?}");
-        let query_result = conn.fetch_optional(sql.as_str()).await?;
+        let query_result = conn.fetch_optional(&*sql).await?;
         if let Some(query_result) = query_result {
             let is_healthy = query_result.try_get::<bool, _>(0);
             log::debug!("Is the connection healthy? {is_healthy:?}");
@@ -200,7 +200,7 @@ fn on_return_to_pool(
 fn add_on_connection_handler(
     config: &AppConfig,
     pool_options: PoolOptions<Any>,
-    sql: Option<Arc<String>>,
+    sql: Option<Arc<str>>,
 ) -> PoolOptions<Any> {
     let on_connect_file_display = config
         .configuration_directory
@@ -213,7 +213,7 @@ fn add_on_connection_handler(
         Box::pin(async move {
             if let Some(sql) = sql {
                 log::debug!("Running {on_connect_file_display} on new connection");
-                let r = conn.execute(sql.as_str()).await?;
+                let r = conn.execute(&*sql).await?;
                 log::debug!("Finished running connection handler on new connection: {r:?}");
             }
             Ok(())
