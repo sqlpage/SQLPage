@@ -3,6 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use super::driver::DriverError;
 use super::sql::SourceSpan;
 
 #[derive(Debug)]
@@ -10,7 +11,7 @@ struct NiceDatabaseError {
     /// The source file that contains the query.
     source_file: PathBuf,
     /// The error that occurred.
-    db_err: sqlx::error::Error,
+    db_err: DriverError,
     /// The query that was executed.
     query: String,
     /// The start location of the query in the source file, if the query was extracted from a larger file.
@@ -43,27 +44,21 @@ impl std::fmt::Display for NiceDatabaseError {
             self.source_file.display(),
             self.db_err
         )?;
-        if let sqlx::error::Error::Database(db_err) = &self.db_err {
-            let Some(mut offset) = db_err.offset() else {
-                write!(f, "{}", self.query)?;
-                self.show_position_info(f)?;
-                return Ok(());
-            };
-            for line in self.query.lines() {
-                if offset > line.len() {
-                    offset -= line.len() + 1;
-                } else {
-                    highlight_line_offset(f, line, offset);
-                    self.show_position_info(f)?;
-                    break;
-                }
-            }
-            Ok(())
-        } else {
+        let Some(mut offset) = self.db_err.offset() else {
             write!(f, "{}", self.query)?;
             self.show_position_info(f)?;
-            Ok(())
+            return Ok(());
+        };
+        for line in self.query.lines() {
+            if offset > line.len() {
+                offset -= line.len() + 1;
+            } else {
+                highlight_line_offset(f, line, offset);
+                self.show_position_info(f)?;
+                break;
+            }
         }
+        Ok(())
     }
 }
 
@@ -104,11 +99,11 @@ pub(super) fn is_positioned_error(error: &anyhow::Error) -> bool {
 pub(super) fn display_db_error(
     source_file: &Path,
     query: &str,
-    db_err: sqlx::error::Error,
+    db_err: impl Into<DriverError>,
 ) -> anyhow::Error {
     anyhow::Error::new(NiceDatabaseError {
         source_file: source_file.to_path_buf(),
-        db_err,
+        db_err: db_err.into(),
         query: query.to_string(),
         query_position: None,
     })
@@ -120,7 +115,7 @@ pub(super) fn display_stmt_db_error(
     source_file: &Path,
     query: &str,
     query_position: SourceSpan,
-    db_err: sqlx::error::Error,
+    db_err: DriverError,
 ) -> anyhow::Error {
     anyhow::Error::new(NiceDatabaseError {
         source_file: source_file.to_path_buf(),

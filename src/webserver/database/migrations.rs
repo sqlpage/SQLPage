@@ -34,29 +34,32 @@ pub async fn apply(config: &crate::app_config::AppConfig, db: &Database) -> anyh
     for m in migrator.iter() {
         log::info!("\t{}", DisplayMigration(m));
     }
-    migrator.run(&db.connection).await.map_err(|err| {
-        match err {
-            MigrateError::Execute(n, source) => {
-                let migration = failing_migration(&migrator.migrations, n)
-                    .expect("sqlx reports the version of a migration it just ran");
-                let source_file = migrations_dir.join(format!(
-                    "{:04}_{}{}",
-                    n,
-                    migration.description.replace(' ', "_"),
-                    migration.migration_type.suffix()
-                ));
-                display_db_error(&source_file, &migration.sql, source).context(format!(
-                    "Failed to apply {} migration {}",
-                    db,
-                    DisplayMigration(migration)
-                ))
+    migrator
+        .run(db.connection.as_old_api())
+        .await
+        .map_err(|err| {
+            match err {
+                MigrateError::Execute(n, source) => {
+                    let migration = failing_migration(&migrator.migrations, n)
+                        .expect("sqlx reports the version of a migration it just ran");
+                    let source_file = migrations_dir.join(format!(
+                        "{:04}_{}{}",
+                        n,
+                        migration.description.replace(' ', "_"),
+                        migration.migration_type.suffix()
+                    ));
+                    display_db_error(&source_file, &migration.sql, source).context(format!(
+                        "Failed to apply {} migration {}",
+                        db,
+                        DisplayMigration(migration)
+                    ))
+                }
+                source => anyhow::Error::new(source),
             }
-            source => anyhow::Error::new(source),
-        }
-        .context(format!(
-            "Failed to apply database migrations from {MIGRATIONS_DIR:?}"
-        ))
-    })?;
+            .context(format!(
+                "Failed to apply database migrations from {MIGRATIONS_DIR:?}"
+            ))
+        })?;
     Ok(())
 }
 

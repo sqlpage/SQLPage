@@ -15,6 +15,7 @@ use std::path::PathBuf;
 use crate::AppState;
 use crate::app_config::DevOrProd;
 use crate::webserver::ErrorWithStatus;
+use crate::webserver::database::driver::is_pool_timeout;
 use actix_web::HttpResponseBuilder;
 use actix_web::error::UrlencodedError;
 use actix_web::http::{StatusCode, header};
@@ -183,7 +184,7 @@ pub(super) fn anyhow_err_to_actix_resp(e: &anyhow::Error, state: &AppState) -> H
                 "Basic realm=\"Authentication required\", charset=\"UTF-8\"",
             ));
         }
-    } else if let Some(sqlx::error::Error::PoolTimedOut) = e.downcast_ref() {
+    } else if is_pool_timeout(e) {
         use rand::RngExt;
         resp.status(StatusCode::TOO_MANY_REQUESTS).insert_header((
             header::RETRY_AFTER,
@@ -211,7 +212,7 @@ pub(super) fn anyhow_err_to_actix_resp(e: &anyhow::Error, state: &AppState) -> H
 fn anyhow_error_status(e: &anyhow::Error) -> Option<StatusCode> {
     if let Some(&ErrorWithStatus { status }) = e.downcast_ref() {
         Some(status)
-    } else if let Some(sqlx::error::Error::PoolTimedOut) = e.downcast_ref() {
+    } else if is_pool_timeout(e) {
         Some(StatusCode::TOO_MANY_REQUESTS)
     } else {
         None

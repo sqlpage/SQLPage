@@ -1,6 +1,7 @@
 use std::{future::Future, mem::take, sync::Arc, time::Duration};
 
 use super::Database;
+use super::driver::DatabasePool;
 use crate::{
     ON_CONNECT_FILE, ON_RESET_FILE,
     app_config::AppConfig,
@@ -49,7 +50,7 @@ impl Database {
 
         log::debug!("Initialized {dbms_name:?} database pool: {pool:#?}");
         Ok(Database {
-            connection: pool,
+            connection: DatabasePool::OldApi(pool),
             info: DbInfo {
                 dbms_name,
                 database_type,
@@ -311,7 +312,7 @@ mod tests {
             .await
             .unwrap();
         let value: String = sqlx::query::query("SELECT value FROM on_connect_marker")
-            .fetch_one(&db.connection)
+            .fetch_one(db.connection.as_old_api())
             .await
             .unwrap()
             .try_get(0)
@@ -340,7 +341,7 @@ mod tests {
         let db = Database::init(&config).await.unwrap();
         drop(db.connection.acquire().await.unwrap());
         let resets: i64 = sqlx::query::query("SELECT COUNT(*) FROM reset_log")
-            .fetch_one(&db.connection)
+            .fetch_one(db.connection.as_old_api())
             .await
             .unwrap()
             .try_get(0)

@@ -17,22 +17,16 @@ async fn store_file_in_db(state: &AppState, path: &str, contents: &[u8]) {
 
     let create_table_sql =
         sqlpage::filesystem::DbFsQueries::get_create_table_sql(state.db.info.database_type);
-    if state
-        .db
-        .connection
+    let pool = state.db.connection.as_old_api();
+    if pool
         .execute("SELECT 1 FROM sqlpage_files WHERE 1 = 0")
         .await
         .is_err()
     {
-        state.db.connection.execute(create_table_sql).await.unwrap();
+        pool.execute(create_table_sql).await.unwrap();
     }
     let delete_sql = format!("DELETE FROM sqlpage_files WHERE path = '{path}'");
-    state
-        .db
-        .connection
-        .execute(delete_sql.as_str())
-        .await
-        .unwrap();
+    pool.execute(delete_sql.as_str()).await.unwrap();
     let insert_sql = format!(
         "INSERT INTO sqlpage_files(path, contents) VALUES ({}, {})",
         make_placeholder(state.db.info.kind, 1),
@@ -41,7 +35,7 @@ async fn store_file_in_db(state: &AppState, path: &str, contents: &[u8]) {
     sqlx::query::query(&insert_sql)
         .bind(path)
         .bind(contents)
-        .execute(&state.db.connection)
+        .execute(pool)
         .await
         .unwrap();
 }
