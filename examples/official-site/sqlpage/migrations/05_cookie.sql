@@ -65,7 +65,7 @@ VALUES (
     (
         'cookie',
         'http_only',
-        'Whether the cookie should only be accessible via HTTP and not via client-side scripts. If not specified, the cookie will be accessible via both HTTP and client-side scripts.',
+        'Whether the cookie should only be accessible via HTTP and not via client-side scripts. If explicitly set to false, the cookie will be accessible via both HTTP and client-side scripts.',
         'BOOLEAN',
         TRUE,
         TRUE
