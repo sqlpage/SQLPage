@@ -95,9 +95,10 @@
       rustToolchainFor = pkgs: pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
 
       # odbc-sys links against a driver manager, and the C sources vendored by
-      # aws-lc-sys, libsqlite3-sys and zstd-sys need a compiler. Nothing here
-      # reaches for OpenSSL: SQLPage speaks TLS through rustls. build.rs embeds
-      # the browser assets, so every cargo gate builds them with npm first.
+      # aws-lc-sys, libsqlite3-sys and zstd-sys need a compiler. SQLPage speaks
+      # TLS through rustls; only the unstable-sqlx-next feature links OpenSSL,
+      # because sqlx-sqlserver requires native-tls. build.rs embeds the browser
+      # assets, so every cargo gate builds them with npm first.
       cargoRuntime = pkgs: [
         (rustToolchainFor pkgs)
         pkgs.stdenv.cc
@@ -128,6 +129,8 @@
 
       cargoEnv = pkgs: {
         LIBRARY_PATH = "${pkgs.unixodbc}/lib";
+        OPENSSL_LIB_DIR = "${lib.getLib pkgs.openssl}/lib";
+        OPENSSL_INCLUDE_DIR = "${lib.getDev pkgs.openssl}/include";
       };
 
       # Playwright is installed via npm, we we need to set the browser paths.
@@ -270,6 +273,7 @@
               ++ lib.attrValues (gatesFor pkgs);
 
             buildInputs = with pkgs; [
+              openssl
               unixodbc
               zstd
             ];

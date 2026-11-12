@@ -93,9 +93,10 @@ when the database runs in a container. For local Oracle runs, add
 `-- --test-threads=2` to avoid overwhelming the listener. Check affected matrix results for SQL
 execution changes; SQLite alone cannot establish portability.
 
-ODBC databases can also run on sqlx 0.9, through the [sqlx-odbc](https://github.com/lovasoa/sqlx-odbc) driver. This is the unstable migration path for [#1056](https://github.com/sqlpage/SQLPage/issues/1056), and releases do not include it. To use it, build with the `unstable-sqlx-next` feature and set `SQLPAGE_UNSTABLE_SQLX_NEXT=true`. With this driver, migrations, `sqlpage_files` and CSV imports stop with an error that names the missing feature.
+SQL Server and ODBC databases can also run on sqlx 0.9, through the [sqlx-sqlserver](https://github.com/lovasoa/sqlx-sqlserver) and [sqlx-odbc](https://github.com/lovasoa/sqlx-odbc) drivers. This is the unstable migration path for [#1056](https://github.com/sqlpage/SQLPage/issues/1056), and releases do not include it. To use it, build with the `unstable-sqlx-next` feature and set `SQLPAGE_UNSTABLE_SQLX_NEXT=true`. The feature needs OpenSSL, which the Nix shell provides. With these drivers, migrations, `sqlpage_files` and CSV imports stop with an error that names the missing feature.
 
 ```bash
+SQLPAGE_UNSTABLE_SQLX_NEXT=true DATABASE_URL='mssql://root:Password123!@localhost/sqlpage' cargo test --features unstable-sqlx-next
 SQLPAGE_UNSTABLE_SQLX_NEXT=true DATABASE_URL='Driver=DuckDB;Database=/tmp/sqlpage-test.duckdb' cargo test --features unstable-sqlx-next
 ```
 

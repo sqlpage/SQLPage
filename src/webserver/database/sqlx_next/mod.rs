@@ -1,4 +1,5 @@
 mod odbc;
+mod sql_server;
 
 use std::time::Duration;
 
@@ -15,6 +16,7 @@ use sqlx_next::{
     Arguments, AssertSqlSafe, ColumnIndex, Either, Execute, Executor, Row, SqlSafeStr, SqlStr, Type,
 };
 use sqlx_odbc::Odbc;
+use sqlx_sqlserver::Mssql;
 
 use super::connect::{ConnectionHooks, max_connections};
 use super::driver::FetchedItem;
@@ -25,22 +27,26 @@ pub(super) use sqlx_next::Error;
 #[derive(Clone, Debug)]
 pub enum Pool {
     Odbc(sqlx_odbc::OdbcPool),
+    SqlServer(sqlx_sqlserver::MssqlPool),
 }
 
 pub enum PooledConnection {
     Odbc(PoolConnection<Odbc>),
+    SqlServer(PoolConnection<Mssql>),
 }
 
 #[derive(Clone, Copy)]
 pub(super) enum Driver {
     Odbc,
+    SqlServer,
 }
 
 impl Driver {
     pub(super) fn serving(kind: AnyKind) -> Option<Self> {
         match kind {
             AnyKind::Odbc => Some(Self::Odbc),
-            AnyKind::Postgres | AnyKind::MySql | AnyKind::Sqlite | AnyKind::Mssql => None,
+            AnyKind::Mssql => Some(Self::SqlServer),
+            AnyKind::Postgres | AnyKind::MySql | AnyKind::Sqlite => None,
         }
     }
 
@@ -48,6 +54,7 @@ impl Driver {
     pub(super) async fn connect(self, config: &AppConfig) -> anyhow::Result<(Pool, String)> {
         match self {
             Self::Odbc => odbc::connect(config).await,
+            Self::SqlServer => sql_server::connect(config).await,
         }
     }
 }
@@ -56,24 +63,28 @@ impl Pool {
     pub(super) async fn acquire(&self) -> Result<PooledConnection, Error> {
         Ok(match self {
             Self::Odbc(pool) => PooledConnection::Odbc(pool.acquire().await?),
+            Self::SqlServer(pool) => PooledConnection::SqlServer(pool.acquire().await?),
         })
     }
 
     pub(super) fn size(&self) -> u32 {
         match self {
             Self::Odbc(pool) => pool.size(),
+            Self::SqlServer(pool) => pool.size(),
         }
     }
 
     pub(super) fn num_idle(&self) -> usize {
         match self {
             Self::Odbc(pool) => pool.num_idle(),
+            Self::SqlServer(pool) => pool.num_idle(),
         }
     }
 
     pub(super) async fn close(&self) {
         match self {
             Self::Odbc(pool) => pool.close().await,
+            Self::SqlServer(pool) => pool.close().await,
         }
     }
 }
@@ -88,6 +99,9 @@ impl PooledConnection {
             Self::Odbc(connection) => {
                 fetch_decoded::<Odbc>(&mut **connection, sql, params, odbc::decode_row)
             }
+            Self::SqlServer(connection) => {
+                fetch_decoded::<Mssql>(&mut **connection, sql, params, sql_server::decode_row)
+            }
         }
     }
 
@@ -95,6 +109,7 @@ impl PooledConnection {
         let sql = AssertSqlSafe(sql.to_owned());
         match self {
             Self::Odbc(connection) => connection.execute(sql).await.map(drop),
+            Self::SqlServer(connection) => connection.execute(sql).await.map(drop),
         }
     }
 }
