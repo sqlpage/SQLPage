@@ -643,8 +643,10 @@ fn parse_single_sql_result(
             if log::log_enabled!(log::Level::Trace) {
                 debug_row(&r);
             }
-            let (row, mut inputs) =
-                super::sql_to_json::row_to_json_with_inputs(&r, query.row_input_json.len())?;
+            let (row, mut inputs) = super::sql_to_json::row_to_json_with_inputs(
+                super::sql_to_json::decode_columns(&r),
+                query.row_input_json.len(),
+            )?;
             decode_json_values(&mut inputs, &query.row_input_json);
             Ok(QueryEvent::Row(QueryRow {
                 value: row,

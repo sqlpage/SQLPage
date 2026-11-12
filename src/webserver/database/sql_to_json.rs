@@ -44,29 +44,31 @@ pub(super) fn row_to_json(row: &AnyRow) -> Value {
     Object(map)
 }
 
-/// Decodes a row into user-visible columns and a private trailing input suffix.
+pub(super) fn decode_columns(row: &AnyRow) -> Vec<(String, Value)> {
+    row.columns()
+        .iter()
+        .map(|column| (canonical_col_name(column), sql_to_json(row, column)))
+        .collect()
+}
+
+/// Splits decoded columns into user-visible columns and a private trailing input suffix.
 ///
-/// Every SQL value is decoded exactly once. Private values are addressed by
-/// ordinal, so their generated SQL aliases cannot collide with user columns.
+/// Private values are addressed by ordinal, so their generated SQL aliases
+/// cannot collide with user columns.
 pub(super) fn row_to_json_with_inputs(
-    row: &AnyRow,
+    mut columns: Vec<(String, Value)>,
     input_count: usize,
 ) -> anyhow::Result<(Value, Vec<Value>)> {
-    let columns = row.columns();
     let public_count = columns
         .len()
         .checked_sub(input_count)
         .ok_or_else(|| anyhow::anyhow!("The query returned fewer columns than SQLPage expected"))?;
-    let mut map = Map::new();
-    let mut inputs = Vec::with_capacity(input_count);
-    for column in &columns[..public_count] {
-        let key = canonical_col_name(column);
-        let value = sql_to_json(row, column);
-        map = add_value_to_map(map, (key, value));
-    }
-    for column in &columns[public_count..] {
-        inputs.push(sql_to_json(row, column));
-    }
+    let inputs = columns
+        .split_off(public_count)
+        .into_iter()
+        .map(|(_, value)| value)
+        .collect();
+    let map = columns.into_iter().fold(Map::new(), add_value_to_map);
     Ok((Value::Object(map), inputs))
 }
 
@@ -263,7 +265,7 @@ mod tests {
         )
         .fetch_one(&mut connection)
         .await?;
-        let (public, inputs) = row_to_json_with_inputs(&row, 1)?;
+        let (public, inputs) = row_to_json_with_inputs(decode_columns(&row), 1)?;
         expect_json_object_equal(
             &public,
             &serde_json::json!({ "__sqlpage_input_0": "public" }),
