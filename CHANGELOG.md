@@ -2,6 +2,8 @@
 
 ## unreleased
 
+- A file input with `multiple` now keeps every selected file, instead of only the last one. The new [`sqlpage.persist_uploaded_files`](https://sql-page.com/functions.sql?function=persist_uploaded_files) function saves them all and returns their paths as a JSON array.
+
 ## v0.48.0 (2026-11-12)
 
 - Updated Rust and browser dependencies, including ApexCharts 8.8.1, Tabler 1.7.4, Tabler icons 3.51, and Tom Select 2.7. Chart series names and labels now display HTML as text, fixing upstream script injection in legends and tooltips.

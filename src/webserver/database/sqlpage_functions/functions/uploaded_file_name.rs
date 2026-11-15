@@ -8,7 +8,7 @@ pub(super) async fn uploaded_file_name<'a>(
 ) -> Option<Cow<'a, str>> {
     let fname = request
         .uploaded_files
-        .get(&*upload_name)?
+        .get(&upload_name)?
         .file_name
         .as_ref()?;
     Some(Cow::Borrowed(fname.as_str()))

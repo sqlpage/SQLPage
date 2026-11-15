@@ -287,7 +287,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('min', 'The minimum value to accept for an input of type number', 'REAL', FALSE, TRUE),
     ('max', 'The maximum value to accept for an input of type number', 'REAL', FALSE, TRUE),
     ('checked', 'Used only for checkboxes and radio buttons. Indicates whether the checkbox should appear as already checked.', 'BOOLEAN', FALSE, TRUE),
-    ('multiple', 'Used only for select elements. Indicates that multiple elements can be selected simultaneously. When using multiple, you should add square brackets after the variable name: ''my_variable[]'' as name', 'BOOLEAN', FALSE, TRUE),
+    ('multiple', 'For select elements, indicates that multiple elements can be selected simultaneously. When using multiple, you should add square brackets after the variable name: ''my_variable[]'' as name. For file inputs, lets the user select several files at once: save them all with [sqlpage.persist_uploaded_files](functions.sql?function=persist_uploaded_files).', 'BOOLEAN', FALSE, TRUE),
     ('empty_option', 'Only for inputs of type `select`. Adds an empty option with the given label before the ones defined in `options`. Useful when generating other options from a database table.', 'TEXT', FALSE, TRUE),
     ('searchable', 'For select and multiple-select elements, displays them with a nice dropdown that allows searching for options.', 'BOOLEAN', FALSE, TRUE),
     ('dropdown', 'An alias for "searchable".', 'BOOLEAN', FALSE, TRUE),

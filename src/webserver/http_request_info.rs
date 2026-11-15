@@ -19,7 +19,6 @@ use actix_web_httpauth::headers::authorization::Basic;
 use anyhow::Context;
 use anyhow::anyhow;
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::net::IpAddr;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -30,6 +29,47 @@ use super::request_variables::ParamMap;
 use super::request_variables::param_map;
 use super::{ActixErrorStatusExt, StatusCodeResultExt};
 
+/// Files uploaded with the request, in the order they were received.
+///
+/// A file input with the `multiple` attribute sends several files under the same field name:
+/// they are all kept, and [`UploadedFiles::all`] returns them.
+#[derive(Debug, Default)]
+pub struct UploadedFiles(Vec<(String, TempFile)>);
+
+impl UploadedFiles {
+    /// The file uploaded in the field `name`. If the field contains several files, returns the last one.
+    #[must_use]
+    pub fn get(&self, name: &str) -> Option<&TempFile> {
+        self.0
+            .iter()
+            .rev()
+            .find_map(|(field, file)| (field == name).then_some(file))
+    }
+
+    /// All the files uploaded in the field `name`, in the order they were received.
+    /// A field named `name[]` also matches, following the convention used for multiple-value form fields.
+    pub fn all<'a>(&'a self, name: &'a str) -> impl Iterator<Item = &'a TempFile> + 'a {
+        self.0.iter().filter_map(move |(field, file)| {
+            let matches = field == name || field.strip_suffix("[]") == Some(name);
+            matches.then_some(file)
+        })
+    }
+
+    pub fn values(&self) -> impl Iterator<Item = &TempFile> {
+        self.0.iter().map(|(_, file)| file)
+    }
+
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
 #[derive(Debug)]
 pub struct RequestInfo {
     pub method: actix_web::http::Method,
@@ -37,7 +77,7 @@ pub struct RequestInfo {
     pub protocol: String,
     pub url_params: ParamMap,
     pub post_variables: ParamMap,
-    pub uploaded_files: Rc<HashMap<String, TempFile>>,
+    pub uploaded_files: Rc<UploadedFiles>,
     pub headers: ParamMap,
     pub client_ip: Option<IpAddr>,
     pub cookies: ParamMap,
@@ -148,7 +188,7 @@ pub(crate) async fn extract_request_info(
         headers: param_map(headers),
         url_params: param_map(get_variables),
         post_variables: param_map(post_variables),
-        uploaded_files: Rc::new(HashMap::from_iter(uploaded_files)),
+        uploaded_files: Rc::new(UploadedFiles(uploaded_files)),
         client_ip,
         cookies: param_map(cookies),
         basic_auth,
@@ -404,10 +444,55 @@ mod test {
             .collect::<ParamMap>()
         );
         assert_eq!(request_info.uploaded_files.len(), 1);
-        let my_upload = &request_info.uploaded_files["my_uploaded_file"];
+        let my_upload = request_info.uploaded_files.get("my_uploaded_file").unwrap();
         assert_eq!(my_upload.file_name.as_ref().unwrap(), "test.txt");
         assert_eq!(request_info.url_params.len(), 0);
         assert_eq!(std::fs::read(&my_upload.file).unwrap(), b"Hello World");
         assert_eq!(request_info.url_params.len(), 0);
+    }
+
+    #[actix_web::test]
+    async fn test_extract_multiple_files_in_one_field() {
+        crate::telemetry::init_test_logging();
+        let config =
+            serde_json::from_str::<AppConfig>(r#"{"listen_on": "localhost:1234"}"#).unwrap();
+        let mut service_request = TestRequest::get()
+            .insert_header(("content-type", "multipart/form-data;boundary=xxx"))
+            .set_payload(
+                "--xxx\r\n\
+                Content-Disposition: form-data; name=\"photos[]\"; filename=\"a.txt\"\r\n\
+                Content-Type: text/plain\r\n\
+                \r\n\
+                A\r\n\
+                --xxx\r\n\
+                Content-Disposition: form-data; name=\"other\"; filename=\"c.txt\"\r\n\
+                Content-Type: text/plain\r\n\
+                \r\n\
+                C\r\n\
+                --xxx\r\n\
+                Content-Disposition: form-data; name=\"photos[]\"; filename=\"b.txt\"\r\n\
+                Content-Type: text/plain\r\n\
+                \r\n\
+                B\r\n\
+                --xxx--\r\n",
+            )
+            .to_srv_request();
+        let app_data = Arc::new(AppState::init(&config).await.unwrap());
+        let request_ctx =
+            extract_request_info(&mut service_request, app_data, ServerTiming::enabled(false))
+                .await
+                .unwrap();
+        let files = &request_ctx.request().uploaded_files;
+        assert_eq!(files.len(), 3);
+        let names: Vec<_> = files
+            .all("photos")
+            .map(|f| f.file_name.as_deref().unwrap())
+            .collect();
+        assert_eq!(names, ["a.txt", "b.txt"]);
+        assert_eq!(files.all("photos[]").count(), 2);
+        // Backward compatible: a single-file lookup returns the last file of the field.
+        let last = files.get("photos[]").unwrap();
+        assert_eq!(last.file_name.as_deref(), Some("b.txt"));
+        assert!(files.get("photos").is_none());
     }
 }

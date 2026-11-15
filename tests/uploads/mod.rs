@@ -190,3 +190,80 @@ async fn test_csv_upload() -> actix_web::Result<()> {
     );
     Ok(())
 }
+
+fn two_files_and_one(third_file_name: &str) -> String {
+    format!(
+        "--1234567890\r\n\
+        Content-Disposition: form-data; name=\"photos[]\"; filename=\"a.txt\"\r\n\
+        Content-Type: text/plain\r\n\
+        \r\n\
+        A\r\n\
+        --1234567890\r\n\
+        Content-Disposition: form-data; name=\"photos[]\"; filename=\"b.txt\"\r\n\
+        Content-Type: text/plain\r\n\
+        \r\n\
+        B\r\n\
+        --1234567890\r\n\
+        Content-Disposition: form-data; name=\"photos[]\"; filename=\"{third_file_name}\"\r\n\
+        Content-Type: text/plain\r\n\
+        \r\n\
+        C\r\n\
+        --1234567890--\r\n"
+    )
+}
+
+#[actix_web::test]
+async fn test_persist_uploaded_files() -> actix_web::Result<()> {
+    let resp = response_from(multipart_request(
+        "/tests/uploads/persist_multiple.sql",
+        two_files_and_one("c.txt"),
+    ))
+    .await?;
+    assert_eq!(resp.status(), StatusCode::OK);
+    let paths: Vec<String> = test::read_body_json(resp).await;
+    assert_eq!(paths.len(), 3);
+    let mut contents = Vec::new();
+    for path in &paths {
+        let file_path = std::path::Path::new(path.trim_start_matches('/'));
+        contents.push(std::fs::read_to_string(file_path)?);
+        std::fs::remove_file(file_path)?;
+    }
+    assert_eq!(contents, ["A", "B", "C"]);
+    Ok(())
+}
+
+#[actix_web::test]
+async fn test_persist_uploaded_files_rejects_all_on_bad_extension() -> actix_web::Result<()> {
+    let folder = std::path::Path::new("tests/uploads/persisted_multiple");
+    let count_files = || std::fs::read_dir(folder).map_or(0, Iterator::count);
+    let before = count_files();
+    let resp = response_from(multipart_request(
+        "/tests/uploads/persist_multiple.sql",
+        two_files_and_one("c.sql"),
+    ))
+    .await?;
+    let body = crate::common::read_body_string(resp).await;
+    assert!(body.contains("file extension sql is not allowed"), "{body}");
+    assert_eq!(
+        count_files(),
+        before,
+        "no file must be written when one is rejected"
+    );
+    Ok(())
+}
+
+#[actix_web::test]
+async fn test_persist_uploaded_files_without_files() -> actix_web::Result<()> {
+    let resp = response_from(multipart_request(
+        "/tests/uploads/persist_multiple.sql",
+        "--1234567890\r\n\
+        Content-Disposition: form-data; name=\"x\"\r\n\
+        \r\n\
+        1\r\n\
+        --1234567890--\r\n",
+    ))
+    .await?;
+    let body = crate::common::read_body_string(resp).await;
+    assert_eq!(body.trim(), "null");
+    Ok(())
+}
