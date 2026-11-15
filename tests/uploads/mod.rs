@@ -234,11 +234,12 @@ async fn test_persist_uploaded_files() -> actix_web::Result<()> {
 
 #[actix_web::test]
 async fn test_persist_uploaded_files_rejects_all_on_bad_extension() -> actix_web::Result<()> {
-    let folder = std::path::Path::new("tests/uploads/persisted_multiple");
+    // Dedicated folder: tests run in parallel, and another test persists files in persisted_multiple.
+    let folder = std::path::Path::new("tests/uploads/persisted_multiple_rejected");
     let count_files = || std::fs::read_dir(folder).map_or(0, Iterator::count);
     let before = count_files();
     let resp = response_from(multipart_request(
-        "/tests/uploads/persist_multiple.sql",
+        "/tests/uploads/persist_multiple_rejected.sql",
         two_files_and_one("c.sql"),
     ))
     .await?;
