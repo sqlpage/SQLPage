@@ -8,6 +8,7 @@ INSERT INTO component(name, icon, description, introduced_in_version) VALUES
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'big_number', * FROM (VALUES
     -- Top-level parameters (for the whole big_number list)
     ('columns', 'The number of columns to display the big numbers in (default is one column per item).', 'INTEGER', TRUE, TRUE),
+    ('wrap', 'Wrap long titles and descriptions onto multiple lines. By default, they are truncated with an ellipsis.', 'BOOLEAN', TRUE, TRUE),
     -- id and class, at both levels, come from 99_shared_id_class_attributes.sql
     -- Item-level parameters (for each big number)
     ('title', 'The title or label for the big number.', 'TEXT', FALSE, TRUE),

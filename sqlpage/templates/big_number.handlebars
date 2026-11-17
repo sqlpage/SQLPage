@@ -8,12 +8,12 @@
   {{#unless ../columns}}style="min-width: 9rem;"{{/unless}}
   {{~#if id}} id="{{id}}"{{/if~}}
   >
-    <div class="card flex-fill {{#if color}}bg-{{color}}-lt{{/if}}" style="--tblr-card-spacer-y: 1rem;">
+    <div class="card flex-fill {{#if ../wrap}}h-100 {{/if}}{{#if color}}bg-{{color}}-lt{{/if}}" style="--tblr-card-spacer-y: 1rem;">
       <div class="card-body d-flex flex-column">
         
         {{#if title}}
         <div class="d-flex align-items-center">
-          <div class="subheader text-truncate me-2">
+          <div class="subheader me-2{{#unless ../wrap}} text-truncate{{/unless}}"{{#if ../wrap}} style="overflow-wrap: anywhere;"{{/if}}>
             {{#if title_link}}
               <a href="{{title_link}}" class="text-decoration-none"
                  {{#if title_link_new_tab}}
@@ -79,7 +79,7 @@
        
         {{#if description}}
         <div class="d-flex flex-wrap mb-2" title="{{description}}">
-          <div class="text-truncate me-2">{{description}}</div>
+          <div class="me-2{{#unless ../wrap}} text-truncate{{/unless}}"{{#if ../wrap}} style="overflow-wrap: anywhere;"{{/if}}>{{description}}</div>
           {{#if change_percent}}
           <div class="ms-auto">
             <span class="text-{{#if (gte change_percent 0)}}success{{else}}danger{{/if}} d-inline-flex align-items-center lh-1">
