@@ -220,10 +220,14 @@ async fn test_persist_uploaded_files() -> actix_web::Result<()> {
     ))
     .await?;
     assert_eq!(resp.status(), StatusCode::OK);
-    let paths: Vec<String> = test::read_body_json(resp).await;
-    assert_eq!(paths.len(), 3);
+    let files: Vec<serde_json::Value> = test::read_body_json(resp).await;
+    assert_eq!(files.len(), 3);
     let mut contents = Vec::new();
-    for path in &paths {
+    for (file, name) in files.iter().zip(["a.txt", "b.txt", "c.txt"]) {
+        assert_eq!(file["name"], name);
+        assert_eq!(file["mime_type"], "text/plain");
+        assert_eq!(file["size"], 1);
+        let path = file["path"].as_str().expect("persisted path");
         let file_path = std::path::Path::new(path.trim_start_matches('/'));
         contents.push(std::fs::read_to_string(file_path)?);
         std::fs::remove_file(file_path)?;

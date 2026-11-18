@@ -89,7 +89,11 @@ pub(super) async fn persist_file(
                 target_path.display()
             )
         })?;
-    set_file_mode(&target_path, mode).await?;
+    if let Err(error) = set_file_mode(&target_path, mode).await {
+        // Do not leave a copied file behind when the call fails.
+        let _ = tokio::fs::remove_file(&target_path).await;
+        return Err(error);
+    }
     // remove the WEB_ROOT prefix from the path, but keep the leading slash
     let path = "/".to_string()
         + target_path

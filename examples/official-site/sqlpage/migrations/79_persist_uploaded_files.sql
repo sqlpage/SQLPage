@@ -8,14 +8,20 @@ VALUES (
         'persist_uploaded_files',
         '0.49.0',
         'files',
-        'Persists all the files uploaded in a single form field, and returns their paths as a JSON array.
+        'Persists all the files uploaded in a single form field, and returns a JSON array with one object per file:
+
+ - `path`: where the file was saved, relative to the web root (like the return value of [`persist_uploaded_file`](?function=persist_uploaded_file)),
+ - `name`: the original name of the file on the user''s device,
+ - `mime_type`: the type of the file, as sent by the browser,
+ - `size`: the size of the file, in bytes.
+
 If no file was uploaded in the field, the function returns NULL.
 
 Use it with a file input that has the `multiple` attribute, so that users can select several files at once.
 It works like [`persist_uploaded_file`](?function=persist_uploaded_file),
 which only persists one file (the last one, when several were sent).
 
-If one of the files has an extension that is not allowed, the function fails and no file is persisted.
+If one of the files has an extension that is not allowed, or cannot be saved, the function fails and no file is persisted.
 
 ### Example
 
@@ -31,10 +37,12 @@ select ''file'' as type, ''photos[]'' as name, ''Photos'' as label, true as mult
 ##### `save_photos.sql`
 
 ```sql
-set paths = sqlpage.persist_uploaded_files(''photos'', ''photos'', ''jpg,jpeg,png,webp'');
+set files = sqlpage.persist_uploaded_files(''photos'', ''photos'', ''jpg,jpeg,png,webp'');
 
-insert into photo (path)
-select value from json_each($paths); -- PostgreSQL: json_array_elements_text($paths::json)
+-- SQLite (PostgreSQL: json_array_elements($files::json), SQL Server: OPENJSON($files))
+insert into photo (local_path, name, mime_type, size)
+select value ->> ''path'', value ->> ''name'', value ->> ''mime_type'', value ->> ''size''
+from json_each($files);
 
 select ''redirect'' as component, ''gallery.sql'' as link;
 ```
