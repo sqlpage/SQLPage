@@ -42,3 +42,37 @@ for (const theme of ["light", "dark"]) {
     }
   });
 }
+
+test("long titles and descriptions wrap only when requested", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 640, height: 800 });
+  for (const wrap of [false, true]) {
+    await page.goto(`/big-number/?wrap=${wrap}`);
+    const card = page.locator("#long-text .card");
+    const title = card.getByText("Items checked across all locations", {
+      exact: false,
+    });
+    const description = card.getByText(
+      "Includes items from the main collection",
+      {
+        exact: false,
+      },
+    );
+    for (const text of [title, description]) {
+      const layout = await text.evaluate((element) => ({
+        clipped: element.scrollWidth > element.clientWidth,
+        multiline:
+          element.clientHeight >
+          1.5 * Number.parseFloat(getComputedStyle(element).lineHeight),
+      }));
+      expect(layout).toEqual({ clipped: !wrap, multiline: wrap });
+    }
+    if (wrap) {
+      const neighbor = page.locator("#short-text .card");
+      expect((await card.boundingBox())?.height).toBe(
+        (await neighbor.boundingBox())?.height,
+      );
+    }
+  }
+});

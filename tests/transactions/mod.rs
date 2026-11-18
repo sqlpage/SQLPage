@@ -1,6 +1,5 @@
 use actix_web::http::StatusCode;
 use sqlpage::webserver::database::SupportedDatabase;
-use sqlx::row::Row as _;
 
 use crate::common::{make_app_data, multipart_request, response_with_data, send_request};
 
@@ -31,11 +30,14 @@ async fn test_transaction_error() -> actix_web::Result<()> {
         .await?;
         let body_str = crate::common::read_body_string(resp).await;
         assert!(body_str.contains("invalid URL"));
-        let row = sqlx::query::query("SELECT COUNT(*) AS count FROM query_event_rollback")
-            .fetch_one(&data.db.connection)
-            .await
-            .unwrap();
-        assert_eq!(row.try_get::<i64, _>("count").unwrap(), 0);
+        let resp = response_with_data(
+            "/tests/transactions/query_event_rollback_count.sql",
+            data.clone(),
+        )
+        .await?;
+        let rows: serde_json::Value =
+            serde_json::from_str(&crate::common::read_body_string(resp).await).unwrap();
+        assert_eq!(rows, serde_json::json!([{ "count": 0 }]));
     }
     // Now query again, with ?x=1447
     let path_with_param = path.to_string() + "?x=1447";

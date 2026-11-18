@@ -2,6 +2,8 @@
 
 ## unreleased
 
+- Set `wrap` on a `big_number` component to show long titles and descriptions across multiple lines.
+
 - Modals can set a header `color`, and `visible` opens that dialog once when the page loads. The page address stays unchanged, and closing it does not open it again when later content loads.
 
 ## v0.48.0 (2026-11-12)
