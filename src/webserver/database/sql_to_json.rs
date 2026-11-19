@@ -60,10 +60,9 @@ pub(super) fn decode_columns(row: &AnyRow) -> impl ExactSizeIterator<Item = (Str
 ///
 /// If there are fewer than `internal_count` columns, all columns are considered internal
 pub(super) fn row_to_json_with_inputs(
-    row: &AnyRow,
+    mut db_pairs: impl ExactSizeIterator<Item = (String, Value)>,
     internal_count: usize,
 ) -> anyhow::Result<(Value, Vec<Value>)> {
-    let mut db_pairs = decode_columns(row);
     let mut map = Map::new();
     while db_pairs.len() > internal_count {
         map = add_value_to_map(map, db_pairs.next().expect("len was checked"));
@@ -266,7 +265,7 @@ mod tests {
         )
         .fetch_one(&mut connection)
         .await?;
-        let (public, inputs) = row_to_json_with_inputs(&row, 1)?;
+        let (public, inputs) = row_to_json_with_inputs(decode_columns(&row), 1)?;
         expect_json_object_equal(
             &public,
             &serde_json::json!({ "__sqlpage_input_0": "public" }),
