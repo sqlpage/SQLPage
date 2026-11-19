@@ -44,7 +44,18 @@ impl std::fmt::Display for NiceDatabaseError {
             self.db_err
         )?;
         if let sqlx::error::Error::Database(db_err) = &self.db_err {
-            let Some(mut offset) = db_err.offset() else {
+            let Some(mut offset) = db_err
+                .try_downcast_ref::<sqlx::postgres::PgDatabaseError>()
+                .and_then(sqlx::postgres::PgDatabaseError::position)
+                .and_then(|position| match position {
+                    sqlx::postgres::PgErrorPosition::Original(offset) => self
+                        .query
+                        .char_indices()
+                        .nth(offset.saturating_sub(1))
+                        .map(|(byte, _)| byte),
+                    sqlx::postgres::PgErrorPosition::Internal { .. } => None,
+                })
+            else {
                 write!(f, "{}", self.query)?;
                 self.show_position_info(f)?;
                 return Ok(());

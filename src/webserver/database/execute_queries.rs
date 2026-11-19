@@ -19,17 +19,10 @@ use crate::webserver::ErrorWithStatus;
 use crate::webserver::http_request_info::ExecutionContext;
 use crate::webserver::single_or_vec::SingleOrVec;
 
-use super::{Database, DatabaseDriver, DbItem, ScalarSubqueryBehavior};
-use sqlx::Either;
-use sqlx::any::{Any, AnyArguments, AnyConnection, AnyQueryResult, AnyRow};
-use sqlx::arguments::Arguments;
-use sqlx::column::Column;
-use sqlx::executor::{Execute, Executor};
-use sqlx::pool::PoolConnection;
-use sqlx::row::Row as _;
-use sqlx::value::ValueRef;
+use super::driver::FetchedItem;
+use super::{Database, DatabaseConnection, DatabaseDriver, DbItem, ScalarSubqueryBehavior};
 
-pub type DbConn = Option<PoolConnection<Any>>;
+pub type DbConn = Option<DatabaseConnection>;
 
 /// Database events before computed columns and dynamic components are evaluated.
 enum QueryEvent {
@@ -194,7 +187,7 @@ pub fn stream_query_results_with_conn<'a>(
                 FileStatement::CsvImport(csv_import) => {
                     let connection = take_connection(&request.app_state.db, db_connection, request).await?;
                     log::debug!("Executing CSV import: {csv_import:?}");
-                    run_csv_import(connection, csv_import, request).await.with_context(|| format!("Failed to import the CSV file {:?} into the table {:?}", csv_import.uploaded_file, csv_import.table_name))?;
+                    Box::pin(run_csv_import(connection, request.app_state.db.info.kind, csv_import, request)).await.with_context(|| format!("Failed to import the CSV file {:?} into the table {:?}", csv_import.uploaded_file, csv_import.table_name))?;
                 },
                 FileStatement::Query(statement) => match &statement.body {
                   QueryBody::StaticSimpleSelect(query) => {
@@ -218,7 +211,7 @@ pub fn stream_query_results_with_conn<'a>(
                     let mut deferred_query_results = Vec::new();
                     {
                         let connection = take_connection(&request.app_state.db, db_connection, request).await?;
-                        let mut stream = connection.fetch_many(query);
+                        let mut stream = connection.fetch_many(query.sql, &query.param_values);
                         loop {
                         let Some(result) = next_query_event(
                             &mut stream, &mut query_metrics, &mut returned_rows,
@@ -341,10 +334,10 @@ async fn execute_static_simple_select(
     Ok(Value::Object(map))
 }
 
-async fn try_rollback_transaction(db_connection: &mut AnyConnection) {
+async fn try_rollback_transaction(db_connection: &mut DatabaseConnection) {
     log::debug!("Attempting to rollback transaction");
     match db_connection.execute("ROLLBACK").await {
-        Ok(_) => log::debug!("Rolled back transaction"),
+        Ok(()) => log::debug!("Rolled back transaction"),
         Err(e) => {
             log::debug!("There was probably no transaction in progress when this happened: {e:?}");
         }
@@ -413,7 +406,7 @@ async fn execute_scalar_query<'a>(
         .scalar_subquery_behavior();
     {
         let connection = take_connection(&request.app_state.db, db_connection, request).await?;
-        let mut stream = connection.fetch_many(query);
+        let mut stream = connection.fetch_many(query.sql, &query.param_values);
         loop {
             let Some(result) = next_query_event(
                 &mut stream,
@@ -484,7 +477,7 @@ async fn execute_scalar_query<'a>(
 }
 
 async fn record_error_and_rollback(
-    connection: &mut AnyConnection,
+    connection: &mut DatabaseConnection,
     query_metrics: &DbQueryMetricsContext<'_>,
     returned_rows: i64,
     error: anyhow::Error,
@@ -529,7 +522,7 @@ async fn take_connection<'a>(
     db: &'a Database,
     conn: &'a mut DbConn,
     request: &ExecutionContext,
-) -> anyhow::Result<&'a mut PoolConnection<Any>> {
+) -> anyhow::Result<&'a mut DatabaseConnection> {
     if let Some(c) = conn {
         return Ok(c);
     }
@@ -563,7 +556,7 @@ async fn take_connection<'a>(
 /// Sets the current `OTel` trace context on the database connection so it is visible
 /// in `pg_stat_activity.application_name` (`PostgreSQL`) or as a session variable (`MySQL`).
 /// This allows correlating `SQLPage` traces with database-side monitoring.
-async fn set_trace_context(connection: &mut AnyConnection, db: &Database) {
+async fn set_trace_context(connection: &mut DatabaseConnection, db: &Database) {
     use opentelemetry::trace::TraceContextExt;
     use tracing_opentelemetry::OpenTelemetrySpanExt;
 
@@ -590,14 +583,14 @@ async fn set_trace_context(connection: &mut AnyConnection, db: &Database) {
         }
         _ => return,
     };
-    if let Err(e) = connection.execute(sql.as_str()).await {
+    if let Err(e) = connection.execute(&sql).await {
         log::debug!("Failed to set trace context on connection: {e}");
     }
 }
 
 /// Poll and decode one physical result while measuring only database fetch time.
 async fn next_query_event(
-    stream: &mut (impl Stream<Item = sqlx::error::Result<Either<AnyQueryResult, AnyRow>>> + Unpin),
+    stream: &mut (impl Stream<Item = Result<FetchedItem, sqlx::Error>> + Unpin),
     metrics: &mut DbQueryMetricsContext<'_>,
     returned_rows: &mut i64,
     source_file: &Path,
@@ -619,28 +612,21 @@ fn parse_single_sql_result(
     source_file: &Path,
     query: &DatabaseQuery,
     source_span: SourceSpan,
-    res: sqlx::error::Result<Either<AnyQueryResult, AnyRow>>,
+    res: Result<FetchedItem, sqlx::Error>,
 ) -> anyhow::Result<QueryEvent> {
     match res {
-        Ok(Either::Right(r)) => {
-            if log::log_enabled!(log::Level::Trace) {
-                debug_row(&r);
-            }
-            let columns = super::sql_to_json::decode_columns(&r);
-            let (row, mut inputs) =
-                super::sql_to_json::row_to_json_with_inputs(columns, query.row_input_json.len())?;
+        Ok(FetchedItem::Row(columns)) => {
+            let column_count = columns.len();
+            let (row, mut inputs) = columns.json_parts(query.row_input_json.len())?;
             decode_json_values(&mut inputs, &query.row_input_json);
             Ok(QueryEvent::Row(QueryRow {
                 value: row,
                 inputs: RowInputs::new(inputs),
-                output_column_count: r.columns().len() - query.row_input_json.len()
+                output_column_count: column_count - query.row_input_json.len()
                     + query.computed_columns.len(),
             }))
         }
-        Ok(Either::Left(res)) => {
-            log::debug!("Finished query with result: {res:?}");
-            Ok(QueryEvent::FinishedQuery)
-        }
+        Ok(FetchedItem::FinishedQuery) => Ok(QueryEvent::FinishedQuery),
         Err(err) => Err(display_stmt_db_error(
             source_file,
             &query.sql,
@@ -648,26 +634,6 @@ fn parse_single_sql_result(
             err,
         )),
     }
-}
-
-fn debug_row(r: &AnyRow) {
-    use std::fmt::Write;
-    let columns = r.columns();
-    let mut row_str = String::new();
-    for (i, col) in columns.iter().enumerate() {
-        if let Ok(value) = r.try_get_raw(i) {
-            write!(
-                &mut row_str,
-                "[{:?} ({}): {:?}: {:?}]",
-                col.name(),
-                if value.is_null() { "NULL" } else { "NOT NULL" },
-                col,
-                value.type_info()
-            )
-            .unwrap();
-        }
-    }
-    log::trace!("Received db row: {row_str}");
 }
 
 fn clone_anyhow_err(source_file: &Path, err: &anyhow::Error) -> anyhow::Error {
@@ -781,37 +747,10 @@ fn decode_json_values(values: &mut [Value], json_flags: &[bool]) {
     }
 }
 
-/// Rewritten SQL and evaluated bindings, including explicit NULL values.
+/// Rewritten SQL and evaluated arguments in the form consumed by `sqlx`.
 pub struct BoundQuery<'a> {
     sql: &'a str,
     param_values: Vec<Option<String>>,
-}
-
-impl<'q> Execute<'q, Any> for BoundQuery<'q> {
-    fn sql(&self) -> &'q str {
-        self.sql
-    }
-
-    fn statement(&self) -> Option<&<Any as sqlx::database::HasStatement<'q>>::Statement> {
-        None
-    }
-
-    fn take_arguments(&mut self) -> Option<<Any as sqlx::database::HasArguments<'q>>::Arguments> {
-        if self.param_values.is_empty() {
-            return None;
-        }
-
-        let mut arguments = AnyArguments::default();
-        for value in self.param_values.drain(..) {
-            arguments.add(value);
-        }
-        Some(arguments)
-    }
-
-    fn persistent(&self) -> bool {
-        // Let sqlx create a prepared statement the first time it is executed, and then reuse it.
-        true
-    }
 }
 
 #[cfg(test)]

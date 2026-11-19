@@ -78,6 +78,8 @@ If you have a `.env` file in the current directory or in any of its parent direc
 
 ### Database connection strings
 
+Startup migrations are supported on native SQLite, PostgreSQL, MySQL, and SQL Server connections.
+
 The `database_url` parameter sets all the connection parameters for the database, including
 
  - the database engine type (`sqlite`, `postgres`, `mysql`, `mssql`, or ODBC connection strings)

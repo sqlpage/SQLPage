@@ -1,6 +1,7 @@
 pub mod blob_to_data_url;
 mod connect;
 mod csv_import;
+mod driver;
 pub mod execute_queries;
 mod file_queries;
 pub mod migrations;
@@ -11,30 +12,9 @@ mod sqlpage_functions;
 mod error_highlighting;
 mod sql_to_json;
 
+pub use driver::{DatabaseConnection, DatabaseDriver, DatabasePool};
 pub use file_queries::Parameter;
 pub use sql::SqlFile;
-use sqlx::any::AnyKind;
-/// The driver selected by the database URL, independently of the DBMS behind ODBC.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum DatabaseDriver {
-    Postgres,
-    MySql,
-    Sqlite,
-    Mssql,
-    Odbc,
-}
-
-impl From<AnyKind> for DatabaseDriver {
-    fn from(kind: AnyKind) -> Self {
-        match kind {
-            AnyKind::Postgres => Self::Postgres,
-            AnyKind::MySql => Self::MySql,
-            AnyKind::Sqlite => Self::Sqlite,
-            AnyKind::Mssql => Self::Mssql,
-            AnyKind::Odbc => Self::Odbc,
-        }
-    }
-}
 
 /// Supported database types in `SQLPage`. Represents an actual DBMS, not a sqlx backend kind (like "Odbc")
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -147,7 +127,7 @@ impl From<DatabaseDriver> for SupportedDatabase {
 }
 
 pub struct Database {
-    pub connection: sqlx::any::AnyPool,
+    pub connection: DatabasePool,
     pub info: DbInfo,
 }
 

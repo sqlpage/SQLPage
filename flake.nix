@@ -94,13 +94,14 @@
 
       rustToolchainFor = pkgs: pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
 
-      # odbc-sys links against a driver manager, and the C sources vendored by
-      # aws-lc-sys, libsqlite3-sys and zstd-sys need a compiler. Nothing here
-      # reaches for OpenSSL: SQLPage speaks TLS through rustls. build.rs embeds
-      # the browser assets, so every cargo gate builds them with npm first.
+      # ODBC needs a driver manager. The bundled C dependencies need a compiler,
+      # and the SQL Server driver's vendored OpenSSL build needs Perl and Make.
+      # build.rs embeds browser assets, so every cargo gate builds them first.
       cargoRuntime = pkgs: [
         (rustToolchainFor pkgs)
         pkgs.stdenv.cc
+        pkgs.gnumake
+        pkgs.perl
         pkgs.unixodbc
         pkgs.nodejs_26
       ];
