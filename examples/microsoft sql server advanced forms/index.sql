@@ -24,12 +24,7 @@ select
         FOR JSON PATH -- this builds a JSON array of objects
     ) as options;
 
-insert into users(name) select :UserName where :UserName is not null;
-
-insert into group_members(group_id, user_id)
-select json_elem.value, IDENT_CURRENT('users')
-from openjson(:Memberships) as json_elem
-where :Memberships is not null;
+exec dbo.onboard_user :UserName, :Memberships;
 
 select 'list' as component, 'Users' as title, 'No user yet' as empty_title;
 select

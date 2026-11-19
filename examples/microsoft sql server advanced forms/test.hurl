@@ -50,6 +50,20 @@ HTTP 200
 jsonpath "$[?(@.title == 'Rejected group')]" not exists
 jsonpath "$[?(@.title == 'Recovered group')].description" == "Saved after a failed write"
 
+# A stale group selection rejects the whole onboarding transaction.
+POST http://127.0.0.1:8080/
+Content-Type: application/x-www-form-urlencoded
+`UserName=Report+Reader&Memberships%5B%5D={{unicode_group_id}}&Memberships%5B%5D=-1`
+HTTP 200
+[Asserts]
+xpath "string(//code[@class='sqlpage-error-description'])" contains "FK_group_members_groups"
+
+GET http://127.0.0.1:8080/
+Accept: application/json
+HTTP 200
+[Asserts]
+jsonpath "$[?(@.title == 'Report Reader')]" not exists
+
 # Submit two options rendered from FOR JSON PATH. SQLPage binds the selections
 # as a JSON array and OPENJSON expands it into membership rows.
 POST http://127.0.0.1:8080/
@@ -59,8 +73,17 @@ HTTP 200
 [Asserts]
 xpath "//code[@class='sqlpage-error-description']" not exists
 
+POST http://127.0.0.1:8080/
+[FormParams]
+UserName: Élodie
+HTTP 200
+[Asserts]
+xpath "//code[@class='sqlpage-error-description']" not exists
+
 GET http://127.0.0.1:8080/
 Accept: application/json
 HTTP 200
 [Asserts]
 jsonpath "$[?(@.title == 'Report Reader')].description" == "L'équipe 東京, Recovered group"
+jsonpath "$[?(@.title == 'Élodie')].title" == "Élodie"
+jsonpath "$[?(@.title == 'Élodie')].description" == null
