@@ -11,6 +11,7 @@ services:
     environment:
       RUST_LOG: sqlpage=debug
       DATABASE_URL: mssql://sa:YourStrong!Passw0rd@db:1433/
+      MAX_DATABASE_POOL_CONNECTIONS: 1
   db:
     image: mcr.microsoft.com/mssql/server:2022-latest
     volumes:

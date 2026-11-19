@@ -24,7 +24,7 @@ This demonstrates an application designed for managing groups and users, allowin
 
 The application has the following sections:
 
-- **Create a New Group**: A form where users can enter the name of a new group.
+- **Create a New Group**: A form where users can enter the name of a new group and an optional description. A blank description is saved as SQL NULL.
 - **Groups Display**: A list of existing groups.
 - **Add a User**: A form where users can enter the name of a new user and select one or multiple groups to assign to this user.
 - **Users Display**: A list of existing users and their associated group memberships.

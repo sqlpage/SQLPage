@@ -1,10 +1,14 @@
 select 'form' as component, 'Create a new Group' as title, 'Create' as validate;
-select 'Name' as name;
+select 'Name' as name, 255 as maxlength;
+select 'GroupDescription' as name, 'Description (optional)' as label, 80 as maxlength;
 
-insert into groups(name) select :Name where :Name is not null;
+set GroupDescription = nullif(:GroupDescription, N'');
+insert into groups(name, description)
+select :Name, :GroupDescription
+where :Name is not null;
 
 select 'list' as component, 'Groups' as title, 'No group yet' as empty_title;
-select name as title from groups;
+select name as title, description from groups;
 
 select 'form' as component, 'Add a user' as title, 'Add' as validate;
 select 'UserName' as name, 'Name' as label;
