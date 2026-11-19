@@ -63,6 +63,13 @@ all_examples:
   - 'src/app_config.rs'
   - 'src/webserver/database/connect.rs'
 
+# Read typed CSV data through ODBC across multiple fetch batches.
+'examples/duckdb-reporting':
+  - 'src/app_config.rs'
+  - 'src/webserver/http_request_info.rs'
+  - 'src/webserver/request_variables.rs'
+  - 'src/webserver/database/**'
+
 # Create a PostgreSQL-backed page, request it, and render dynamic rows in a table.
 'examples/SQLPage developer user interface':
   - 'src/filesystem.rs'
