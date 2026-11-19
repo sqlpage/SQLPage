@@ -11,15 +11,22 @@ POST http://127.0.0.1:8080/
 Name: L'équipe 東京
 GroupDescription:
 HTTP 200
+[Captures]
+unicode_group_id: xpath "string(//select[@name='Memberships[]'][@multiple]/option[normalize-space(.)=\"L'équipe 東京\"]/@value)"
 [Asserts]
 xpath "//code[@class='sqlpage-error-description']" not exists
+variable "unicode_group_id" matches "^[0-9]+$"
+xpath "string(//div[contains(@class, 'alert-success')][.//h4='Group created']//div[@class='alert-description'])" == "L'équipe 東京"
+xpath "//div[contains(@class, 'alert-success')][.//h4='Group created']//a[@href='#group-{{unicode_group_id}}']" exists
+xpath "//div[@id='group-{{unicode_group_id}}']" exists
 
 GET http://127.0.0.1:8080/
 Accept: application/json
 HTTP 200
 [Asserts]
-jsonpath "$[?(@.title == \"L'équipe 東京\")].title" == "L'équipe 東京"
-jsonpath "$[?(@.title == \"L'équipe 東京\")].description" == null
+jsonpath "$[4].id" == "group-{{unicode_group_id}}"
+jsonpath "$[4].title" == "L'équipe 東京"
+jsonpath "$[4].description" == null
 
 # SQL Server rejects descriptions longer than the column's 80 characters.
 POST http://127.0.0.1:8080/
@@ -29,6 +36,7 @@ GroupDescription: This description is more than eighty characters long and excee
 HTTP 200
 [Asserts]
 xpath "string(//code[@class='sqlpage-error-description'])" contains "would be truncated"
+xpath "//div[contains(@class, 'alert-success')][.//h4='Group created']" not exists
 
 POST http://127.0.0.1:8080/
 [FormParams]
@@ -36,19 +44,20 @@ Name: Recovered group
 GroupDescription: Saved after a failed write
 HTTP 200
 [Captures]
-unicode_group_id: xpath "string(//select[@name='Memberships[]'][@multiple]/option[normalize-space(.)=\"L'équipe 東京\"]/@value)"
 recovered_group_id: xpath "string(//select[@name='Memberships[]'][@multiple]/option[normalize-space(.)='Recovered group']/@value)"
 [Asserts]
 xpath "//code[@class='sqlpage-error-description']" not exists
-variable "unicode_group_id" matches "^[0-9]+$"
+xpath "//select[@name='Memberships[]'][@multiple]/option[@value='{{unicode_group_id}}']" exists
 variable "recovered_group_id" matches "^[0-9]+$"
 
 GET http://127.0.0.1:8080/
 Accept: application/json
 HTTP 200
 [Asserts]
-jsonpath "$[?(@.title == 'Rejected group')]" not exists
-jsonpath "$[?(@.title == 'Recovered group')].description" == "Saved after a failed write"
+jsonpath "$[*].title" not contains "Rejected group"
+jsonpath "$[5].id" == "group-{{recovered_group_id}}"
+jsonpath "$[5].title" == "Recovered group"
+jsonpath "$[5].description" == "Saved after a failed write"
 
 # A stale group selection rejects the whole onboarding transaction.
 POST http://127.0.0.1:8080/
@@ -62,7 +71,7 @@ GET http://127.0.0.1:8080/
 Accept: application/json
 HTTP 200
 [Asserts]
-jsonpath "$[?(@.title == 'Report Reader')]" not exists
+jsonpath "$[*].title" not contains "Report Reader"
 
 # Submit two options rendered from FOR JSON PATH. SQLPage binds the selections
 # as a JSON array and OPENJSON expands it into membership rows.
@@ -79,11 +88,13 @@ UserName: Élodie
 HTTP 200
 [Asserts]
 xpath "//code[@class='sqlpage-error-description']" not exists
+xpath "//p[normalize-space()='No groups assigned']" exists
 
 GET http://127.0.0.1:8080/
 Accept: application/json
 HTTP 200
 [Asserts]
-jsonpath "$[?(@.title == 'Report Reader')].description" == "L'équipe 東京, Recovered group"
-jsonpath "$[?(@.title == 'Élodie')].title" == "Élodie"
-jsonpath "$[?(@.title == 'Élodie')].description" == null
+jsonpath "$[10].title" == "Report Reader"
+jsonpath "$[10].description" == "L'équipe 東京, Recovered group"
+jsonpath "$[11].title" == "Élodie"
+jsonpath "$[11].description" == null

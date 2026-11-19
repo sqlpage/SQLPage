@@ -34,30 +34,3 @@ INSERT INTO questions(question_text) VALUES
     ('What is your name?'),
     ('What is your age?'),
     ('What is your favorite color?');
-
-go
-
-create procedure dbo.onboard_user
-    @name nvarchar(max),
-    @memberships nvarchar(max)
-as
-begin
-    set nocount on;
-    set xact_abort on;
-
-    if @name is null
-        return;
-
-    begin transaction;
-
-    insert into dbo.users (name) values (@name);
-    declare @user_id int = scope_identity();
-
-    insert into dbo.group_members (group_id, user_id)
-    select cast([value] as int), @user_id
-    from openjson(@memberships);
-
-    commit transaction;
-end;
-
-go
