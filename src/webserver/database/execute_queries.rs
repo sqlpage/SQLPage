@@ -645,8 +645,9 @@ fn parse_single_sql_result(
             if log::log_enabled!(log::Level::Trace) {
                 debug_row(&r);
             }
+            let columns = super::sql_to_json::decode_columns(&r);
             let (row, mut inputs) =
-                super::sql_to_json::row_to_json_with_inputs(&r, query.row_input_json.len())?;
+                super::sql_to_json::row_to_json_with_inputs(columns, query.row_input_json.len())?;
             decode_json_values(&mut inputs, &query.row_input_json);
             Ok(QueryEvent::Row(QueryRow {
                 value: row,
@@ -706,7 +707,6 @@ async fn bind_query<'a>(
 ) -> anyhow::Result<BoundQuery<'a>> {
     let sql = query.sql.as_str();
     log::debug!("Preparing statement: {sql}");
-    let mut arguments = AnyArguments::default();
     let mut param_values = Vec::with_capacity(query.bindings.len());
     let mut inputs = NoInputs;
     for (param_idx, binding) in query.bindings.iter().enumerate() {
@@ -720,20 +720,9 @@ async fn bind_query<'a>(
             param_idx + 1,
             argument.as_ref().unwrap_or(&Cow::Borrowed("NULL"))
         );
-        param_values.push(argument.as_deref().map(str::to_owned));
-        match argument {
-            None => arguments.add(None::<String>),
-            Some(Cow::Owned(s)) => arguments.add(s),
-            Some(Cow::Borrowed(v)) => arguments.add(v),
-        }
+        param_values.push(argument.map(Cow::into_owned));
     }
-    let has_arguments = !query.bindings.is_empty();
-    Ok(BoundQuery {
-        sql,
-        arguments,
-        has_arguments,
-        param_values,
-    })
+    Ok(BoundQuery { sql, param_values })
 }
 
 async fn prepare_query_event(
@@ -811,11 +800,9 @@ fn decode_json_values(values: &mut [Value], json_flags: &[bool]) {
     }
 }
 
-/// Rewritten SQL and evaluated arguments in the form consumed by `sqlx`.
+/// Rewritten SQL and evaluated bindings, including explicit NULL values.
 pub struct BoundQuery<'a> {
     sql: &'a str,
-    arguments: AnyArguments<'a>,
-    has_arguments: bool,
     param_values: Vec<Option<String>>,
 }
 
@@ -829,11 +816,15 @@ impl<'q> Execute<'q, Any> for BoundQuery<'q> {
     }
 
     fn take_arguments(&mut self) -> Option<<Any as sqlx::database::HasArguments<'q>>::Arguments> {
-        if self.has_arguments {
-            Some(std::mem::take(&mut self.arguments))
-        } else {
-            None
+        if self.param_values.is_empty() {
+            return None;
         }
+
+        let mut arguments = AnyArguments::default();
+        for value in self.param_values.drain(..) {
+            arguments.add(value);
+        }
+        Some(arguments)
     }
 
     fn persistent(&self) -> bool {
