@@ -270,20 +270,20 @@ fn expression_to_query(expression: Expr) -> Statement {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::webserver::database::DatabaseDriver;
     use crate::webserver::database::sqlpage_expr::{
         ConcatNullBehavior, RowInputId, SqlPageExpr, VariableRef, VariableSource,
     };
     use crate::webserver::database::sqlpage_functions::functions::SqlPageFunctionName;
     use sqlparser::dialect::{MsSqlDialect, MySqlDialect, PostgreSqlDialect};
-    use sqlx::any::AnyKind;
 
     fn database(database_type: SupportedDatabase) -> DbInfo {
         let kind = match database_type {
-            SupportedDatabase::Postgres => AnyKind::Postgres,
-            SupportedDatabase::Mssql => AnyKind::Mssql,
-            SupportedDatabase::MySql => AnyKind::MySql,
-            SupportedDatabase::Sqlite => AnyKind::Sqlite,
-            _ => AnyKind::Odbc,
+            SupportedDatabase::Postgres => DatabaseDriver::Postgres,
+            SupportedDatabase::Mssql => DatabaseDriver::Mssql,
+            SupportedDatabase::MySql => DatabaseDriver::MySql,
+            SupportedDatabase::Sqlite => DatabaseDriver::Sqlite,
+            _ => DatabaseDriver::Odbc,
         };
         DbInfo {
             dbms_name: database_type.display_name().to_owned(),
@@ -687,28 +687,33 @@ mod tests {
         for (db, kind, expected_sql, reuse) in [
             (
                 Postgres,
-                AnyKind::Postgres,
+                DatabaseDriver::Postgres,
                 "SELECT $1, $2, $1 FROM t",
                 true,
             ),
-            (Mssql, AnyKind::Mssql, "SELECT @p1, @p2, @p1 FROM t", true),
+            (
+                Mssql,
+                DatabaseDriver::Mssql,
+                "SELECT @p1, @p2, @p1 FROM t",
+                true,
+            ),
             (
                 Sqlite,
-                AnyKind::Sqlite,
+                DatabaseDriver::Sqlite,
                 "SELECT CAST(?1 AS TEXT), CAST(?2 AS TEXT), CAST(?1 AS TEXT) FROM t",
                 true,
             ),
-            (MySql, AnyKind::MySql, "SELECT ?, ?, ? FROM t", false),
-            (Mssql, AnyKind::Odbc, "SELECT ?, ?, ? FROM t", false),
+            (MySql, DatabaseDriver::MySql, "SELECT ?, ?, ? FROM t", false),
+            (Mssql, DatabaseDriver::Odbc, "SELECT ?, ?, ? FROM t", false),
             (
                 Postgres,
-                AnyKind::Odbc,
+                DatabaseDriver::Odbc,
                 "SELECT CAST(? AS TEXT), CAST(? AS TEXT), CAST(? AS TEXT) FROM t",
                 false,
             ),
             (
                 Sqlite,
-                AnyKind::Odbc,
+                DatabaseDriver::Odbc,
                 "SELECT CAST(? AS TEXT), CAST(? AS TEXT), CAST(? AS TEXT) FROM t",
                 false,
             ),
@@ -1101,7 +1106,7 @@ mod tests {
             &DbInfo {
                 dbms_name: db.display_name().to_owned(),
                 database_type: db,
-                kind: AnyKind::Odbc,
+                kind: DatabaseDriver::Odbc,
             },
             sql,
         )

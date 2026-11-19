@@ -2,6 +2,7 @@
 
 use std::ops::ControlFlow;
 
+use crate::webserver::database::DatabaseDriver;
 use anyhow::anyhow;
 use sqlparser::ast::{
     BinaryOperator, CastKind, CharacterLength, DataType, Expr as SqlExpr, Function, FunctionArg,
@@ -9,7 +10,6 @@ use sqlparser::ast::{
     Statement as SqlStatement, Value, ValueWithSpan, VisitMut, VisitorMut,
 };
 use sqlparser::tokenizer::Span;
-use sqlx::any::AnyKind;
 
 use super::super::dialect::{PlaceholderStyle, placeholder_style};
 use super::sqlpage_expression::{
@@ -219,11 +219,11 @@ fn make_concat(left: SqlExpr, right: SqlExpr) -> SqlExpr {
 /// Casts generated placeholders where the backend cannot infer string typing.
 fn cast_placeholder(placeholder: String, database: &DbInfo) -> SqlExpr {
     let data_type = match database.kind {
-        AnyKind::Sqlite => DataType::Text,
-        AnyKind::Postgres | AnyKind::MySql | AnyKind::Mssql => {
+        DatabaseDriver::Sqlite => DataType::Text,
+        DatabaseDriver::Postgres | DatabaseDriver::MySql | DatabaseDriver::Mssql => {
             return SqlExpr::value(Value::Placeholder(placeholder));
         }
-        AnyKind::Odbc => match database.database_type {
+        DatabaseDriver::Odbc => match database.database_type {
             SupportedDatabase::Postgres | SupportedDatabase::Sqlite => DataType::Text,
             SupportedDatabase::Oracle => DataType::Varchar(Some(CharacterLength::IntegerLength {
                 length: 4000,

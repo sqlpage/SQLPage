@@ -12,7 +12,27 @@ mod sql_to_json;
 
 pub use sql::SqlFile;
 use sqlx::any::AnyKind;
-// SupportedDatabase is defined in this module
+/// The driver selected by the database URL, independently of the DBMS behind ODBC.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DatabaseDriver {
+    Postgres,
+    MySql,
+    Sqlite,
+    Mssql,
+    Odbc,
+}
+
+impl From<AnyKind> for DatabaseDriver {
+    fn from(kind: AnyKind) -> Self {
+        match kind {
+            AnyKind::Postgres => Self::Postgres,
+            AnyKind::MySql => Self::MySql,
+            AnyKind::Sqlite => Self::Sqlite,
+            AnyKind::Mssql => Self::Mssql,
+            AnyKind::Odbc => Self::Odbc,
+        }
+    }
+}
 
 /// Supported database types in `SQLPage`. Represents an actual DBMS, not a sqlx backend kind (like "Odbc")
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -112,14 +132,14 @@ impl SupportedDatabase {
     }
 }
 
-impl From<AnyKind> for SupportedDatabase {
-    fn from(kind: AnyKind) -> Self {
+impl From<DatabaseDriver> for SupportedDatabase {
+    fn from(kind: DatabaseDriver) -> Self {
         match kind {
-            AnyKind::Postgres => Self::Postgres,
-            AnyKind::MySql => Self::MySql,
-            AnyKind::Sqlite => Self::Sqlite,
-            AnyKind::Mssql => Self::Mssql,
-            AnyKind::Odbc => Self::Generic,
+            DatabaseDriver::Postgres => Self::Postgres,
+            DatabaseDriver::MySql => Self::MySql,
+            DatabaseDriver::Sqlite => Self::Sqlite,
+            DatabaseDriver::Mssql => Self::Mssql,
+            DatabaseDriver::Odbc => Self::Generic,
         }
     }
 }
@@ -135,7 +155,7 @@ pub struct DbInfo {
     /// The actual database we are connected to. Can be "Generic" when using an unknown ODBC driver
     pub database_type: SupportedDatabase,
     /// The sqlx database backend we are using. Can be "Odbc", in which case we need to use `database_type` to know what database we are actually using.
-    pub kind: AnyKind,
+    pub kind: DatabaseDriver,
 }
 
 impl Database {
@@ -155,18 +175,18 @@ pub enum DbItem {
 
 impl std::fmt::Display for Database {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self.connection.any_kind())
+        write!(f, "{:?}", self.info.kind)
     }
 }
 
 #[inline]
 #[must_use]
-pub fn make_placeholder(dbms: AnyKind, arg_number: usize) -> String {
+pub fn make_placeholder(dbms: DatabaseDriver, arg_number: usize) -> String {
     match dbms {
-        AnyKind::Sqlite => format!("?{arg_number}"),
-        AnyKind::Postgres => format!("${arg_number}"),
-        AnyKind::Mssql => format!("@p{arg_number}"),
-        AnyKind::MySql | AnyKind::Odbc => "?".to_owned(),
+        DatabaseDriver::Sqlite => format!("?{arg_number}"),
+        DatabaseDriver::Postgres => format!("${arg_number}"),
+        DatabaseDriver::Mssql => format!("@p{arg_number}"),
+        DatabaseDriver::MySql | DatabaseDriver::Odbc => "?".to_owned(),
     }
 }
 

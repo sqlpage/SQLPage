@@ -4,7 +4,7 @@ use super::Database;
 use crate::{
     ON_CONNECT_FILE, ON_RESET_FILE,
     app_config::AppConfig,
-    webserver::database::{DbInfo, SupportedDatabase},
+    webserver::database::{DatabaseDriver, DbInfo, SupportedDatabase},
 };
 use anyhow::Context;
 use futures_util::future::BoxFuture;
@@ -12,7 +12,7 @@ use sqlx::connection::{ConnectOptions, Connection};
 use sqlx::executor::Executor;
 use sqlx::odbc::OdbcConnectOptions;
 use sqlx::{
-    any::{Any, AnyConnectOptions, AnyConnection, AnyKind},
+    any::{Any, AnyConnectOptions, AnyConnection},
     pool::PoolOptions,
     sqlite::{Function, SqliteConnectOptions, SqliteFunctionCtx},
 };
@@ -41,7 +41,7 @@ impl Database {
         let database_type = SupportedDatabase::from_dbms_name(&dbms_name);
         drop(conn);
 
-        let db_kind = connect_options.kind();
+        let db_kind = connect_options.kind().into();
         let pool = Self::create_pool_options(config, db_kind)
             .connect_with(connect_options)
             .await
@@ -58,7 +58,7 @@ impl Database {
         })
     }
 
-    fn create_pool_options(config: &AppConfig, kind: AnyKind) -> PoolOptions<Any> {
+    fn create_pool_options(config: &AppConfig, kind: DatabaseDriver) -> PoolOptions<Any> {
         let ConnectionHooks {
             on_connect,
             on_reset,
@@ -103,22 +103,22 @@ where
     }
 }
 
-fn max_connections(config: &AppConfig, kind: AnyKind) -> u32 {
+fn max_connections(config: &AppConfig, kind: DatabaseDriver) -> u32 {
     if let Some(max) = config.max_database_pool_connections {
         return max;
     }
     // Different databases have a different number of max concurrent connections allowed by default
     match kind {
-        AnyKind::Postgres | AnyKind::Odbc => 50, // Default to PostgreSQL-like limits for Generic
-        AnyKind::MySql => 75,
-        AnyKind::Sqlite => {
+        DatabaseDriver::Postgres | DatabaseDriver::Odbc => 50, // Default to PostgreSQL-like limits for Generic
+        DatabaseDriver::MySql => 75,
+        DatabaseDriver::Sqlite => {
             if config.database_url.contains(":memory:") {
                 128
             } else {
                 16
             }
         }
-        AnyKind::Mssql => 100,
+        DatabaseDriver::Mssql => 100,
     }
 }
 

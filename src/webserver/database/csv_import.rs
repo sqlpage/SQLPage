@@ -1,3 +1,4 @@
+use super::DatabaseDriver;
 use std::collections::HashMap;
 
 use anyhow::Context;
@@ -5,7 +6,7 @@ use futures_util::StreamExt;
 use sqlparser::ast::{
     CopyLegacyCsvOption, CopyLegacyOption, CopyOption, CopySource, CopyTarget, Statement,
 };
-use sqlx::any::{AnyArguments, AnyConnection, AnyConnectionKind, AnyKind};
+use sqlx::any::{AnyArguments, AnyConnection, AnyConnectionKind};
 use sqlx::arguments::Arguments;
 use sqlx::executor::Executor;
 use sqlx::postgres::PgConnection;
@@ -219,7 +220,7 @@ async fn run_csv_import_insert(
     csv_import: &CsvImport,
     file: impl AsyncRead + Unpin + Send,
 ) -> anyhow::Result<()> {
-    let insert_stmt = create_insert_stmt(db.kind(), csv_import);
+    let insert_stmt = create_insert_stmt(db.kind().into(), csv_import);
     log::debug!("CSV data insert statement: {insert_stmt}");
     let mut reader = make_csv_reader(csv_import, file);
     let col_idxs = compute_column_indices(&mut reader, csv_import).await?;
@@ -256,7 +257,7 @@ async fn compute_column_indices<R: AsyncRead + Unpin + Send>(
     Ok(col_idxs)
 }
 
-fn create_insert_stmt(db_kind: AnyKind, csv_import: &CsvImport) -> String {
+fn create_insert_stmt(db_kind: DatabaseDriver, csv_import: &CsvImport) -> String {
     let columns = csv_import.columns.join(", ");
     let placeholders = csv_import
         .columns
@@ -328,7 +329,7 @@ fn test_make_statement() {
         escape: None,
         uploaded_file: "my_file.csv".into(),
     };
-    let insert_stmt = create_insert_stmt(AnyKind::Postgres, &csv_import);
+    let insert_stmt = create_insert_stmt(DatabaseDriver::Postgres, &csv_import);
     assert_eq!(
         insert_stmt,
         "INSERT INTO my_table (col1, col2) VALUES ($1, $2)"

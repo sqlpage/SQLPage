@@ -1,10 +1,10 @@
 //! Database-specific parser dialects and bind-placeholder syntax.
 
+use crate::webserver::database::DatabaseDriver;
 use sqlparser::dialect::{
     Dialect, DuckDbDialect, GenericDialect, MsSqlDialect, MySqlDialect, OracleDialect,
     PostgreSqlDialect, SQLiteDialect, SnowflakeDialect,
 };
-use sqlx::any::AnyKind;
 
 use crate::webserver::database::SupportedDatabase;
 
@@ -30,11 +30,11 @@ pub(super) fn parser_dialect(database: SupportedDatabase) -> Box<dyn Dialect> {
 }
 
 /// Returns the native placeholder syntax emitted into rewritten SQL.
-pub(super) fn placeholder_style(kind: AnyKind) -> PlaceholderStyle {
+pub(super) fn placeholder_style(kind: DatabaseDriver) -> PlaceholderStyle {
     match kind {
-        AnyKind::Sqlite => PlaceholderStyle::Numbered { prefix: "?" },
-        AnyKind::Postgres => PlaceholderStyle::Numbered { prefix: "$" },
-        AnyKind::Mssql => PlaceholderStyle::Numbered { prefix: "@p" },
-        AnyKind::MySql | AnyKind::Odbc => PlaceholderStyle::Positional { token: "?" },
+        DatabaseDriver::Sqlite => PlaceholderStyle::Numbered { prefix: "?" },
+        DatabaseDriver::Postgres => PlaceholderStyle::Numbered { prefix: "$" },
+        DatabaseDriver::Mssql => PlaceholderStyle::Numbered { prefix: "@p" },
+        DatabaseDriver::MySql | DatabaseDriver::Odbc => PlaceholderStyle::Positional { token: "?" },
     }
 }

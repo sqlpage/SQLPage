@@ -2,8 +2,7 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use sqlpage::webserver::database::{DbInfo, SqlFile, SupportedDatabase};
-use sqlx::any::AnyKind;
+use sqlpage::webserver::database::{DatabaseDriver, DbInfo, SqlFile, SupportedDatabase};
 use std::path::Path;
 
 fuzz_target!(|data: &[u8]| {
@@ -24,12 +23,12 @@ fuzz_target!(|data: &[u8]| {
         SupportedDatabase::Generic,
     ][usize::from(selector & 7)];
     let kind = match database_type {
-        _ if selector & 8 != 0 => AnyKind::Odbc,
-        SupportedDatabase::Sqlite => AnyKind::Sqlite,
-        SupportedDatabase::Postgres => AnyKind::Postgres,
-        SupportedDatabase::MySql => AnyKind::MySql,
-        SupportedDatabase::Mssql => AnyKind::Mssql,
-        _ => AnyKind::Odbc,
+        _ if selector & 8 != 0 => DatabaseDriver::Odbc,
+        SupportedDatabase::Sqlite => DatabaseDriver::Sqlite,
+        SupportedDatabase::Postgres => DatabaseDriver::Postgres,
+        SupportedDatabase::MySql => DatabaseDriver::MySql,
+        SupportedDatabase::Mssql => DatabaseDriver::Mssql,
+        _ => DatabaseDriver::Odbc,
     };
     let database = DbInfo {
         dbms_name: database_type.display_name().into(),
