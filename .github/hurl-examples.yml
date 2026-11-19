@@ -82,11 +82,12 @@ all_examples:
   - 'src/webserver/database/sql_to_json.rs'
   - 'sqlpage/templates/form.handlebars'
 
-# Round-trip SQL Server form values and check recovery after a failed write.
+# Round-trip SQL Server JSON multi-selects and recover after a failed write.
 'examples/microsoft sql server advanced forms':
   - 'src/webserver/http_request_info.rs'
   - 'src/webserver/request_variables.rs'
   - 'src/webserver/database/**'
+  - 'sqlpage/templates/form.handlebars'
 
 # A real cookie jar round-trips an encoded space and removes it from a subfolder.
 'examples/read-and-set-http-cookies':

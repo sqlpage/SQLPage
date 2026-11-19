@@ -34,7 +34,8 @@ where :Memberships is not null;
 select 'list' as component, 'Users' as title, 'No user yet' as empty_title;
 select
     users.name as title,
-    string_agg(cast(groups.name as nvarchar(max)), ', ') as description
+    string_agg(cast(groups.name as nvarchar(max)), ', ')
+        within group (order by groups.id) as description
 from users
 left join group_members on users.id = group_members.user_id
 left join groups on groups.id = group_members.group_id
