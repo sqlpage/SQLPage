@@ -2,6 +2,7 @@ pub mod blob_to_data_url;
 mod connect;
 mod csv_import;
 pub mod execute_queries;
+mod file_queries;
 pub mod migrations;
 mod sql;
 mod sqlpage_expr;
@@ -10,6 +11,7 @@ mod sqlpage_functions;
 mod error_highlighting;
 mod sql_to_json;
 
+pub use file_queries::Parameter;
 pub use sql::SqlFile;
 use sqlx::any::AnyKind;
 /// The driver selected by the database URL, independently of the DBMS behind ODBC.

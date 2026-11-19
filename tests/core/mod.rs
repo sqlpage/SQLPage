@@ -13,6 +13,7 @@ mod path_aliases;
 /// Creates the `sqlpage_files` table if needed and stores `contents` at `path`.
 /// Other tests share this database, so the table is never dropped.
 async fn store_file_in_db(state: &AppState, path: &str, contents: &[u8]) {
+    use sqlpage::webserver::database::Parameter;
     use sqlx::executor::Executor as _;
 
     let create_table_sql =
@@ -38,10 +39,12 @@ async fn store_file_in_db(state: &AppState, path: &str, contents: &[u8]) {
         make_placeholder(state.db.info.kind, 1),
         make_placeholder(state.db.info.kind, 2)
     );
-    sqlx::query::query(&insert_sql)
-        .bind(path)
-        .bind(contents)
-        .execute(&state.db.connection)
+    state
+        .db
+        .execute_with(
+            &insert_sql,
+            &[Parameter::Text(Some(path)), Parameter::Bytes(contents)],
+        )
         .await
         .unwrap();
 }
