@@ -1,0 +1,10 @@
+services:
+  web:
+    image: ${SQLPAGE_IMAGE:-lovasoa/sqlpage:main-duckdb}
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/var/www:ro
+    environment:
+      # Keep the fixture small while crossing the baseline driver's 16-row batch boundary.
+      SQLPAGE_MAX_PENDING_ROWS: "16"

@@ -63,6 +63,14 @@ all_examples:
   - 'src/app_config.rs'
   - 'src/webserver/database/connect.rs'
 
+# Follow a monthly CSV report from a SQLPage table into ODBC detail rows.
+'examples/duckdb-reporting':
+  - 'src/app_config.rs'
+  - 'src/webserver/http_request_info.rs'
+  - 'src/webserver/request_variables.rs'
+  - 'src/webserver/database/**'
+  - 'sqlpage/templates/table.handlebars'
+
 # Create a PostgreSQL-backed page, request it, and render dynamic rows in a table.
 'examples/SQLPage developer user interface':
   - 'src/filesystem.rs'

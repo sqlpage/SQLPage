@@ -279,6 +279,7 @@ jobs:
           - platform: linux/amd64
             variant: duckdb
             tag_suffix: -linux-amd64-duckdb
+            export: true
           - platform: linux/arm64
             variant: duckdb
             tag_suffix: -linux-arm64-duckdb
@@ -318,8 +319,7 @@ jobs:
         with:
           username: ${{ env.REGISTRY_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      # The Hurl examples run against a real image, so the one platform they use
-      # is also exported as a tarball instead of only being pushed by digest.
+      # Export both amd64 variants for the Hurl examples.
       - name: Build image for Hurl examples
         if: matrix.export
         uses: docker/build-push-action@v7
@@ -330,7 +330,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           tags: |
             ${{ steps.meta.outputs.tags }}
-            ${{ env.REGISTRY_IMAGE }}:main
+            ${{ env.REGISTRY_IMAGE }}:main${{ matrix.variant == 'duckdb' && '-duckdb' || '' }}
           outputs: type=docker,dest=${{ runner.temp }}/sqlpage.tar
           cache-from: |
             type=gha,scope=${{ steps.cache-scope.outputs.artifact }}
@@ -342,7 +342,7 @@ jobs:
         if: matrix.export
         uses: actions/upload-artifact@v7
         with:
-          name: sqlpage-linux-amd64-minimal-image
+          name: sqlpage-linux-amd64-${{ matrix.variant }}-image
           path: ${{ runner.temp }}/sqlpage.tar
           if-no-files-found: error
           retention-days: 1
@@ -424,6 +424,8 @@ jobs:
       fail-fast: false
       matrix:
         example: ${{ fromJSON(needs.hurl_examples.outputs.examples) }}
+    env:
+      SQLPAGE_IMAGE_VARIANT: ${{ matrix.example == 'examples/duckdb-reporting' && 'duckdb' || 'minimal' }}
     steps:
       - uses: actions/checkout@v7
       - name: Install Hurl
@@ -435,12 +437,14 @@ jobs:
       - name: Download SQLPage image
         uses: actions/download-artifact@v8
         with:
-          name: sqlpage-linux-amd64-minimal-image
+          name: sqlpage-linux-amd64-${{ env.SQLPAGE_IMAGE_VARIANT }}-image
           path: ${{ runner.temp }}/sqlpage-image
       - name: Load SQLPage image
         run: |
           docker load --input "${{ runner.temp }}/sqlpage-image/sqlpage.tar"
-          docker tag "${{ env.REGISTRY_IMAGE }}:main" "${{ env.REGISTRY_IMAGE }}:latest"
+          if [[ "$SQLPAGE_IMAGE_VARIANT" == minimal ]]; then
+            docker tag "${{ env.REGISTRY_IMAGE }}:main" "${{ env.REGISTRY_IMAGE }}:latest"
+          fi
       - name: Run example Hurl test
         run: scripts/test-examples-hurl.sh "${{ matrix.example }}"
 

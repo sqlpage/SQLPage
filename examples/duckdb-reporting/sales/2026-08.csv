@@ -1,0 +1,4 @@
+sale_id,region,sold_on,amount
+21,North,2026-08-01,40.00
+22,North,2026-08-03,60.00
+23,South,2026-08-04,17.25
