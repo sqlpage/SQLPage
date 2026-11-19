@@ -49,9 +49,8 @@ sqlx = { version = "=0.9.0", default-features = false, features = [
     "json",
     "uuid",
 ] }
-# Use revisions with the SQLPage compatibility fixes until the next driver releases.
-sqlx-odbc = { version = "0.0.3", git = "https://github.com/sqlpage/sqlx-odbc.git", rev = "984a1f16910fe992b4ee1a7cb1e4abd3bce080f6", default-features = false, features = ["bigdecimal", "chrono"] }
-sqlx-sqlserver = { version = "0.0.3", git = "https://github.com/sqlpage/sqlx-sqlserver.git", rev = "5ec7817a11d7bf5ab8446115b908c1e991db47bf", default-features = false, features = ["bigdecimal", "chrono", "migrate", "uuid"] }
+sqlx-odbc = { version = "0.0.4", default-features = false, features = ["bigdecimal", "chrono"] }
+sqlx-sqlserver = { version = "0.0.4", default-features = false, features = ["bigdecimal", "chrono", "migrate", "uuid"] }
 # Keep this in sync with SQLx: SQLite function registration uses its raw handle.
 libsqlite3-sys = "=0.37.0"
 chrono = "0.4.23"

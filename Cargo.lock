@@ -4819,8 +4819,9 @@ dependencies = [
 
 [[package]]
 name = "sqlx-odbc"
-version = "0.0.3"
-source = "git+https://github.com/sqlpage/sqlx-odbc.git?rev=984a1f16910fe992b4ee1a7cb1e4abd3bce080f6#984a1f16910fe992b4ee1a7cb1e4abd3bce080f6"
+version = "0.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f66057cc7526b68d2824d97bce74d7de6bf5e6dd54f39b36e891dad021e04fc5"
 dependencies = [
  "bigdecimal",
  "chrono",
@@ -4901,8 +4902,9 @@ dependencies = [
 
 [[package]]
 name = "sqlx-sqlserver"
-version = "0.0.3"
-source = "git+https://github.com/sqlpage/sqlx-sqlserver.git?rev=5ec7817a11d7bf5ab8446115b908c1e991db47bf#5ec7817a11d7bf5ab8446115b908c1e991db47bf"
+version = "0.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "117e090ccaa57a9472606a845a031fedd2338f4a60772759c2d76660453fb27a"
 dependencies = [
  "bigdecimal",
  "bytes",
