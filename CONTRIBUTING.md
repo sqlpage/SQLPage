@@ -16,8 +16,9 @@ for a release build.
 
 Default builds require a system ODBC driver manager. On Linux and macOS,
 `--features odbc-static` bundles unixODBC, but database-specific drivers must still
-be installed separately. Windows uses its system ODBC driver manager. Published
-crates include browser assets and do not require Node.js.
+be installed separately. Windows uses its system ODBC driver manager. On Linux,
+building SQL Server support requires Perl and Make to compile the bundled
+OpenSSL. Published crates include browser assets and do not require Node.js.
 
 ### Optional: Nix dev shell
 

@@ -5,7 +5,6 @@ use crate::webserver::{Database, StatusCodeResultExt, make_placeholder};
 use crate::{AppState, TEMPLATES_DIR};
 use anyhow::Context;
 use chrono::{DateTime, Utc};
-use sqlx::executor::Executor as _;
 use std::fmt::Write;
 use std::io::ErrorKind;
 use std::path::{Component, Path, PathBuf};
@@ -353,7 +352,6 @@ impl DbFsQueries {
         db.connection
             .execute("SELECT path, contents, last_modified FROM sqlpage_files WHERE 1 = 0")
             .await
-            .map(drop)
             .context("Unable to access sqlpage_files")
     }
 
@@ -363,14 +361,21 @@ impl DbFsQueries {
         path: &Path,
         since: DateTime<Utc>,
     ) -> anyhow::Result<bool> {
+        // SQLite's CURRENT_TIMESTAMP uses a space separator. Preserve the
+        // same lexical ordering for existing timestamp strings.
+        let sqlite_timestamp;
+        let timestamp =
+            if app_state.db.info.kind == crate::webserver::database::DatabaseDriver::Sqlite {
+                sqlite_timestamp = since.format("%F %T%.f%:z").to_string();
+                Parameter::Text(Some(&sqlite_timestamp))
+            } else {
+                Parameter::Timestamp(since)
+            };
         app_state
             .db
             .exists(
                 &self.was_modified,
-                &[
-                    Parameter::Text(Some(&path.to_string_lossy())),
-                    Parameter::Timestamp(since),
-                ],
+                &[Parameter::Text(Some(&path.to_string_lossy())), timestamp],
             )
             .await
             .with_context(|| {

@@ -41,6 +41,7 @@ WORKDIR /var/www
 COPY --from=builder /usr/src/sqlpage/sqlpage.bin /usr/local/bin/sqlpage
 # Provide runtime helper libs in system lib directory for the glibc busybox base
 COPY --from=builder /tmp/sqlpage-libs/* /lib/
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 USER sqlpage
 COPY --from=builder --chown=sqlpage:sqlpage /usr/src/sqlpage/sqlpage/sqlpage.db sqlpage/sqlpage.db
 EXPOSE 8080

@@ -14,7 +14,6 @@ mod path_aliases;
 /// Other tests share this database, so the table is never dropped.
 async fn store_file_in_db(state: &AppState, path: &str, contents: &[u8]) {
     use sqlpage::webserver::database::Parameter;
-    use sqlx::executor::Executor as _;
 
     let create_table_sql =
         sqlpage::filesystem::DbFsQueries::get_create_table_sql(state.db.info.database_type);

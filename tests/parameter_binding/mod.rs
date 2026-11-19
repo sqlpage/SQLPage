@@ -1,6 +1,6 @@
 use actix_web::http::StatusCode;
-use sqlpage::webserver::database::DatabaseDriver;
-use sqlx::connection::Connection as _;
+use sqlpage::webserver::database::{DatabaseConnection, DatabaseDriver};
+use sqlx::Connection as _;
 
 use crate::common::{make_app_data, response_with_data};
 
@@ -27,8 +27,15 @@ async fn test_parameterized_pages_leave_a_prepared_statement_in_the_cache() -> a
     }
 
     let connection = data.db.connection.acquire().await.unwrap();
+    let cached_statements = match connection {
+        DatabaseConnection::Postgres(conn) => conn.cached_statements_size(),
+        DatabaseConnection::MySql(conn) => conn.cached_statements_size(),
+        DatabaseConnection::Sqlite(conn) => conn.cached_statements_size(),
+        DatabaseConnection::Odbc(conn) => conn.cached_statements_size(),
+        DatabaseConnection::Mssql(_) => unreachable!("SQL Server has no statement cache"),
+    };
     assert!(
-        connection.cached_statements_size() > 0,
+        cached_statements > 0,
         "{:?} ran a parameterized query three times without caching a prepared statement",
         data.db.info.kind
     );

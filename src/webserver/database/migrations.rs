@@ -34,9 +34,9 @@ pub async fn apply(config: &crate::app_config::AppConfig, db: &Database) -> anyh
     for m in migrator.iter() {
         log::info!("\t{}", DisplayMigration(m));
     }
-    migrator.run(&db.connection).await.map_err(|err| {
+    db.connection.migrate(&migrator).await.map_err(|err| {
         match err {
-            MigrateError::Execute(n, source) => {
+            MigrateError::ExecuteMigration(source, n) => {
                 let migration = failing_migration(&migrator.migrations, n)
                     .expect("sqlx reports the version of a migration it just ran");
                 let source_file = migrations_dir.join(format!(
@@ -45,7 +45,7 @@ pub async fn apply(config: &crate::app_config::AppConfig, db: &Database) -> anyh
                     migration.description.replace(' ', "_"),
                     migration.migration_type.suffix()
                 ));
-                display_db_error(&source_file, &migration.sql, source).context(format!(
+                display_db_error(&source_file, migration.sql.as_str(), source).context(format!(
                     "Failed to apply {} migration {}",
                     db,
                     DisplayMigration(migration)
@@ -106,7 +106,8 @@ mod tests {
             version,
             description.to_owned().into(),
             migration_type,
-            String::new().into(),
+            sqlx::SqlStr::from_static(""),
+            false,
         )
     }
 
