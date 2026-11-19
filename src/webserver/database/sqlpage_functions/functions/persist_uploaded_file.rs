@@ -2,6 +2,8 @@ use std::borrow::Cow;
 
 use anyhow::Context;
 
+use actix_multipart::form::tempfile::TempFile;
+
 use crate::webserver::http_request_info::RequestInfo;
 
 use super::random_string::random_string_sync;
@@ -16,13 +18,30 @@ pub(super) async fn persist_uploaded_file<'a>(
     allowed_extensions: Option<Cow<'a, str>>,
     mode: Option<Cow<'a, str>>,
 ) -> anyhow::Result<Option<String>> {
-    let folder = folder.unwrap_or(Cow::Borrowed("uploads"));
-    let allowed_extensions_str =
-        allowed_extensions.unwrap_or(Cow::Borrowed(DEFAULT_ALLOWED_EXTENSIONS));
-    let allowed_extensions = allowed_extensions_str.split(',');
-    let Some(uploaded_file) = request.uploaded_files.get(&field_name.to_string()) else {
+    let Some(uploaded_file) = request.uploaded_files.get(&field_name) else {
         return Ok(None);
     };
+    let extension = allowed_extension(uploaded_file, allowed_extensions.as_deref())?;
+    let path = persist_file(
+        request,
+        uploaded_file,
+        extension,
+        &field_name,
+        folder.as_deref(),
+        mode.as_deref(),
+    )
+    .await?;
+    Ok(Some(path))
+}
+
+/// Returns the extension of the uploaded file, or an error if it is not in the allowed list.
+pub(super) fn allowed_extension<'f>(
+    uploaded_file: &'f TempFile,
+    allowed_extensions: Option<&str>,
+) -> anyhow::Result<&'f str> {
+    let allowed_extensions = allowed_extensions
+        .unwrap_or(DEFAULT_ALLOWED_EXTENSIONS)
+        .split(',');
     let file_name = uploaded_file.file_name.as_deref().unwrap_or_default();
     let extension = file_name.split('.').next_back().unwrap_or_default();
     if !allowed_extensions
@@ -32,6 +51,20 @@ pub(super) async fn persist_uploaded_file<'a>(
         let exts = allowed_extensions.collect::<Vec<_>>().join(", ");
         anyhow::bail!("file extension {extension} is not allowed. Allowed extensions: {exts}");
     }
+    Ok(extension)
+}
+
+/// Copies an uploaded file to `folder` (relative to the web root) under a random name,
+/// and returns its path relative to the web root, with a leading slash.
+pub(super) async fn persist_file(
+    request: &RequestInfo,
+    uploaded_file: &TempFile,
+    extension: &str,
+    field_name: &str,
+    folder: Option<&str>,
+    mode: Option<&str>,
+) -> anyhow::Result<String> {
+    let folder = folder.unwrap_or("uploads");
     // Resolve the folder path relative to the web root.
     // `folder` is trusted application input: it is expected to be a constant chosen by the
     // app author in their SQL code, never attacker-controlled request data. It is joined
@@ -39,7 +72,7 @@ pub(super) async fn persist_uploaded_file<'a>(
     // the caller write the uploaded file outside the web root. Callers must not pass
     // untrusted input (form fields, query parameters, headers, ...) as the folder.
     let web_root = &request.app_state.config.web_root;
-    let target_folder = web_root.join(&*folder);
+    let target_folder = web_root.join(folder);
     // create the folder if it doesn't exist
     tokio::fs::create_dir_all(&target_folder)
         .await
@@ -56,7 +89,11 @@ pub(super) async fn persist_uploaded_file<'a>(
                 target_path.display()
             )
         })?;
-    set_file_mode(&target_path, mode.as_deref()).await?;
+    if let Err(error) = set_file_mode(&target_path, mode).await {
+        // Do not leave a copied file behind when the call fails.
+        let _ = tokio::fs::remove_file(&target_path).await;
+        return Err(error);
+    }
     // remove the WEB_ROOT prefix from the path, but keep the leading slash
     let path = "/".to_string()
         + target_path
@@ -68,7 +105,7 @@ pub(super) async fn persist_uploaded_file<'a>(
                     target_path.display()
                 )
             })?;
-    Ok(Some(path))
+    Ok(path)
 }
 
 #[cfg(unix)]

@@ -27,6 +27,7 @@ mod link;
 mod oidc_logout_url;
 mod path;
 mod persist_uploaded_file;
+mod persist_uploaded_files;
 mod protocol;
 mod random_string;
 mod read_file_as_data_url;
@@ -67,6 +68,7 @@ sqlpage_functions! {
     oidc_logout_url,
     path,
     persist_uploaded_file,
+    persist_uploaded_files,
     protocol,
     random_string,
     read_file_as_data_url,

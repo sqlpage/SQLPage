@@ -28,7 +28,7 @@ pub(super) async fn uploaded_file_mime_type<'a>(
 ) -> Option<Cow<'a, str>> {
     let mime = request
         .uploaded_files
-        .get(&*upload_name)?
+        .get(&upload_name)?
         .content_type
         .as_ref()?;
     Some(Cow::Borrowed(mime.as_ref()))
