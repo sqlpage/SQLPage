@@ -1,34 +1,28 @@
-# Handling json data in Microsoft SQL Server
+# Onboard users and assign groups with SQL Server
 
-This demonstrates both how to produce and read json data from a SQL query
-in MS SQL Server (or Azure SQL Database), for creating advanced forms.
-
-This lets your user interact with your database with a simple web interface,
-even when you have multiple tables, with one-to-many relationships.
+Create groups, then use a SQLPage form to onboard users and assign their
+memberships. SQL Server saves the user and memberships together.
 
 ![](./screenshots/app.png)
 
-## Documentation
+## Try it
 
-SQLPage requires JSON to create multi-select input (dropdowns where an user can select multiple values).
-The result of these multi-selects is a JSON array, which also needs to be read by SQL queries.
+Run `docker compose up` in this directory and open the [onboarding page](http://localhost:8080/).
+The database container runs `sqlcmd` to create the tables.
 
-This example demonstrates how to consume [JSON](https://en.wikipedia.org/wiki/JSON) data from a SQL Server database,
-using the [`OPENJSON`](https://docs.microsoft.com/en-us/sql/t-sql/functions/openjson-transact-sql)
-function to parse the JSON data into a table,
-and [`FOR JSON PATH`](https://learn.microsoft.com/en-us/sql/relational-databases/json/format-query-results-as-json-with-for-json-sql-server)
-to format query results as a JSON array.
+1. Create two groups. Use **View group** in the confirmation to jump to the new group. A blank description is saved as SQL `NULL`.
+2. Under **Add a user**, enter a name and select both groups. You can also add a user with no groups.
+3. Submit the form and check the memberships under **Users**.
 
+## How it works
 
-This demonstrates an application designed for managing groups and users, allowing the creation of new groups, adding users, and assigning users to one or multiple groups. 
+- `OUTPUT INSERTED` gives SQLPage the new group and its generated ID for the confirmation link. `FOR JSON PATH` supplies the groups to the multi-select.
+- SQLPage binds the submitted name and group choices into the `IF ... BEGIN ... END` batch in `index.sql`. `SCOPE_IDENTITY()` returns the new user ID, and `OPENJSON ... WITH` reads the selected IDs as integers.
+- The batch saves the user and memberships in one transaction. If a selected group has been deleted since the form loaded, the foreign key rejects the selection and `XACT_ABORT` rolls back the entire transaction.
+- `CROSS APPLY` and `STRING_AGG` summarize memberships for each user. Users without memberships stay visible.
 
-The application has the following sections:
+Run the end-to-end test from the repository root.
 
-- **Create a New Group**: A form where users can enter the name of a new group.
-- **Groups Display**: A list of existing groups.
-- **Add a User**: A form where users can enter the name of a new user and select one or multiple groups to assign to this user.
-- **Users Display**: A list of existing users and their associated group memberships.
-
-When users submit the form, their selections are packaged up and sent to the database server. The server receives these selections as a structured JSON array.
-
-The database then takes this list of selections and temporarily converts it into a format it can work with using the `OPENJSON` function, before saving the information permanently in the database tables. This allows the system to process multiple selections at once in an efficient way.
+```sh
+scripts/test-examples-hurl.sh 'examples/microsoft sql server advanced forms'
+```

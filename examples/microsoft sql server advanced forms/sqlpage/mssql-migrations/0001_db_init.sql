@@ -1,11 +1,12 @@
 create table users (
     id int primary key IDENTITY(1,1),
-    name varchar(255) not null
+    name nvarchar(255) not null
 );
 
 create table groups (
     id int primary key IDENTITY(1,1),
-    name varchar(255) not null
+    name nvarchar(255) not null,
+    description nvarchar(80) null
 );
 
 create table group_members (
