@@ -19,7 +19,9 @@ use crate::webserver::ErrorWithStatus;
 use crate::webserver::http_request_info::ExecutionContext;
 use crate::webserver::single_or_vec::SingleOrVec;
 
-use super::{Database, DbItem, ScalarSubqueryBehavior, error_highlighting::display_db_error};
+use super::{
+    Database, DatabaseDriver, DbItem, ScalarSubqueryBehavior, error_highlighting::display_db_error,
+};
 use sqlx::Either;
 use sqlx::any::{
     Any, AnyArguments, AnyConnection, AnyQueryResult, AnyRow, AnyStatement, AnyTypeInfo,
@@ -567,7 +569,7 @@ async fn take_connection<'a>(
             Ok(connection)
         }
         Err(e) => {
-            let db_name = db.connection.any_kind();
+            let db_name = db.info.kind;
             let active_count = db.connection.size();
             let err_msg = format!(
                 "Unable to connect to {db_name:?}. The connection pool currently has {active_count} active connections."
@@ -598,11 +600,11 @@ async fn set_trace_context(connection: &mut AnyConnection, db: &Database) {
         span_context.trace_flags()
     );
     let sql = match db.info.kind {
-        sqlx::any::AnyKind::Postgres => {
+        DatabaseDriver::Postgres => {
             // postgresqlreceiver expects application_name to be a raw W3C traceparent value.
             format!("SET application_name = '{traceparent}'")
         }
-        sqlx::any::AnyKind::MySql => {
+        DatabaseDriver::MySql => {
             format!("SET @traceparent = '{traceparent}'")
         }
         _ => return,

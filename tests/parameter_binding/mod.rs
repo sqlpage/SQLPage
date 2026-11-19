@@ -1,5 +1,5 @@
 use actix_web::http::StatusCode;
-use sqlx::any::AnyKind;
+use sqlpage::webserver::database::DatabaseDriver;
 use sqlx::connection::Connection as _;
 
 use crate::common::{make_app_data, response_with_data};
@@ -8,7 +8,7 @@ use crate::common::{make_app_data, response_with_data};
 async fn test_parameterized_pages_leave_a_prepared_statement_in_the_cache() -> actix_web::Result<()>
 {
     let data = make_app_data().await;
-    if data.db.info.kind == AnyKind::Mssql {
+    if data.db.info.kind == DatabaseDriver::Mssql {
         return Ok(()); // the MSSQL backend keeps no statement cache
     }
 
