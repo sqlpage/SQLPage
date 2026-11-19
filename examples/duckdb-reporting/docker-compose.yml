@@ -6,5 +6,6 @@ services:
     volumes:
       - .:/var/www:ro
     environment:
+      SQLPAGE_CONFIGURATION_DIRECTORY: /var/www/sqlpage
       # Keep the fixture small while crossing the baseline driver's 16-row batch boundary.
       SQLPAGE_MAX_PENDING_ROWS: "16"

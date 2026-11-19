@@ -1,10 +1,15 @@
-select 'json' as component;
+select 'shell' as component, 'Monthly sales' as title;
+select 'table' as component, 'Sales by month and region' as title, 'Report' as markdown;
 
-select sale_id, amount
-from read_csv(
-    'sales.csv',
-    header = true,
-    columns = {'sale_id': 'INTEGER', 'region': 'VARCHAR', 'amount': 'DECIMAL(12,2)'}
-)
-where region = coalesce($region, 'North')
-order by sale_id desc;
+select
+    strftime(sale_month, '%Y-%m') as Month,
+    region as Region,
+    count(*) as Sales,
+    sum(amount) as Revenue,
+    '[View sales](' || sqlpage.link(
+        'sales.sql',
+        json_object('month', sale_month, 'region', region)
+    ) || ')' as Report
+from sales_report
+group by all
+order by Month desc, Region;
