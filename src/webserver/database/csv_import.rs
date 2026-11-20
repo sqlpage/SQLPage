@@ -53,14 +53,14 @@ impl CsvFormat {
         for option in legacy.iter().rev() {
             match option {
                 CopyLegacyOption::Delimiter(c) => {
-                    format.delimiter = u8::try_from(*c).unwrap_or(b',')
+                    format.delimiter = u8::try_from(*c).unwrap_or(b',');
                 }
                 CopyLegacyOption::Csv(options) => {
                     for option in options.iter().rev() {
                         match option {
                             CopyLegacyCsvOption::Header => format.header = true,
                             CopyLegacyCsvOption::Quote(c) => {
-                                format.quote = u8::try_from(*c).unwrap_or(b'"')
+                                format.quote = u8::try_from(*c).unwrap_or(b'"');
                             }
                             CopyLegacyCsvOption::Escape(c) => format.escape = u8::try_from(*c).ok(),
                             _ => {}
