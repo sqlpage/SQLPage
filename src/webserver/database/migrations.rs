@@ -7,6 +7,21 @@ use sqlx::migrate::MigrateError;
 use sqlx::migrate::Migration;
 use sqlx::migrate::Migrator;
 
+#[async_trait::async_trait]
+pub(super) trait MigrationPool: Send + Sync {
+    async fn run(&self, migrator: &Migrator) -> Result<(), MigrateError>;
+}
+
+#[async_trait::async_trait]
+impl<DB: sqlx::Database> MigrationPool for sqlx::Pool<DB>
+where
+    DB::Connection: sqlx::migrate::Migrate,
+{
+    async fn run(&self, migrator: &Migrator) -> Result<(), MigrateError> {
+        migrator.run(self).await
+    }
+}
+
 pub async fn apply(config: &crate::app_config::AppConfig, db: &Database) -> anyhow::Result<()> {
     let migrations_dir = config.configuration_directory.join(MIGRATIONS_DIR);
     if !migrations_dir.exists() {
@@ -34,7 +49,13 @@ pub async fn apply(config: &crate::app_config::AppConfig, db: &Database) -> anyh
     for m in migrator.iter() {
         log::info!("\t{}", DisplayMigration(m));
     }
-    db.connection.migrate(&migrator).await.map_err(|err| {
+    let result = match &db.migrations {
+        Some(pool) => pool.run(&migrator).await,
+        None => {
+            Err(sqlx::Error::Protocol("SQL migrations are unavailable over ODBC".into()).into())
+        }
+    };
+    result.map_err(|err| {
         match err {
             MigrateError::ExecuteMigration(source, n) => {
                 let migration = failing_migration(&migrator.migrations, n)

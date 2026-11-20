@@ -1,11 +1,10 @@
 //! Native pools share an executor that decodes each row before erasing its driver type.
 
-use std::{any::Any, sync::Arc};
+use std::any::Any;
 
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use futures_util::{StreamExt, future::BoxFuture, stream, stream::BoxStream};
-use sqlx::migrate::{MigrateError, Migrator};
+use futures_util::{StreamExt, stream, stream::BoxStream};
 use sqlx::pool::PoolConnection;
 use sqlx::{
     Arguments, AssertSqlSafe, ColumnIndex, Database, Decode, Either, Encode, Error, Executor, Pool,
@@ -27,62 +26,24 @@ pub trait DatabasePool: Send + Sync {
     async fn close(&self);
     fn size(&self) -> u32;
     fn num_idle(&self) -> usize;
-    async fn migrate(&self, migrator: &Migrator) -> Result<(), MigrateError>;
-}
-
-type Migrate<DB> =
-    for<'a> fn(&'a Pool<DB>, &'a Migrator) -> BoxFuture<'a, Result<(), MigrateError>>;
-
-pub(super) struct SqlxPool<DB: Database> {
-    pool: Pool<DB>,
-    migrate: Option<Migrate<DB>>,
-}
-
-impl<DB: Database> SqlxPool<DB>
-where
-    PoolConnection<DB>: DatabaseConnection,
-    DB::Connection: sqlx::migrate::Migrate,
-{
-    pub(super) fn native(pool: Pool<DB>) -> Arc<dyn DatabasePool> {
-        Arc::new(Self {
-            pool,
-            migrate: Some(|pool, migrator| Box::pin(migrator.run(pool))),
-        })
-    }
-}
-
-impl SqlxPool<sqlx_odbc::Odbc> {
-    pub(super) fn odbc(pool: Pool<sqlx_odbc::Odbc>) -> Arc<dyn DatabasePool> {
-        Arc::new(Self {
-            pool,
-            migrate: None,
-        })
-    }
 }
 
 #[async_trait]
-impl<DB: Database> DatabasePool for SqlxPool<DB>
+impl<DB: Database> DatabasePool for Pool<DB>
 where
     PoolConnection<DB>: DatabaseConnection,
 {
     async fn acquire(&self) -> Result<Box<dyn DatabaseConnection>, Error> {
-        Ok(Box::new(self.pool.acquire().await?))
+        Ok(Box::new(self.acquire().await?))
     }
     async fn close(&self) {
-        self.pool.close().await;
+        self.close().await;
     }
     fn size(&self) -> u32 {
-        self.pool.size()
+        self.size()
     }
     fn num_idle(&self) -> usize {
-        self.pool.num_idle()
-    }
-
-    async fn migrate(&self, migrator: &Migrator) -> Result<(), MigrateError> {
-        let migrate = self
-            .migrate
-            .ok_or_else(|| Error::Protocol("SQL migrations are unavailable over ODBC".into()))?;
-        migrate(&self.pool, migrator).await
+        self.num_idle()
     }
 }
 

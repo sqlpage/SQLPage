@@ -110,6 +110,7 @@ impl SupportedDatabase {
 pub struct Database {
     pub connection: std::sync::Arc<dyn DatabasePool>,
     pub info: DbInfo,
+    migrations: Option<std::sync::Arc<dyn migrations::MigrationPool>>,
 }
 
 /// The SQL dialect and how the connection sends parameters to that database.

@@ -9,8 +9,7 @@ use sqlx::{
 use sqlx_odbc::OdbcConnectOptions;
 use sqlx_sqlserver::MssqlConnectOptions;
 
-use super::driver::SqlxPool;
-use super::{Database, DbInfo, SupportedDatabase};
+use super::{Database, DatabasePool, DbInfo, SupportedDatabase, migrations::MigrationPool};
 use crate::{ON_CONNECT_FILE, ON_RESET_FILE, app_config::AppConfig};
 
 mod sqlite;
@@ -19,38 +18,36 @@ impl Database {
     pub async fn init(config: &AppConfig) -> anyhow::Result<Self> {
         let url = config.database_url.as_str();
         let password = config.database_password.as_deref();
-        let info;
         let scheme = url.split_once(':').map(|(scheme, _)| scheme);
 
-        let connection = match scheme {
+        let db = match scheme {
             Some("postgres" | "postgresql") => {
-                info = DbInfo::Native(SupportedDatabase::Postgres);
+                let info = DbInfo::Native(SupportedDatabase::Postgres);
                 let mut options = url.parse::<PgConnectOptions>()?;
                 if let Some(password) = password {
                     options = options.password(password);
                 }
-                SqlxPool::native(connect(options, config, info, 50).await?)
+                Self::native(connect(options, config, info, 50).await?, info)
             }
             Some("mysql" | "mariadb") => {
-                info = DbInfo::Native(SupportedDatabase::MySql);
+                let info = DbInfo::Native(SupportedDatabase::MySql);
                 let mut options = url.parse::<MySqlConnectOptions>()?;
                 if let Some(password) = password {
                     options = options.password(password);
                 }
-                SqlxPool::native(connect(options, config, info, 75).await?)
+                Self::native(connect(options, config, info, 75).await?, info)
             }
             Some("sqlite") => {
-                info = DbInfo::Native(SupportedDatabase::Sqlite);
+                let info = DbInfo::Native(SupportedDatabase::Sqlite);
                 if password.is_some() {
                     log::warn!("Setting a password for a SQLite database is not supported");
                 }
                 let default_size = if url.contains(":memory:") { 128 } else { 16 };
-                SqlxPool::native(
-                    connect(sqlite::options(config)?, config, info, default_size).await?,
-                )
+                let pool = connect(sqlite::options(config)?, config, info, default_size).await?;
+                Self::native(pool, info)
             }
             Some("mssql" | "sqlserver") => {
-                info = DbInfo::Native(SupportedDatabase::Mssql);
+                let info = DbInfo::Native(SupportedDatabase::Mssql);
                 let mut url =
                     openidconnect::url::Url::parse(url).context("Invalid SQL Server URL")?;
                 if let Some(password) = password {
@@ -63,7 +60,7 @@ impl Database {
                         .map_err(|()| anyhow::anyhow!("Unable to set the SQL Server password"))?;
                 }
                 let options = url.as_str().parse::<MssqlConnectOptions>()?;
-                SqlxPool::native(connect(options, config, info, 100).await?)
+                Self::native(connect(options, config, info, 100).await?, info)
             }
             _ => {
                 anyhow::ensure!(
@@ -83,13 +80,26 @@ impl Database {
                     .await?
                     .dbms_name()?;
                 log::debug!("ODBC driver reported DBMS {dbms_name:?}");
-                info = DbInfo::Odbc(SupportedDatabase::from_dbms_name(&dbms_name));
-                SqlxPool::odbc(connect(options, config, info, 50).await?)
+                let info = DbInfo::Odbc(SupportedDatabase::from_dbms_name(&dbms_name));
+                Self {
+                    connection: Arc::new(connect(options, config, info, 50).await?),
+                    migrations: None,
+                    info,
+                }
             }
         };
 
-        log::debug!("Initialized {info:?} database pool");
-        Ok(Self { connection, info })
+        log::debug!("Initialized {db} database pool");
+        Ok(db)
+    }
+
+    fn native(pool: impl DatabasePool + MigrationPool + 'static, info: DbInfo) -> Self {
+        let pool = Arc::new(pool);
+        Self {
+            connection: pool.clone(),
+            migrations: Some(pool),
+            info,
+        }
     }
 }
 
