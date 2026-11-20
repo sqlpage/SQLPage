@@ -10,10 +10,12 @@ use sqlx::mysql::{MySqlRow, MySqlTypeInfo, MySqlValueRef};
 use sqlx::postgres::types::{PgInterval, PgRange, PgTimeTz};
 use sqlx::postgres::{PgRow, PgTypeInfo, PgValueFormat, PgValueRef};
 use sqlx::sqlite::{SqliteRow, SqliteTypeInfo, SqliteValueRef};
-use sqlx::types::{Json, Uuid};
-use sqlx::{Column, ColumnIndex, Database, Decode, Postgres, Row, Type, TypeInfo, ValueRef};
+use sqlx::types::Uuid;
+use sqlx::{
+    Column, ColumnIndex, Database, Decode, MySql, Postgres, Row, Sqlite, Type, TypeInfo, ValueRef,
+};
 use sqlx_odbc::{Odbc, OdbcRow, OdbcTypeInfo};
-use sqlx_sqlserver::{MssqlRow, MssqlType, MssqlTypeInfo, MssqlValueRef};
+use sqlx_sqlserver::{Mssql, MssqlRow, MssqlTypeInfo, MssqlValueRef};
 
 pub(super) trait DecodeRow: Row {
     fn decode_value(
@@ -162,9 +164,7 @@ fn postgres_interval(value: PgValueRef<'_>) -> Value {
 impl DecodeRow for PgRow {
     fn decode_value(value: PgValueRef<'_>, declared_type: &PgTypeInfo) -> Value {
         match declared_type.name() {
-            "INT2" => value.decode_as::<i16>().into(),
-            "INT4" => value.decode_as::<i32>().into(),
-            "INT8" => value.decode_as::<i64>().into(),
+            "INT2" | "INT4" | "INT8" => value.decode_as::<i64>().into(),
             "FLOAT4" => f64::from(value.decode_as::<f32>()).into(),
             "FLOAT8" => value.decode_as::<f64>().into(),
             "NUMERIC" => decimal_to_json(&value.decode_as::<BigDecimal>()),
@@ -186,14 +186,8 @@ impl DecodeRow for PgRow {
             "TIMESTAMPTZ" => value.decode_as::<DateTime<Utc>>().to_rfc3339().into(),
             "INTERVAL" => postgres_interval(value),
             "UUID" => value.decode_as::<Uuid>().to_string().into(),
-            "JSON" | "JSONB" => value.decode_as::<Json<Value>>().0,
-            "JSON[]" | "JSONB[]" => Value::Array(
-                value
-                    .decode_as::<Vec<Json<Value>>>()
-                    .into_iter()
-                    .map(|json| json.0)
-                    .collect(),
-            ),
+            "JSON" | "JSONB" => value.decode_as::<Value>(),
+            "JSON[]" | "JSONB[]" => Value::Array(value.decode_as()),
             "BYTEA" => vec_to_data_uri_value(&value.decode_as::<Vec<u8>>()),
             "INT4RANGE" => decode_pg_range::<i32>(value),
             "INT8RANGE" => decode_pg_range::<i64>(value),
@@ -206,105 +200,85 @@ impl DecodeRow for PgRow {
     }
 }
 
+/// Decode the scalar types shared by MySQL, SQL Server, SQLite and ODBC.
+fn scalar<'r, DB: Database>(value: DB::ValueRef<'r>, name: &str) -> Value
+where
+    i64: Decode<'r, DB>,
+    f64: Decode<'r, DB>,
+    bool: Decode<'r, DB>,
+    NaiveDate: Decode<'r, DB>,
+    NaiveTime: Decode<'r, DB>,
+    NaiveDateTime: Decode<'r, DB>,
+    Vec<u8>: Decode<'r, DB>,
+    String: Decode<'r, DB>,
+{
+    match name {
+        "TINYINT" | "SMALLINT" | "MEDIUMINT" | "INT" | "INTEGER" | "BIGINT" | "YEAR" => {
+            value.decode_as::<i64>().into()
+        }
+        "REAL" | "FLOAT" | "DOUBLE" | "MONEY" => value.decode_as::<f64>().into(),
+        "BIT" | "BOOLEAN" => value.decode_as::<bool>().into(),
+        "DATE" => value.decode_as::<NaiveDate>().to_string().into(),
+        "TIME" => value.decode_as::<NaiveTime>().to_string().into(),
+        "DATETIME" | "DATETIME2" => naive_datetime(value.decode_as::<NaiveDateTime>()),
+        "BINARY" | "VARBINARY" | "LONGVARBINARY" | "BLOB" | "TINYBLOB" | "MEDIUMBLOB"
+        | "LONGBLOB" => vec_to_data_uri_value(&value.decode_as::<Vec<u8>>()),
+        _ => value.decode_as::<String>().into(),
+    }
+}
+
 impl DecodeRow for MySqlRow {
-    fn decode_value(value: MySqlValueRef<'_>, declared_type: &MySqlTypeInfo) -> Value {
-        match declared_type.name() {
-            "TINYINT" | "SMALLINT" | "MEDIUMINT" | "INT" | "BIGINT" | "YEAR" => {
-                value.decode_as::<i64>().into()
-            }
+    fn decode_value(value: MySqlValueRef<'_>, ty: &MySqlTypeInfo) -> Value {
+        match ty.name() {
             "TINYINT UNSIGNED" | "SMALLINT UNSIGNED" | "MEDIUMINT UNSIGNED" | "INT UNSIGNED"
             | "BIGINT UNSIGNED" => value.decode_as::<u64>().into(),
             "FLOAT" => f64::from(value.decode_as::<f32>()).into(),
-            "DOUBLE" => value.decode_as::<f64>().into(),
             "DECIMAL" => decimal_to_json(&value.decode_as::<BigDecimal>()),
-            "BOOLEAN" => value.decode_as::<bool>().into(),
-            // SQLx 0.9 does not expose BIT(M)'s declared width. The wire value
-            // includes leading zero bytes for widths above 8.
+            // SQLx exposes the bytes of BIT(M), including leading zero bytes for widths above 8.
             "BIT" => match value.clone().decode_as::<&[u8]>() {
                 [0] => false.into(),
                 [1] => true.into(),
                 _ => value.decode_as::<u64>().into(),
             },
-            "DATE" => value.decode_as::<NaiveDate>().to_string().into(),
-            "TIME" => value.decode_as::<NaiveTime>().to_string().into(),
-            "DATETIME" => naive_datetime(value.decode_as::<NaiveDateTime>()),
             "TIMESTAMP" => value.decode_as::<DateTime<Utc>>().to_rfc3339().into(),
-            "JSON" => value.decode_as::<Json<Value>>().0,
-            "BINARY" | "VARBINARY" | "BLOB" | "TINYBLOB" | "MEDIUMBLOB" | "LONGBLOB" => {
-                vec_to_data_uri_value(&value.decode_as::<Vec<u8>>())
-            }
-            _ => value.decode_as::<String>().into(),
+            "JSON" => value.decode_as::<Value>(),
+            name => scalar::<MySql>(value, name),
         }
     }
 }
 
 impl DecodeRow for SqliteRow {
     fn decode_value(value: SqliteValueRef<'_>, _: &SqliteTypeInfo) -> Value {
-        let info = value.type_info().into_owned();
-        match info.name() {
-            "INTEGER" => value.decode_as::<i64>().into(),
-            "REAL" => value.decode_as::<f64>().into(),
-            "BLOB" => vec_to_data_uri_value(&value.decode_as::<Vec<u8>>()),
-            "BOOLEAN" => value.decode_as::<bool>().into(),
-            "DATE" => value.decode_as::<NaiveDate>().to_string().into(),
-            "TIME" => value.decode_as::<NaiveTime>().to_string().into(),
-            "DATETIME" => naive_datetime(value.decode_as::<NaiveDateTime>()),
-            _ => value.decode_as::<String>().into(),
-        }
+        // SQLite can store a value with a different type than the column declaration.
+        let ty = value.type_info().into_owned();
+        scalar::<Sqlite>(value, ty.name())
     }
 }
 
 impl DecodeRow for MssqlRow {
-    fn decode_value(value: MssqlValueRef<'_>, _: &MssqlTypeInfo) -> Value {
-        match value.type_info().kind() {
-            MssqlType::Null => Value::Null,
-            MssqlType::Real => f64::from(value.decode_as::<f32>()).into(),
-            MssqlType::Float | MssqlType::Money => value.decode_as::<f64>().into(),
-            MssqlType::Decimal => decimal_to_json(&value.decode_as::<BigDecimal>()),
-            MssqlType::BigInt => value.decode_as::<i64>().into(),
-            MssqlType::Int => value.decode_as::<i32>().into(),
-            MssqlType::SmallInt => value.decode_as::<i16>().into(),
-            MssqlType::TinyInt => value.decode_as::<u8>().into(),
-            MssqlType::Bit => value.decode_as::<bool>().into(),
-            MssqlType::Date => value.decode_as::<NaiveDate>().to_string().into(),
-            MssqlType::Time => value.decode_as::<NaiveTime>().to_string().into(),
-            MssqlType::DateTimeOffset => value
+    fn decode_value(value: MssqlValueRef<'_>, ty: &MssqlTypeInfo) -> Value {
+        match ty.name() {
+            "DECIMAL" => decimal_to_json(&value.decode_as::<BigDecimal>()),
+            "DATETIMEOFFSET" => value
                 .decode_as::<DateTime<FixedOffset>>()
                 .to_rfc3339()
                 .into(),
-            MssqlType::DateTime | MssqlType::DateTime2 => {
-                naive_datetime(value.decode_as::<NaiveDateTime>())
-            }
-            MssqlType::UniqueIdentifier => value.decode_as::<Uuid>().to_string().into(),
-            MssqlType::VarBinary => vec_to_data_uri_value(&value.decode_as::<Vec<u8>>()),
-            _ => value.decode_as::<String>().into(),
+            "UNIQUEIDENTIFIER" => value.decode_as::<Uuid>().to_string().into(),
+            name => scalar::<Mssql>(value, name),
         }
     }
 }
 
 impl DecodeRow for OdbcRow {
-    fn decode_value(
-        value: <Odbc as Database>::ValueRef<'_>,
-        declared_type: &OdbcTypeInfo,
-    ) -> Value {
-        // The driver transports decimal values as text. Use the declared SQL type.
-        match declared_type.name() {
-            "REAL" | "FLOAT" | "DOUBLE" => value.decode_as::<f64>().into(),
+    fn decode_value(value: <Odbc as Database>::ValueRef<'_>, ty: &OdbcTypeInfo) -> Value {
+        // ODBC can transport numeric and temporal values as text. Use the declared SQL type.
+        match ty.name() {
             "NUMERIC" | "DECIMAL" => decimal_to_json(&value.decode_as::<BigDecimal>()),
-            "BIGINT" => value.decode_as::<i64>().into(),
-            "INTEGER" => value.decode_as::<i32>().into(),
-            "SMALLINT" | "TINYINT" => value.decode_as::<i16>().into(),
-            "BIT" => value.decode_as::<bool>().into(),
-            "DATE" => value.decode_as::<NaiveDate>().to_string().into(),
-            "TIME" => value.decode_as::<NaiveTime>().to_string().into(),
             "TIMESTAMP" => value
                 .decode_as::<DateTime<FixedOffset>>()
                 .to_rfc3339()
                 .into(),
-            "VARBINARY" | "BINARY" | "LONGVARBINARY" => {
-                vec_to_data_uri_value(&value.decode_as::<Vec<u8>>())
-            }
-            _ => value.decode_as::<String>().into(),
+            name => scalar::<Odbc>(value, name),
         }
     }
 
