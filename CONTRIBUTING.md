@@ -77,7 +77,9 @@ For examples with `test.hurl`, run
 `scripts/test-examples-hurl.sh '<example-path>'` from the repository root.
 
 Integration tests use the shared request helpers in [tests/common](./tests/common/mod.rs)
-to exercise production routes and middleware and drain request pools.
+to exercise production routes and middleware. Tests that open a database use
+`#[actix_web::rt::test(system = "crate::test_database::System")]` so their pools
+finish disconnecting before the runtime exits.
 
 Rust tests default to in-memory SQLite; `DATABASE_URL` selects another database.
 For example:

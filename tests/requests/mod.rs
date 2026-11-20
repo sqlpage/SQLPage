@@ -12,7 +12,7 @@ async fn rendered_page(
     Ok(crate::common::read_body_string(resp).await)
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_request_body() -> actix_web::Result<()> {
     let app_data = crate::common::make_app_data().await;
     let page = rendered_page(
@@ -48,7 +48,7 @@ async fn test_request_body() -> actix_web::Result<()> {
     Ok(())
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_request_body_base64() -> actix_web::Result<()> {
     let binary_data = (0u8..=255u8).collect::<Vec<_>>();
     let expected_base64 =
@@ -88,7 +88,7 @@ async fn test_request_body_base64() -> actix_web::Result<()> {
     Ok(())
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_download_data_url() -> actix_web::Result<()> {
     let resp = response_for("/tests/requests/request_download_test.sql").await;
 
@@ -105,7 +105,7 @@ async fn test_download_data_url() -> actix_web::Result<()> {
     Ok(())
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_large_form_field_roundtrip() -> actix_web::Result<()> {
     let long_string = "a".repeat(123_454);
     let req = request_for("/tests/components/display_form_field.sql")
@@ -125,7 +125,7 @@ async fn test_large_form_field_roundtrip() -> actix_web::Result<()> {
     Ok(())
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_variables_function() -> actix_web::Result<()> {
     let url = "/tests/requests/variables.sql?common=get_value&get_only=get_val&array[]=get_a&array[]=get_b";
     let req_body = "common=post_value&post_only=post_val&array[]=post_a&array[]=post_b";
@@ -198,7 +198,7 @@ async fn test_variables_function() -> actix_web::Result<()> {
     Ok(())
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_invalid_utf8_multipart_text_field_returns_bad_request() -> actix_web::Result<()> {
     let req = multipart_request(
         "/tests/requests/variables.sql",
@@ -224,7 +224,7 @@ async fn test_invalid_utf8_multipart_text_field_returns_bad_request() -> actix_w
     Ok(())
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_missing_multipart_content_disposition_returns_bad_request() -> actix_web::Result<()> {
     let req = multipart_request(
         "/tests/requests/variables.sql",

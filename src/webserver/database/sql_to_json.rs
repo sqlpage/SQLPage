@@ -305,7 +305,7 @@ mod tests {
         let mut config = crate::app_config::tests::test_config();
         config.database_url = url;
         config.configuration_directory = tempfile::TempDir::new()?.path().to_owned();
-        AppDatabase::init(&config).await
+        crate::test_database::connect(&config).await
     }
 
     async fn first_row(
@@ -330,7 +330,7 @@ mod tests {
         }
     }
 
-    #[actix_web::test]
+    #[actix_web::rt::test(system = "crate::test_database::System")]
     async fn test_row_to_json() -> anyhow::Result<()> {
         let db_url = test_database_url();
         let db = connect(db_url).await?;
@@ -359,7 +359,7 @@ mod tests {
         Ok(())
     }
 
-    #[actix_web::test]
+    #[actix_web::rt::test(system = "crate::test_database::System")]
     async fn private_inputs_are_split_from_the_trailing_suffix() -> anyhow::Result<()> {
         let db_url = test_database_url();
         let db = connect(db_url).await?;
@@ -387,7 +387,7 @@ mod tests {
         Ok(())
     }
 
-    #[actix_web::test]
+    #[actix_web::rt::test(system = "crate::test_database::System")]
     async fn test_postgres_types() -> anyhow::Result<()> {
         let Some(db_url) = db_specific_test("postgres") else {
             return Ok(());
@@ -466,7 +466,7 @@ mod tests {
 
     /// Postgres encodes values differently in prepared statements and in "simple" queries
     /// <https://www.postgresql.org/docs/9.1/protocol-flow.html#PROTOCOL-FLOW-EXT-QUERY>
-    #[actix_web::test]
+    #[actix_web::rt::test(system = "crate::test_database::System")]
     async fn test_postgres_prepared_types() -> anyhow::Result<()> {
         let Some(db_url) = db_specific_test("postgres") else {
             return Ok(());
@@ -505,7 +505,7 @@ mod tests {
         Ok(())
     }
 
-    #[actix_web::test]
+    #[actix_web::rt::test(system = "crate::test_database::System")]
     async fn test_postgres_prepared_range_types() -> anyhow::Result<()> {
         let Some(db_url) = db_specific_test("postgres") else {
             return Ok(());
@@ -536,7 +536,7 @@ mod tests {
         Ok(())
     }
 
-    #[actix_web::test]
+    #[actix_web::rt::test(system = "crate::test_database::System")]
     async fn test_mysql_types() -> anyhow::Result<()> {
         let db_url = db_specific_test("mysql").or_else(|| db_specific_test("mariadb"));
         let Some(db_url) = db_url else {
@@ -643,7 +643,7 @@ mod tests {
         Ok(())
     }
 
-    #[actix_web::test]
+    #[actix_web::rt::test(system = "crate::test_database::System")]
     async fn test_sqlite_types() -> anyhow::Result<()> {
         let Some(db_url) = db_specific_test("sqlite") else {
             return Ok(());
@@ -673,7 +673,7 @@ mod tests {
         Ok(())
     }
 
-    #[actix_web::test]
+    #[actix_web::rt::test(system = "crate::test_database::System")]
     async fn test_mssql_types() -> anyhow::Result<()> {
         let Some(db_url) = db_specific_test("mssql") else {
             return Ok(());
@@ -753,7 +753,7 @@ mod tests {
         assert_eq!(normalize_numbers(actual), normalize_numbers(expected));
     }
 
-    #[actix_web::test]
+    #[actix_web::rt::test(system = "crate::test_database::System")]
     async fn test_canonical_col_name_variations() -> anyhow::Result<()> {
         let db_url = test_database_url();
         let db = connect(db_url).await?;
@@ -798,7 +798,7 @@ mod tests {
         Ok(())
     }
 
-    #[actix_web::test]
+    #[actix_web::rt::test(system = "crate::test_database::System")]
     async fn test_row_to_json_edge_cases() -> anyhow::Result<()> {
         let db_url = test_database_url();
         let db = connect(db_url).await?;

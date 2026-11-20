@@ -21,7 +21,7 @@ async fn webhook_request(
     response_from(req.set_payload(webhook_body)).await
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_webhook_hmac_invalid_signature() -> actix_web::Result<()> {
     let invalid_signature = "96a5f6f65c85a2d4d1f3a37813ab2c0b44041bdc17691fbb0884e3eb52b7c54b";
     let resp = webhook_request(Some(invalid_signature)).await?;
@@ -43,7 +43,7 @@ async fn test_webhook_hmac_invalid_signature() -> actix_web::Result<()> {
     Ok(())
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_webhook_hmac_valid_signature() -> actix_web::Result<()> {
     let valid_signature = "260b3b5ead84843645588af82d5d2c3fe24c598a950d36c45438c3a5f5bb941c";
     let resp = webhook_request(Some(valid_signature)).await?;
@@ -59,7 +59,7 @@ async fn test_webhook_hmac_valid_signature() -> actix_web::Result<()> {
     Ok(())
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_webhook_hmac_missing_signature() -> actix_web::Result<()> {
     // Don't include the X-Webhook-Signature header
     let resp = webhook_request(None).await?;

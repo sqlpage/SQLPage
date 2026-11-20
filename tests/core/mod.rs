@@ -39,7 +39,7 @@ async fn store_file_in_db(state: &AppState, path: &str, contents: &[u8]) {
     .unwrap();
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_concurrent_requests() {
     let components = [
         "table", "form", "card", "datagrid", "hero", "list", "timeline",
@@ -68,7 +68,7 @@ async fn test_concurrent_requests() {
     }
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_datagrid_description_presence_controls_placeholder() {
     let resp = response_for("/tests/components/datagrid_icon_only.sql").await;
     assert_eq!(resp.status(), StatusCode::OK);
@@ -80,7 +80,7 @@ async fn test_datagrid_description_presence_controls_placeholder() {
     assert_eq!(body.matches('–').count(), 1, "{body}");
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_routing_with_db_fs() {
     let mut config = test_config();
     if config.database_url.contains("memory") {
@@ -88,7 +88,7 @@ async fn test_routing_with_db_fs() {
     }
 
     config.site_prefix = "/prefix/".to_string();
-    let state = AppState::init(&config).await.unwrap();
+    let state = crate::test_database::app_state(&config).await.unwrap();
 
     if crate::common::supports_database(
         &state.db,
@@ -114,7 +114,7 @@ async fn test_routing_with_db_fs() {
 }
 
 #[cfg(unix)]
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_non_unicode_static_path_returns_bad_request_with_db_fs() {
     let mut config = test_config();
     if !config.database_url.starts_with("sqlite") {
@@ -123,7 +123,7 @@ async fn test_non_unicode_static_path_returns_bad_request_with_db_fs() {
     config.database_url =
         "sqlite://file:test_non_unicode_static_path?mode=memory&cache=shared".to_string();
 
-    let state = AppState::init(&config).await.unwrap();
+    let state = crate::test_database::app_state(&config).await.unwrap();
     let expected_db_path = "\u{FFFD}.txt";
     store_file_in_db(&state, expected_db_path, b"file from db fs").await;
 
@@ -136,7 +136,7 @@ async fn test_non_unicode_static_path_returns_bad_request_with_db_fs() {
     );
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_routing_with_prefix() {
     let mut config = test_config();
     config.site_prefix = "/prefix/".to_string();
@@ -181,7 +181,7 @@ async fn test_routing_with_prefix() {
     assert_eq!(location.to_str().unwrap(), format!("/prefix{path}"));
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_hidden_files() {
     let resp_result = response_with("/tests/core/.hidden.sql", test_config()).await;
     assert!(
@@ -198,7 +198,7 @@ async fn test_hidden_files() {
     );
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_official_website_documentation() {
     let app_data = make_app_data_for_official_website().await;
     let resp = response_with_data("/component.sql?component=button", app_data)
@@ -214,7 +214,7 @@ async fn test_official_website_documentation() {
     );
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_official_website_basic_auth_example() {
     let resp = response_with_data(
         "/examples/authentication/basic_auth.sql",

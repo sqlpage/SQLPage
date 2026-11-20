@@ -23,7 +23,7 @@ async fn test_file_upload(target: &str) -> actix_web::Result<()> {
     Ok(())
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_persist_uploaded_file_mode() -> actix_web::Result<()> {
     let resp = response_from(
         multipart_request(
@@ -74,17 +74,17 @@ async fn test_persist_uploaded_file_mode() -> actix_web::Result<()> {
     Ok(())
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_file_upload_direct() -> actix_web::Result<()> {
     test_file_upload("/tests/uploads/upload_file_test.sql").await
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_file_upload_through_runsql() -> actix_web::Result<()> {
     test_file_upload("/tests/uploads/upload_file_runsql_test.sql").await
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_blank_file_upload_field() -> actix_web::Result<()> {
     let resp = response_from(multipart_request(
         "/tests/uploads/upload_file_test.sql",
@@ -106,7 +106,7 @@ async fn test_blank_file_upload_field() -> actix_web::Result<()> {
     Ok(())
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_file_upload_too_large() -> actix_web::Result<()> {
     let err_str = response_from(multipart_request(
         "/tests/uploads/upload_file_test.sql",
@@ -131,7 +131,7 @@ async fn test_file_upload_too_large() -> actix_web::Result<()> {
     Ok(())
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_upload_file_data_url() -> actix_web::Result<()> {
     let resp = response_from(multipart_request(
         "/tests/uploads/upload_file_data_url_test.sql",
@@ -149,7 +149,7 @@ async fn test_upload_file_data_url() -> actix_web::Result<()> {
     Ok(())
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_uploaded_file_name() -> actix_web::Result<()> {
     let resp = response_from(multipart_request(
         "/tests/uploads/uploaded_file_name_test.sql",
@@ -167,7 +167,7 @@ async fn test_uploaded_file_name() -> actix_web::Result<()> {
     Ok(())
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_csv_upload() -> actix_web::Result<()> {
     let resp = response_from(multipart_request(
         "/tests/uploads/upload_csv_test.sql",
@@ -212,7 +212,7 @@ fn two_files_and_one(third_file_name: &str) -> String {
     )
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_persist_uploaded_files() -> actix_web::Result<()> {
     let resp = response_from(multipart_request(
         "/tests/uploads/persist_multiple.sql",
@@ -236,7 +236,7 @@ async fn test_persist_uploaded_files() -> actix_web::Result<()> {
     Ok(())
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_persist_uploaded_files_rejects_all_on_bad_extension() -> actix_web::Result<()> {
     // Dedicated folder: tests run in parallel, and another test persists files in persisted_multiple.
     let folder = std::path::Path::new("tests/uploads/persisted_multiple_rejected");
@@ -257,7 +257,7 @@ async fn test_persist_uploaded_files_rejects_all_on_bad_extension() -> actix_web
     Ok(())
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_persist_uploaded_files_without_files() -> actix_web::Result<()> {
     let resp = response_from(multipart_request(
         "/tests/uploads/persist_multiple.sql",

@@ -1164,7 +1164,7 @@ mod tests {
     use crate::templates::split_template;
     use handlebars::Template;
 
-    #[actix_web::test]
+    #[actix_web::rt::test(system = "crate::test_database::System")]
     async fn test_split_template_render() -> anyhow::Result<()> {
         let template = Template::compile(
             "Hello {{name}} !\
@@ -1174,7 +1174,7 @@ mod tests {
         let split = split_template(template);
         let mut output = Vec::new();
         let config = app_config::tests::test_config();
-        let app_state = Arc::new(AppState::init(&config).await.unwrap());
+        let app_state = Arc::new(crate::test_database::app_state(&config).await.unwrap());
         let mut rdr = SplitTemplateRenderer::new(Arc::new(split), app_state, 0, 0);
         rdr.render_start(&mut output, json!({"name": "SQL"}))?;
         rdr.render_item(&mut output, json!({"x": 1}))?;
@@ -1187,7 +1187,7 @@ mod tests {
         Ok(())
     }
 
-    #[actix_web::test]
+    #[actix_web::rt::test(system = "crate::test_database::System")]
     async fn inline_partials_defined_before_each_row_render_in_every_part() -> anyhow::Result<()> {
         let template = Template::compile(
             "{{#*inline \"item\"}}[{{x}}]{{/inline}}\
@@ -1196,7 +1196,7 @@ mod tests {
         let split = split_template(template);
         let mut output = Vec::new();
         let config = app_config::tests::test_config();
-        let app_state = Arc::new(AppState::init(&config).await.unwrap());
+        let app_state = Arc::new(crate::test_database::app_state(&config).await.unwrap());
         let mut rdr = SplitTemplateRenderer::new(Arc::new(split), app_state, 0, 0);
         rdr.render_start(&mut output, json!(null))?;
         rdr.render_item(&mut output, json!({"x": 1}))?;
@@ -1206,7 +1206,7 @@ mod tests {
         Ok(())
     }
 
-    #[actix_web::test]
+    #[actix_web::rt::test(system = "crate::test_database::System")]
     async fn test_delayed() -> anyhow::Result<()> {
         let template = Template::compile(
             "{{#each_row}}<b> {{x}} {{#delay}} {{x}} </b>{{/delay}}{{/each_row}}{{flush_delayed}}",
@@ -1214,7 +1214,7 @@ mod tests {
         let split = split_template(template);
         let mut output = Vec::new();
         let config = app_config::tests::test_config();
-        let app_state = Arc::new(AppState::init(&config).await.unwrap());
+        let app_state = Arc::new(crate::test_database::app_state(&config).await.unwrap());
         let mut rdr = SplitTemplateRenderer::new(Arc::new(split), app_state, 0, 0);
         rdr.render_start(&mut output, json!(null))?;
         rdr.render_item(&mut output, json!({"x": 1}))?;
