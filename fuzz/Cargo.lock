@@ -4751,9 +4751,9 @@ dependencies = [
 
 [[package]]
 name = "sqlx-sqlserver"
-version = "0.0.4"
+version = "0.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "117e090ccaa57a9472606a845a031fedd2338f4a60772759c2d76660453fb27a"
+checksum = "c0d91ebd3f1b176ffffc81e9d18fe22e2a6f05f1b16e4a2285232bb17f0f6bf4"
 dependencies = [
  "bigdecimal",
  "bytes",

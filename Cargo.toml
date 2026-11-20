@@ -50,7 +50,7 @@ sqlx = { version = "=0.9.0", default-features = false, features = [
     "uuid",
 ] }
 sqlx-odbc = { version = "0.0.4", default-features = false, features = ["bigdecimal", "chrono"] }
-sqlx-sqlserver = { version = "0.0.4", default-features = false, features = ["bigdecimal", "chrono", "migrate", "uuid"] }
+sqlx-sqlserver = { version = "0.0.5", default-features = false, features = ["bigdecimal", "chrono", "migrate", "uuid"] }
 # Keep this in sync with SQLx: SQLite function registration uses its raw handle.
 libsqlite3-sys = "=0.37.0"
 chrono = "0.4.23"
