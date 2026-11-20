@@ -220,21 +220,16 @@ fn with_stmt_position(
 pub fn stop_at_first_error(
     results_stream: impl Stream<Item = DbItem>,
 ) -> impl Stream<Item = DbItem> {
-    // We need a oneshot channel rather than a simple boolean flag because
-    // take_while would poll the stream one extra time after the error,
-    // while take_until stops immediately when the future completes
-    let (error_tx, error_rx) = tokio::sync::oneshot::channel();
-    let mut error_tx = Some(error_tx);
-
-    results_stream
-        .inspect(move |item| {
-            if matches!(item, DbItem::Error(_))
-                && let Some(tx) = error_tx.take()
-            {
-                let _ = tx.send(());
+    async_stream::stream! {
+        futures_util::pin_mut!(results_stream);
+        while let Some(item) = results_stream.next().await {
+            let failed = matches!(item, DbItem::Error(_));
+            yield item;
+            if failed {
+                break;
             }
-        })
-        .take_until(error_rx)
+        }
+    }
 }
 
 async fn execute_static_simple_select(
@@ -727,6 +722,13 @@ mod tests {
         apply_json_columns(&mut item, &["json_col".to_string(), "json_col".to_string()]);
         assert_json_value(&item, "json_col", json!({"key": "value"}));
         assert_json_value(&item, "normal_col", json!("text"));
+    }
+
+    #[actix_web::test]
+    async fn an_error_ends_the_stream_without_polling_the_next_statement() {
+        let error = stream::iter([DbItem::Error(anyhow!("bad query"))]);
+        let later = stream::poll_fn(|_| panic!("polled another statement after the error"));
+        assert_eq!(stop_at_first_error(error.chain(later)).count().await, 1);
     }
 
     #[actix_web::test]
