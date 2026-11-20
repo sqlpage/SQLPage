@@ -1,12 +1,12 @@
 use chrono::{DateTime, Utc};
 
 use super::{Parameter, execute_queries::QueryEvent, sql_to_json::DecodeRow};
-use futures_util::{StreamExt, future::BoxFuture, stream::BoxStream};
+use futures_util::{StreamExt, future::BoxFuture, stream, stream::BoxStream};
 use sqlx::migrate::{MigrateError, Migrator};
 use sqlx::pool::PoolConnection;
 use sqlx::{
-    Arguments, AssertSqlSafe, ColumnIndex, Database, Either, Error, Execute, Executor, MySql, Pool,
-    Postgres, Row, SqlSafeStr, SqlStr, Sqlite, Type, encode::Encode, error::BoxDynError,
+    Arguments, AssertSqlSafe, ColumnIndex, Database, Either, Encode, Error, Executor, MySql, Pool,
+    Postgres, Row, Sqlite, Type,
 };
 use sqlx_odbc::Odbc;
 use sqlx_sqlserver::Mssql;
@@ -96,7 +96,7 @@ impl DatabasePool {
     pub(super) async fn exists(&self, sql: &str, params: &[Parameter<'_>]) -> Result<bool, Error> {
         let mut conn = self.acquire().await?;
         dispatch!(DatabaseConnection, &mut conn, conn =>
-            (&mut **conn).fetch_optional(BoundStatement::typed(sql, params)).await.map(|row| row.is_some())
+            (&mut **conn).fetch_optional((AssertSqlSafe(sql), bind(params.iter().copied())?)).await.map(|row| row.is_some())
         )
     }
 
@@ -143,7 +143,7 @@ impl DatabaseConnection {
     ) -> BoxFuture<'a, Result<(), Error>> {
         Box::pin(async move {
             dispatch!(Self, self, conn =>
-                (&mut **conn).execute(BoundStatement::typed(sql, params)).await.map(drop)
+                (&mut **conn).execute((AssertSqlSafe(sql), bind(params.iter().copied())?)).await.map(drop)
             )
         })
     }
@@ -154,16 +154,12 @@ impl DatabaseConnection {
         params: &'c [Option<String>],
         json_inputs: &'c [bool],
     ) -> BoxStream<'c, Result<QueryEvent, Error>> {
-        let statement = BoundStatement {
-            sql,
-            params: Parameters::Text(params),
-        };
         match self {
-            Self::Postgres(conn) => fetch::<Postgres>(conn, statement, json_inputs),
-            Self::MySql(conn) => fetch::<MySql>(conn, statement, json_inputs),
-            Self::Sqlite(conn) => fetch::<Sqlite>(conn, statement, json_inputs),
-            Self::Mssql(conn) => fetch::<Mssql>(conn, statement, json_inputs),
-            Self::Odbc(conn) => fetch::<Odbc>(conn, statement, json_inputs),
+            Self::Postgres(conn) => fetch::<Postgres>(conn, sql, params, json_inputs),
+            Self::MySql(conn) => fetch::<MySql>(conn, sql, params, json_inputs),
+            Self::Sqlite(conn) => fetch::<Sqlite>(conn, sql, params, json_inputs),
+            Self::Mssql(conn) => fetch::<Mssql>(conn, sql, params, json_inputs),
+            Self::Odbc(conn) => fetch::<Odbc>(conn, sql, params, json_inputs),
         }
     }
 }
@@ -178,9 +174,12 @@ where
     for<'c> &'c mut DB::Connection: Executor<'c, Database = DB>,
     usize: ColumnIndex<DB::Row>,
     Vec<u8>: Type<DB> + for<'r> sqlx::Decode<'r, DB>,
-    for<'q> BoundStatement<'q>: Execute<'q, DB>,
+    for<'a> Option<&'a str>: Encode<'a, DB> + Type<DB>,
+    for<'a> &'a [u8]: Encode<'a, DB> + Type<DB>,
+    DateTime<Utc>: for<'a> Encode<'a, DB> + Type<DB>,
 {
-    conn.fetch_optional(BoundStatement::typed(sql, params))
+    let args = bind::<DB::Arguments>(params.iter().copied())?;
+    conn.fetch_optional((AssertSqlSafe(sql), args))
         .await?
         .map(|row| row.try_get(0))
         .transpose()
@@ -188,17 +187,24 @@ where
 
 fn fetch<'c, DB>(
     conn: &'c mut DB::Connection,
-    statement: BoundStatement<'c>,
+    sql: &'c str,
+    params: &[Option<String>],
     json_inputs: &'c [bool],
 ) -> BoxStream<'c, Result<QueryEvent, Error>>
 where
     DB: Database,
     for<'e> &'e mut DB::Connection: Executor<'e, Database = DB>,
-    BoundStatement<'c>: Execute<'c, DB>,
+    for<'a> Option<&'a str>: Encode<'a, DB> + Type<DB>,
+    for<'a> &'a [u8]: Encode<'a, DB> + Type<DB>,
+    DateTime<Utc>: for<'a> Encode<'a, DB> + Type<DB>,
     DB::Row: DecodeRow,
     usize: ColumnIndex<DB::Row>,
 {
-    conn.fetch_many(statement)
+    let args = match bind::<DB::Arguments>(params.iter().map(|p| Parameter::Text(p.as_deref()))) {
+        Ok(args) => args,
+        Err(err) => return stream::once(async { Err(err) }).boxed(),
+    };
+    conn.fetch_many((AssertSqlSafe(sql), args))
         .map(move |result| match result? {
             Either::Left(_) => Ok(QueryEvent::FinishedQuery),
             Either::Right(row) => row.query_row(json_inputs).map(QueryEvent::Row),
@@ -206,63 +212,23 @@ where
         .boxed()
 }
 
-struct BoundStatement<'q> {
-    sql: &'q str,
-    params: Parameters<'q>,
-}
-
-enum Parameters<'q> {
-    Text(&'q [Option<String>]),
-    Typed(&'q [Parameter<'q>]),
-}
-
-impl<'q> BoundStatement<'q> {
-    fn typed(sql: &'q str, params: &'q [Parameter<'q>]) -> Self {
-        Self {
-            sql,
-            params: Parameters::Typed(params),
-        }
-    }
-}
-
-impl<'q, DB> Execute<'q, DB> for BoundStatement<'q>
+fn bind<'a, A: Arguments>(
+    params: impl IntoIterator<Item = Parameter<'a>>,
+) -> Result<Option<A>, Error>
 where
-    DB: Database,
-    Option<&'q str>: Encode<'q, DB> + Type<DB>,
-    &'q [u8]: Encode<'q, DB> + Type<DB>,
-    DateTime<Utc>: Encode<'q, DB> + Type<DB>,
+    Option<&'a str>: Encode<'a, A::Database> + Type<A::Database>,
+    &'a [u8]: Encode<'a, A::Database> + Type<A::Database>,
+    DateTime<Utc>: Encode<'a, A::Database> + Type<A::Database>,
 {
-    fn sql(self) -> SqlStr {
-        AssertSqlSafe(self.sql).into_sql_str()
-    }
-
-    fn statement(&self) -> Option<&DB::Statement> {
-        None
-    }
-
-    fn take_arguments(&mut self) -> Result<Option<DB::Arguments>, BoxDynError> {
-        let mut arguments = DB::Arguments::default();
-        match self.params {
-            Parameters::Text([]) | Parameters::Typed([]) => return Ok(None),
-            Parameters::Text(params) => {
-                for param in params {
-                    arguments.add(param.as_deref())?;
-                }
-            }
-            Parameters::Typed(params) => {
-                for param in params {
-                    match param {
-                        Parameter::Text(value) => arguments.add(*value)?,
-                        Parameter::Bytes(value) => arguments.add(*value)?,
-                        Parameter::Timestamp(value) => arguments.add(*value)?,
-                    }
-                }
-            }
+    let mut args = A::default();
+    for param in params {
+        match param {
+            Parameter::Text(value) => args.add(value),
+            Parameter::Bytes(value) => args.add(value),
+            Parameter::Timestamp(value) => args.add(value),
         }
-        Ok(Some(arguments))
+        .map_err(Error::Encode)?;
     }
-
-    fn persistent(&self) -> bool {
-        true
-    }
+    // None selects the simple query protocol, which also supports SQL batches.
+    Ok((args.len() > 0).then_some(args))
 }
