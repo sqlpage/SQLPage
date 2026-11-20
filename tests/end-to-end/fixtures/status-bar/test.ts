@@ -30,25 +30,38 @@ test("rows render in order with icons, tooltips and links", async ({
   ).toBeInViewport();
 });
 
-test("only the fixed bar stays at the viewport bottom while scrolling", async ({
-  page,
-}) => {
-  const fixed = page.getByRole("status", { name: "Status bar", exact: true });
-  const inline = page.getByRole("status", { name: "Repository status" });
-  const bottomGap = () =>
-    fixed.evaluate((bar) => innerHeight - bar.getBoundingClientRect().bottom);
+test.describe("without JavaScript", () => {
+  test.use({ javaScriptEnabled: false });
 
-  await expect(fixed.getByText("Connected", { exact: true })).toBeVisible();
-  await expect(
-    fixed.getByRole("link", { name: "Open build history" }),
-  ).toBeVisible();
-  await expect(inline).toBeInViewport();
-  expect(await bottomGap()).toBeCloseTo(0);
-  await page
-    .getByRole("heading", { name: "Build history" })
-    .scrollIntoViewIfNeeded();
-  await expect(inline).not.toBeInViewport();
-  expect(await bottomGap()).toBeCloseTo(0);
+  test("the status bar stays at the viewport bottom and the fixed menu fits the boxed shell", async ({
+    page,
+  }) => {
+    await page.goto("/status-bar/?boxed=1");
+    const fixed = page.getByRole("status", { name: "Status bar", exact: true });
+    const inline = page.getByRole("status", { name: "Repository status" });
+    const bottomGap = () =>
+      fixed.evaluate((bar) => innerHeight - bar.getBoundingClientRect().bottom);
+
+    const header = await page.getByRole("banner").evaluate((el) => {
+      const { x, width } = el.getBoundingClientRect();
+      return { x, width };
+    });
+    expect(header.x).toBeGreaterThan(0);
+    expect(await page.getByRole("navigation").boundingBox()).toMatchObject(
+      header,
+    );
+    await expect(fixed.getByText("Connected", { exact: true })).toBeVisible();
+    await expect(
+      fixed.getByRole("link", { name: "Open build history" }),
+    ).toBeVisible();
+    await expect(inline).toBeInViewport();
+    expect(await bottomGap()).toBeCloseTo(0);
+    await page
+      .getByRole("heading", { name: "Build history" })
+      .scrollIntoViewIfNeeded();
+    await expect(inline).not.toBeInViewport();
+    expect(await bottomGap()).toBeCloseTo(0);
+  });
 });
 
 test("a narrow bar scrolls to the next focused link without widening the page", async ({

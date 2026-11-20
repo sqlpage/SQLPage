@@ -1,3 +1,14 @@
+/* A boxed page normally contains fixed elements. Let the bar use the viewport. */
+:is(.layout-boxed, html[data-bs-layout="boxed"] body)
+  > .page:has(.status-bar.fixed-bottom) {
+  contain: none;
+
+  /* Keep the boxed menu positioned against the same .page as before. */
+  > #sqlpage_header > .fixed-top {
+    position: absolute;
+  }
+}
+
 .status-bar > * + :last-child {
   margin-inline-start: auto;
 }

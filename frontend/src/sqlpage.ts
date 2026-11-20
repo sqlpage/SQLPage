@@ -511,31 +511,20 @@ function sqlpage_toast(root: InitRoot) {
   open_toasts_for_hash(initialized_toasts);
 }
 
-function move_to_body(el: Element) {
-  // Tabler's boxed .page makes fixed descendants scroll with the page.
-  document.body.appendChild(el);
-  // Other initializers still need to see components moved out of an embedded fragment.
-  el.dispatchEvent(new CustomEvent("fragment-loaded", { bubbles: true }));
-}
-
 function sqlpage_modal(root: InitRoot) {
+  // Bootstrap modals use position: fixed and are documented to live as
+  // direct children of <body>
+  // (https://getbootstrap.com/docs/5.3/components/modal/#how-it-works).
+  // SQLPage renders them inside .page, but Tabler 1.5 sets
+  // `contain: layout` on .page, which makes fixed positioning relative to
+  // .page instead of the viewport. The modal then scrolls with the page
+  // content and ends up behind its own backdrop, so its buttons cannot be
+  // clicked. Moving modals to <body> keeps them viewport-fixed.
   for (const modal of select_all(root, "body .page .modal", HTMLElement)) {
-    move_to_body(modal);
-  }
-}
-
-// The fixed bar belongs to the SQL fragment that rendered it. Put it back
-// when that fragment is detached so replacing the fragment also replaces its bar.
-class FixedStatusBar extends HTMLElement {
-  private bar: Element | null = null;
-
-  connectedCallback() {
-    this.bar = this.firstElementChild;
-    if (this.bar) move_to_body(this.bar);
-  }
-
-  disconnectedCallback() {
-    if (this.bar) this.appendChild(this.bar);
+    document.body.appendChild(modal);
+    // The modal leaves the original root; announce its subtree separately so
+    // every initializer, including later-loaded bundles, can still see it.
+    modal.dispatchEvent(new CustomEvent("fragment-loaded", { bubbles: true }));
   }
 }
 
@@ -567,8 +556,6 @@ function init_bootstrap_components(root: InitRoot) {
 }
 
 add_init_fn(init_bootstrap_components);
-
-customElements.define("sqlpage-fixed-status-bar", FixedStatusBar);
 
 function open_modal_for_hash() {
   const hash = window.location.hash.substring(1);

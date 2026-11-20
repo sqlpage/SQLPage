@@ -1,4 +1,3 @@
-{{#if (default fixed true)}}<sqlpage-fixed-status-bar>{{/if}}
 <div role="status" aria-label="{{default label 'Status bar'}}"
     {{#if id}}id="{{id}}"{{/if}}
     class="status-bar d-flex divide-x overflow-x-auto bg-surface fs-5 {{#if (default fixed true)}}fixed-bottom border-top{{else}}my-2 border rounded{{/if}} {{class}}">
@@ -11,4 +10,3 @@
         {{#if link}}</a>{{else}}</span>{{/if}}
     {{/each_row}}
 </div>
-{{#if (default fixed true)}}</sqlpage-fixed-status-bar>{{/if}}

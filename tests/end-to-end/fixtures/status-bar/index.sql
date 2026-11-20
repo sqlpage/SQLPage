@@ -1,3 +1,6 @@
+SELECT 'shell' AS component, 'Builds' AS title, 'boxed' AS layout, TRUE AS fixed_top_menu
+WHERE $boxed IS NOT NULL;
+
 SELECT 'status_bar' AS component, 'repository' AS id, 'project-status' AS class,
     'Repository status' AS label, FALSE AS fixed;
 SELECT 'Build passed' AS title, 'circle-check' AS icon, 'green' AS color,
