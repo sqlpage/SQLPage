@@ -6,13 +6,6 @@ use sqlparser::dialect::{
     PostgreSqlDialect, SQLiteDialect, SnowflakeDialect,
 };
 
-/// Native bind-placeholder forms supported by `sqlx` database backends.
-#[derive(Clone, Copy)]
-pub(super) enum PlaceholderStyle {
-    Numbered { prefix: &'static str },
-    Positional { token: &'static str },
-}
-
 /// Returns the `sqlparser` dialect matching the configured database.
 pub(super) fn parser_dialect(database: SupportedDatabase) -> Box<dyn Dialect> {
     match database {
@@ -28,20 +21,21 @@ pub(super) fn parser_dialect(database: SupportedDatabase) -> Box<dyn Dialect> {
 }
 
 impl DbInfo {
-    pub(super) fn placeholder_style(self) -> PlaceholderStyle {
+    /// A numbered placeholder can refer to the same binding more than once.
+    pub(super) fn numbered_placeholder_prefix(self) -> Option<&'static str> {
         match self {
-            Self::Native(SupportedDatabase::Sqlite) => PlaceholderStyle::Numbered { prefix: "?" },
-            Self::Native(SupportedDatabase::Postgres) => PlaceholderStyle::Numbered { prefix: "$" },
-            Self::Native(SupportedDatabase::Mssql) => PlaceholderStyle::Numbered { prefix: "@p" },
-            _ => PlaceholderStyle::Positional { token: "?" },
+            Self::Native(SupportedDatabase::Sqlite) => Some("?"),
+            Self::Native(SupportedDatabase::Postgres) => Some("$"),
+            Self::Native(SupportedDatabase::Mssql) => Some("@p"),
+            _ => None,
         }
     }
 
     #[must_use]
     pub fn placeholder(self, number: usize) -> String {
-        match self.placeholder_style() {
-            PlaceholderStyle::Numbered { prefix } => format!("{prefix}{number}"),
-            PlaceholderStyle::Positional { token } => token.to_owned(),
+        match self.numbered_placeholder_prefix() {
+            Some(prefix) => format!("{prefix}{number}"),
+            None => "?".to_owned(),
         }
     }
 }
