@@ -1,6 +1,6 @@
 use crate::webserver::ErrorWithStatus;
 use crate::webserver::database::Parameter;
-use crate::webserver::database::SupportedDatabase;
+use crate::webserver::database::{DatabaseDriver, SupportedDatabase};
 use crate::webserver::{Database, StatusCodeResultExt, make_placeholder};
 use crate::{AppState, TEMPLATES_DIR};
 use anyhow::Context;
@@ -83,8 +83,14 @@ impl FileSystem {
             (Err(e), Some(db_fs)) if is_path_missing_error(&e) => {
                 // no local file, try the database
                 db_fs
-                    .file_modified_since_in_db(app_state, path, since)
+                    .modified_since(&app_state.db, path, since)
                     .await
+                    .with_context(|| {
+                        format!(
+                            "Unable to check when {} was last modified in the database",
+                            path.display()
+                        )
+                    })
             }
             (Err(e), _) => {
                 let status = io_error_status(&local_path, &e).await;
@@ -140,7 +146,10 @@ impl FileSystem {
             (Ok(f), _) => Ok(f),
             (Err(e), Some(db_fs)) if is_path_missing_error(&e) => {
                 // no local file, try the database
-                db_fs.read_file(app_state, path.as_ref()).await
+                db_fs
+                    .read_file(&app_state.db, path)
+                    .await
+                    .with_context(|| format!("Unable to read {} from the database", path.display()))
             }
             (Err(e), _) => {
                 let status = io_error_status(&local_path, &e).await;
@@ -198,7 +207,15 @@ impl FileSystem {
                 path.display()
             );
             if let Some(db_fs) = &self.db_fs_queries {
-                return db_fs.file_exists(app_state, path).await;
+                return db_fs
+                    .file_exists(&app_state.db, path)
+                    .await
+                    .with_context(|| {
+                        format!(
+                            "Unable to check if {} exists in the database",
+                            path.display()
+                        )
+                    });
             }
         }
         Ok(local_exists)
@@ -336,7 +353,10 @@ impl DbFsQueries {
 
     async fn init(db: &Database) -> anyhow::Result<Self> {
         log::debug!("Initializing database filesystem queries");
-        Self::check_table_available(db).await?;
+        db.connection
+            .execute("SELECT path, contents, last_modified FROM sqlpage_files WHERE 1 = 0")
+            .await
+            .context("Unable to access sqlpage_files")?;
         let path_param = make_placeholder(db.info.kind, 1);
         let timestamp_param = make_placeholder(db.info.kind, 2);
         Ok(Self {
@@ -348,78 +368,57 @@ impl DbFsQueries {
         })
     }
 
-    async fn check_table_available(db: &Database) -> anyhow::Result<()> {
-        db.connection
-            .execute("SELECT path, contents, last_modified FROM sqlpage_files WHERE 1 = 0")
-            .await
-            .context("Unable to access sqlpage_files")
-    }
-
-    async fn file_modified_since_in_db(
+    async fn modified_since(
         &self,
-        app_state: &AppState,
+        db: &Database,
         path: &Path,
         since: DateTime<Utc>,
-    ) -> anyhow::Result<bool> {
+    ) -> Result<bool, sqlx::Error> {
         // SQLite's CURRENT_TIMESTAMP uses a space separator. Preserve the
         // same lexical ordering for existing timestamp strings.
         let sqlite_timestamp;
-        let timestamp =
-            if app_state.db.info.kind == crate::webserver::database::DatabaseDriver::Sqlite {
-                sqlite_timestamp = since.format("%F %T%.f%:z").to_string();
-                Parameter::Text(Some(&sqlite_timestamp))
-            } else {
-                Parameter::Timestamp(since)
-            };
-        app_state
-            .db
+        let timestamp = if db.info.kind == DatabaseDriver::Sqlite {
+            sqlite_timestamp = since.format("%F %T%.f%:z").to_string();
+            Parameter::Text(Some(&sqlite_timestamp))
+        } else {
+            Parameter::Timestamp(since)
+        };
+        db.connection
+            .acquire()
+            .await?
             .exists(
                 &self.was_modified,
                 &[Parameter::Text(Some(&path.to_string_lossy())), timestamp],
             )
             .await
-            .with_context(|| {
-                format!(
-                    "Unable to check when {} was last modified in the database",
-                    path.display()
-                )
-            })
     }
 
-    async fn read_file(&self, app_state: &AppState, path: &Path) -> anyhow::Result<Vec<u8>> {
-        app_state
-            .db
+    async fn read_file(&self, db: &Database, path: &Path) -> anyhow::Result<Vec<u8>> {
+        db.connection
+            .acquire()
+            .await?
             .fetch_bytes(
                 &self.read_file,
                 &[Parameter::Text(Some(&path.to_string_lossy()))],
             )
-            .await
-            .map_err(anyhow::Error::from)
-            .and_then(|file| {
-                file.ok_or_else(|| {
-                    ErrorWithStatus {
-                        status: actix_web::http::StatusCode::NOT_FOUND,
-                    }
-                    .into()
-                })
+            .await?
+            .ok_or_else(|| {
+                ErrorWithStatus {
+                    status: actix_web::http::StatusCode::NOT_FOUND,
+                }
+                .into()
             })
-            .with_context(|| format!("Unable to read {} from the database", path.display()))
     }
 
-    async fn file_exists(&self, app_state: &AppState, path: &Path) -> anyhow::Result<bool> {
-        app_state
-            .db
+    async fn file_exists(&self, db: &Database, path: &Path) -> Result<bool, sqlx::Error> {
+        db.connection
+            .acquire()
+            .await?
             .exists(
                 &self.exists,
                 &[Parameter::Text(Some(&path.to_string_lossy()))],
             )
             .await
-            .with_context(|| {
-                format!(
-                    "Unable to check if {} exists in the database",
-                    path.display()
-                )
-            })
     }
 }
 
@@ -459,14 +458,17 @@ async fn test_sql_file_read_utf8() -> anyhow::Result<()> {
         make_placeholder(dbms, 1),
         make_placeholder(dbms, 2)
     );
-    db.execute_with(
-        &insert_sql,
-        &[
-            Parameter::Text(Some("unit test file.txt")),
-            Parameter::Bytes("Héllö world! 😀".as_bytes()),
-        ],
-    )
-    .await?;
+    db.connection
+        .acquire()
+        .await?
+        .execute_with(
+            &insert_sql,
+            &[
+                Parameter::Text(Some("unit test file.txt")),
+                Parameter::Bytes("Héllö world! 😀".as_bytes()),
+            ],
+        )
+        .await?;
 
     let fs = FileSystem::init("/", db).await;
     let actual = fs
