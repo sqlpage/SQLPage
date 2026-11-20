@@ -10,7 +10,6 @@ use sqlparser::ast::{
 };
 use sqlparser::tokenizer::Span;
 
-use super::super::dialect::PlaceholderStyle;
 use super::sqlpage_expression::{
     StandaloneContext, build_sqlpage_expr, recognize_sqlpage_function, variable_from_expr,
 };
@@ -39,24 +38,21 @@ impl DatabaseLowerer {
     }
 
     fn add_binding(&mut self, value: StandaloneExpr) -> SqlExpr {
-        let style = self.database.placeholder_style();
+        let prefix = self.database.numbered_placeholder_prefix();
         // Variable identity includes its lookup source. Calls may have side effects,
         // and positional placeholders need a separate argument for each occurrence.
-        let existing = match (&value, style) {
-            (SqlPageExpr::Variable(_), PlaceholderStyle::Numbered { .. }) => {
-                self.bindings.iter().position(|binding| binding == &value)
-            }
-            _ => None,
+        let existing = if prefix.is_some() && matches!(value, SqlPageExpr::Variable(_)) {
+            self.bindings.iter().position(|binding| binding == &value)
+        } else {
+            None
         };
         let sequence = existing.unwrap_or_else(|| {
             let sequence = self.bindings.len();
             self.bindings.push(value);
             sequence
         });
-        let placeholder = match style {
-            PlaceholderStyle::Numbered { prefix } => format!("{prefix}{}", sequence + 1),
-            PlaceholderStyle::Positional { .. } => format!("${}", sequence + 1),
-        };
+        // Positional drivers use temporary $n markers until SQL rendering order is known.
+        let placeholder = format!("{}{}", prefix.unwrap_or("$"), sequence + 1);
         cast_placeholder(placeholder, self.database)
     }
 
@@ -64,11 +60,10 @@ impl DatabaseLowerer {
         self,
         statement: &mut SqlStatement,
     ) -> anyhow::Result<Box<[StandaloneExpr]>> {
-        let PlaceholderStyle::Positional { token } = self.database.placeholder_style() else {
+        if self.database.numbered_placeholder_prefix().is_some() {
             return Ok(self.bindings.into_boxed_slice());
-        };
+        }
         let mut finalizer = PositionalBindingFinalizer {
-            token,
             binding_count: self.bindings.len(),
             order: Vec::with_capacity(self.bindings.len()),
             error: None,
@@ -162,7 +157,6 @@ impl VisitorMut for DatabaseLowerer {
 }
 
 struct PositionalBindingFinalizer {
-    token: &'static str,
     binding_count: usize,
     order: Vec<usize>,
     error: Option<anyhow::Error>,
@@ -194,7 +188,7 @@ impl VisitorMut for PositionalBindingFinalizer {
             return ControlFlow::Break(());
         }
         self.order.push(index);
-        self.token.clone_into(name);
+        "?".clone_into(name);
         ControlFlow::Continue(())
     }
 }
