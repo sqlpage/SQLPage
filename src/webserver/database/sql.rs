@@ -63,7 +63,7 @@ impl SqlFile {
             source_path.display(),
             dialect
         );
-        let statements = match parse_sql(database, dialect.as_ref(), sql) {
+        let statements = match parse_sql(database, dialect, sql) {
             Ok(statements) => statements.collect::<Vec<_>>().into_boxed_slice(),
             Err(error) => {
                 return Self::from_error(error, source_path);
@@ -703,7 +703,7 @@ mod tests {
             let FileStatement::Query(Query {
                 body: QueryBody::Database(query),
                 ..
-            }) = parse_sql(info, dialect.as_ref(), "select $b, $a, $b from t")
+            }) = parse_sql(info, dialect, "select $b, $a, $b from t")
                 .unwrap()
                 .next()
                 .unwrap()

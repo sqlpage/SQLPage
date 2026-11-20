@@ -7,16 +7,16 @@ use sqlparser::dialect::{
 };
 
 /// Returns the `sqlparser` dialect matching the configured database.
-pub(super) fn parser_dialect(database: SupportedDatabase) -> Box<dyn Dialect> {
+pub(super) fn parser_dialect(database: SupportedDatabase) -> &'static dyn Dialect {
     match database {
-        SupportedDatabase::Duckdb => Box::new(DuckDbDialect {}),
-        SupportedDatabase::Oracle => Box::new(OracleDialect {}),
-        SupportedDatabase::Postgres => Box::new(PostgreSqlDialect {}),
-        SupportedDatabase::Generic => Box::new(GenericDialect {}),
-        SupportedDatabase::Mssql => Box::new(MsSqlDialect {}),
-        SupportedDatabase::MySql => Box::new(MySqlDialect {}),
-        SupportedDatabase::Sqlite => Box::new(SQLiteDialect {}),
-        SupportedDatabase::Snowflake => Box::new(SnowflakeDialect {}),
+        SupportedDatabase::Duckdb => &DuckDbDialect {},
+        SupportedDatabase::Oracle => &OracleDialect {},
+        SupportedDatabase::Postgres => &PostgreSqlDialect {},
+        SupportedDatabase::Generic => &GenericDialect {},
+        SupportedDatabase::Mssql => &MsSqlDialect {},
+        SupportedDatabase::MySql => &MySqlDialect {},
+        SupportedDatabase::Sqlite => &SQLiteDialect {},
+        SupportedDatabase::Snowflake => &SnowflakeDialect {},
     }
 }
 
