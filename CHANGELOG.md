@@ -17,7 +17,7 @@
 - JSON `shell` menu items with a link are now links in the accessibility tree instead of being announced as buttons; only submenu toggles keep `role="button"`.
 - The new [`status_bar` component](https://sql-page.com/component.sql?component=status_bar) displays short status messages and links along the bottom of the screen or inline with page content.
 - A file input with `multiple` now keeps every selected file, instead of only the last one. The new [`sqlpage.persist_uploaded_files`](https://sql-page.com/functions.sql?function=persist_uploaded_files) function saves them all and returns a JSON array with the `path`, original `name`, `mime_type` and `size` of each file.
-- Native SQL Server connections now run startup migrations. The new driver buffers each query response before returning rows and requires [full-session TLS](./configuration.md#database-connection-strings) for encrypted connections.
+- Native SQL Server connections now run startup migrations. Encrypted connections require [full-session TLS](./configuration.md#database-connection-strings).
 - On native MySQL connections, values 0 and 1 in `BIT(2)` through `BIT(8)` columns now produce JSON booleans. Use `CAST(column_name AS UNSIGNED)` to keep numeric output.
 - Set `wrap` on a `big_number` component to show long titles and descriptions across multiple lines.
 - Inline icons now align with their labels in components such as tabs and steps.
