@@ -18,5 +18,3 @@ path = "fuzz_targets/sql_file.rs"
 test = false
 doc = false
 bench = false
-
-[workspace]
