@@ -40,18 +40,19 @@ use crate::webserver::database::sqlpage_expr::RowExpr;
 /// evaluated around it.
 pub(super) fn rewrite_query(
     mut statement: SqlStatement,
-    database: &DbInfo,
+    database: DbInfo,
     semicolon: bool,
 ) -> anyhow::Result<Query> {
     let source_span = source_span(&statement);
-    if let Some(static_select) = static_simple_select::try_plan(&mut statement, database)? {
+    let database_type = database.database_type();
+    if let Some(static_select) = static_simple_select::try_plan(&mut statement, database_type)? {
         return Ok(Query {
             body: QueryBody::StaticSimpleSelect(static_select),
             source_span,
         });
     }
 
-    let mut partitioner = ProjectionPartitioner::new(database);
+    let mut partitioner = ProjectionPartitioner::new(database_type);
     let mut lowerer = DatabaseLowerer::new(database);
     let computed_columns =
         partition_and_lower_top_level_projection(&mut statement, &mut partitioner, &mut lowerer)?;
@@ -66,7 +67,7 @@ pub(super) fn rewrite_query(
         partitioner.row_input_json.push(false);
     }
 
-    let json_columns = detect_public_json_columns(&statement, database.database_type);
+    let json_columns = detect_public_json_columns(&statement, database_type);
     lowerer.lower_ast(&mut statement)?;
     let bindings = lowerer.finish_bindings(&mut statement)?;
     let sql = format!("{statement}{}", if semicolon { ";" } else { "" });
@@ -85,8 +86,8 @@ pub(super) fn rewrite_query(
 
 fn partition_and_lower_top_level_projection(
     statement: &mut SqlStatement,
-    partitioner: &mut ProjectionPartitioner<'_>,
-    lowerer: &mut DatabaseLowerer<'_>,
+    partitioner: &mut ProjectionPartitioner,
+    lowerer: &mut DatabaseLowerer,
 ) -> anyhow::Result<Vec<OutputColumn<RowExpr>>> {
     let SqlStatement::Query(query) = statement else {
         return Ok(Vec::new());

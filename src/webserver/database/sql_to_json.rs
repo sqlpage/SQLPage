@@ -324,7 +324,7 @@ mod tests {
 
     use super::*;
     use crate::webserver::database::execute_queries::QueryEvent;
-    use crate::webserver::database::{Database as AppDatabase, DatabaseDriver};
+    use crate::webserver::database::{Database as AppDatabase, DbInfo, SupportedDatabase};
     use futures_util::{Stream, TryStreamExt};
 
     async fn connect(url: String) -> anyhow::Result<AppDatabase> {
@@ -824,7 +824,7 @@ mod tests {
 
         // For ODBC databases, uppercase columns should be converted to lowercase
         // For other databases, names should remain as-is
-        let expected_json = if db.info.kind == DatabaseDriver::Odbc {
+        let expected_json = if matches!(db.info, DbInfo::Odbc(_)) {
             // ODBC database - uppercase should be converted to lowercase
             serde_json::json!({
                 "uppercase_col": 42,
@@ -861,8 +861,6 @@ mod tests {
         let db = connect(db_url).await?;
         let mut c = db.connection.acquire().await?;
 
-        let dbms_name = db.info.dbms_name;
-
         // Test edge cases for row_to_json
         let row = first_row(c.fetch_many(
             "SELECT
@@ -883,7 +881,7 @@ line2' as multiline_string
         let json_result = row.value;
 
         // For Oracle databases, empty string is treated as NULL.
-        let empty_str_is_null = dbms_name.to_lowercase().contains("oracle");
+        let empty_str_is_null = db.info.database_type() == SupportedDatabase::Oracle;
 
         let expected_json = serde_json::json!({
             "null_col": null,

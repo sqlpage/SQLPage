@@ -93,7 +93,7 @@ fn get_database_specific_test_cases(db_type: &str) -> Vec<SqlTestCase> {
 }
 
 fn database_type_name(app_data: &actix_web::web::Data<AppState>) -> String {
-    format!("{:?}", app_data.db.info.database_type).to_lowercase()
+    format!("{:?}", app_data.db.info.database_type()).to_lowercase()
 }
 
 fn read_sql_tests_in_dir(dir: &str, format: SqlTestFormat) -> Vec<SqlTestCase> {

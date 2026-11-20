@@ -1,12 +1,10 @@
 //! Database-specific parser dialects and bind-placeholder syntax.
 
-use crate::webserver::database::DatabaseDriver;
+use crate::webserver::database::{DbInfo, SupportedDatabase};
 use sqlparser::dialect::{
     Dialect, DuckDbDialect, GenericDialect, MsSqlDialect, MySqlDialect, OracleDialect,
     PostgreSqlDialect, SQLiteDialect, SnowflakeDialect,
 };
-
-use crate::webserver::database::SupportedDatabase;
 
 /// Native bind-placeholder forms supported by `sqlx` database backends.
 #[derive(Clone, Copy)]
@@ -29,12 +27,21 @@ pub(super) fn parser_dialect(database: SupportedDatabase) -> Box<dyn Dialect> {
     }
 }
 
-/// Returns the native placeholder syntax emitted into rewritten SQL.
-pub(super) fn placeholder_style(kind: DatabaseDriver) -> PlaceholderStyle {
-    match kind {
-        DatabaseDriver::Sqlite => PlaceholderStyle::Numbered { prefix: "?" },
-        DatabaseDriver::Postgres => PlaceholderStyle::Numbered { prefix: "$" },
-        DatabaseDriver::Mssql => PlaceholderStyle::Numbered { prefix: "@p" },
-        DatabaseDriver::MySql | DatabaseDriver::Odbc => PlaceholderStyle::Positional { token: "?" },
+impl DbInfo {
+    pub(super) fn placeholder_style(self) -> PlaceholderStyle {
+        match self {
+            Self::Native(SupportedDatabase::Sqlite) => PlaceholderStyle::Numbered { prefix: "?" },
+            Self::Native(SupportedDatabase::Postgres) => PlaceholderStyle::Numbered { prefix: "$" },
+            Self::Native(SupportedDatabase::Mssql) => PlaceholderStyle::Numbered { prefix: "@p" },
+            _ => PlaceholderStyle::Positional { token: "?" },
+        }
+    }
+
+    #[must_use]
+    pub fn placeholder(self, number: usize) -> String {
+        match self.placeholder_style() {
+            PlaceholderStyle::Numbered { prefix } => format!("{prefix}{number}"),
+            PlaceholderStyle::Positional { token } => token.to_owned(),
+        }
     }
 }

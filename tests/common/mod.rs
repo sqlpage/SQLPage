@@ -102,7 +102,7 @@ pub(crate) fn supports_database(
     db: &sqlpage::webserver::database::Database,
     kinds: &[sqlpage::webserver::database::SupportedDatabase],
 ) -> bool {
-    kinds.contains(&db.info.database_type)
+    kinds.contains(&db.info.database_type())
 }
 
 pub(crate) async fn make_app_data() -> Data<AppState> {

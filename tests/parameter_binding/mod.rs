@@ -1,7 +1,7 @@
 use std::any::Any;
 
 use actix_web::http::StatusCode;
-use sqlpage::webserver::database::DatabaseDriver;
+use sqlpage::webserver::database::{DbInfo, SupportedDatabase};
 use sqlx::{Connection, database::HasStatementCache};
 
 use crate::common::{make_app_data, response_with_data};
@@ -33,7 +33,7 @@ async fn test_parameterized_pages_leave_a_prepared_statement_in_the_cache() -> a
         );
     }
 
-    if data.db.info.kind == DatabaseDriver::Mssql {
+    if data.db.info == DbInfo::Native(SupportedDatabase::Mssql) {
         return Ok(()); // The native SQL Server driver has no statement cache.
     }
     let mut connection = data.db.connection.acquire().await.unwrap();
@@ -46,7 +46,7 @@ async fn test_parameterized_pages_leave_a_prepared_statement_in_the_cache() -> a
     assert!(
         cached_statements > 0,
         "{:?} ran a parameterized query three times without caching a prepared statement",
-        data.db.info.kind
+        data.db.info
     );
     Ok(())
 }

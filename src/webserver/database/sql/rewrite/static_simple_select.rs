@@ -6,12 +6,12 @@ use super::super::statement::{OutputColumn, StaticSimpleSelect};
 use super::sqlpage_expression::{
     StandaloneContext, build_sqlpage_expr, is_static_simple_select_expression,
 };
-use crate::webserver::database::DbInfo;
+use crate::webserver::database::SupportedDatabase;
 
 /// Plans a documented static simple select for execution without the database.
 pub(super) fn try_plan(
     statement: &mut SqlStatement,
-    database: &DbInfo,
+    database: SupportedDatabase,
 ) -> anyhow::Result<Option<StaticSimpleSelect>> {
     if !has_static_simple_select_shape(statement) {
         return Ok(None);

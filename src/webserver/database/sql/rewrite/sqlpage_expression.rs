@@ -10,11 +10,11 @@ use sqlparser::ast::{
     ValueWithSpan,
 };
 
+use crate::webserver::database::SupportedDatabase;
 use crate::webserver::database::sqlpage_expr::{
     NoRowInput, SqlPageExpr, StandaloneExpr, VariableRef, VariableSource,
 };
 use crate::webserver::database::sqlpage_functions::functions::SqlPageFunctionName;
-use crate::webserver::database::{DbInfo, SupportedDatabase};
 
 const SQLPAGE_FUNCTION_NAMESPACE: &str = "sqlpage";
 
@@ -102,7 +102,7 @@ pub(super) fn is_static_simple_select_expression(expression: &SqlExpr) -> anyhow
 }
 
 pub(super) fn build_sqlpage_expr<Context: SqlPageExpressionContext>(
-    database: &DbInfo,
+    database: SupportedDatabase,
     context: &mut Context,
     expression: SqlExpr,
 ) -> anyhow::Result<SqlPageExpr<Context::Input>> {
@@ -141,7 +141,7 @@ pub(super) fn build_sqlpage_expr<Context: SqlPageExpressionContext>(
                         .cloned()
                         .map(|argument| build_sqlpage_expr(database, context, argument))
                         .collect::<anyhow::Result<Vec<_>>>()?;
-                build_emulated(kind, arguments, database.database_type)
+                build_emulated(kind, arguments, database)
             } else {
                 context.use_database_expr(SqlExpr::Function(function))
             }
@@ -156,7 +156,7 @@ pub(super) fn build_sqlpage_expr<Context: SqlPageExpressionContext>(
                 build_sqlpage_expr(database, context, *right)?,
             ]
             .into_boxed_slice(),
-            null_behavior: database.database_type.concat_operator_null_behavior(),
+            null_behavior: database.concat_operator_null_behavior(),
         }),
         SqlExpr::Nested(expression) => build_sqlpage_expr(database, context, *expression),
         expression => context.use_database_expr(expression),

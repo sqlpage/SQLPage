@@ -14,16 +14,6 @@ use sqlx::{
 
 use super::{execute_queries::QueryEvent, sql_to_json::DecodeRow};
 
-/// The driver selected by the database URL, independently of the DBMS behind ODBC.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum DatabaseDriver {
-    Postgres,
-    MySql,
-    Sqlite,
-    Mssql,
-    Odbc,
-}
-
 #[derive(Clone, Copy)]
 pub enum Parameter<'a> {
     Text(Option<&'a str>),

@@ -11,7 +11,7 @@ use sqlx_odbc::OdbcConnectOptions;
 use sqlx_sqlserver::MssqlConnectOptions;
 
 use super::driver::SqlxPool;
-use super::{Database, DatabaseDriver, DbInfo, SupportedDatabase};
+use super::{Database, DbInfo, SupportedDatabase};
 use crate::{ON_CONNECT_FILE, ON_RESET_FILE, app_config::AppConfig};
 
 mod sqlite;
@@ -20,29 +20,28 @@ impl Database {
     pub async fn init(config: &AppConfig) -> anyhow::Result<Self> {
         let url = config.database_url.as_str();
         let password = config.database_password.as_deref();
-        let kind;
-        let mut detected_name = None;
+        let info;
         let scheme = url.split_once(':').map(|(scheme, _)| scheme);
 
         let connection = match scheme {
             Some("postgres" | "postgresql") => {
-                kind = DatabaseDriver::Postgres;
+                info = DbInfo::Native(SupportedDatabase::Postgres);
                 let mut options = url.parse::<PgConnectOptions>()?;
                 if let Some(password) = password {
                     options = options.password(password);
                 }
-                SqlxPool::native(connect(options, config, kind, None).await?)
+                SqlxPool::native(connect(options, config, info, None).await?)
             }
             Some("mysql" | "mariadb") => {
-                kind = DatabaseDriver::MySql;
+                info = DbInfo::Native(SupportedDatabase::MySql);
                 let mut options = url.parse::<MySqlConnectOptions>()?;
                 if let Some(password) = password {
                     options = options.password(password);
                 }
-                SqlxPool::native(connect(options, config, kind, None).await?)
+                SqlxPool::native(connect(options, config, info, None).await?)
             }
             Some("sqlite") => {
-                kind = DatabaseDriver::Sqlite;
+                info = DbInfo::Native(SupportedDatabase::Sqlite);
                 if password.is_some() {
                     log::warn!("Setting a password for a SQLite database is not supported");
                 }
@@ -50,14 +49,14 @@ impl Database {
                     connect(
                         sqlite::options(config)?,
                         config,
-                        kind,
+                        info,
                         Some(sqlite::register_functions),
                     )
                     .await?,
                 )
             }
             Some("mssql" | "sqlserver") => {
-                kind = DatabaseDriver::Mssql;
+                info = DbInfo::Native(SupportedDatabase::Mssql);
                 let mut url =
                     openidconnect::url::Url::parse(url).context("Invalid SQL Server URL")?;
                 if let Some(password) = password {
@@ -70,7 +69,7 @@ impl Database {
                         .map_err(|()| anyhow::anyhow!("Unable to set the SQL Server password"))?;
                 }
                 let options = url.as_str().parse::<MssqlConnectOptions>()?;
-                SqlxPool::native(connect(options, config, kind, None).await?)
+                SqlxPool::native(connect(options, config, info, None).await?)
             }
             _ => {
                 anyhow::ensure!(
@@ -90,23 +89,13 @@ impl Database {
                     .await?
                     .dbms_name()?;
                 log::debug!("ODBC driver reported DBMS {dbms_name:?}");
-                kind = DatabaseDriver::Odbc;
-                detected_name = Some(dbms_name);
-                SqlxPool::odbc(connect(options, config, kind, None).await?)
+                info = DbInfo::Odbc(SupportedDatabase::from_dbms_name(&dbms_name));
+                SqlxPool::odbc(connect(options, config, info, None).await?)
             }
         };
 
-        let dbms_name = detected_name
-            .unwrap_or_else(|| SupportedDatabase::from(kind).display_name().to_owned());
-        log::debug!("Initialized {dbms_name:?} database pool");
-        Ok(Self {
-            connection,
-            info: DbInfo {
-                database_type: SupportedDatabase::from_dbms_name(&dbms_name),
-                dbms_name,
-                kind,
-            },
-        })
+        log::debug!("Initialized {info:?} database pool");
+        Ok(Self { connection, info })
     }
 }
 
@@ -123,7 +112,7 @@ type SetupConnection<C> = fn(&mut C) -> BoxFuture<'_, Result<(), sqlx::Error>>;
 async fn connect<O, DB>(
     options: O,
     config: &AppConfig,
-    kind: DatabaseDriver,
+    info: DbInfo,
     setup: Option<SetupConnection<O::Connection>>,
 ) -> anyhow::Result<sqlx::Pool<DB>>
 where
@@ -139,12 +128,12 @@ where
         .log_slow_statements(log::LevelFilter::Warn, Duration::from_millis(250));
     // SQLx pools retry refused connections until their acquire timeout. Probe directly
     // to respect the configured retry count. ODBC already probed for its DBMS name.
-    if kind != DatabaseDriver::Odbc {
+    if matches!(info, DbInfo::Native(_)) {
         open_connection(&options, config.database_connection_retries).await?;
     }
     let on_connect = read_hook(config, ON_CONNECT_FILE);
     let mut pool = PoolOptions::<DB>::new()
-        .max_connections(max_connections(config, kind))
+        .max_connections(max_connections(config, info))
         .idle_timeout(config.database_connection_idle_timeout)
         .max_lifetime(config.database_connection_max_lifetime)
         .acquire_timeout(Duration::from_secs_f64(
@@ -176,7 +165,7 @@ where
     }
     pool.connect_with(options)
         .await
-        .with_context(|| format!("Unable to open {kind:?} database pool"))
+        .with_context(|| format!("Unable to open {info:?} database pool"))
 }
 
 async fn open_connection<O: ConnectOptions>(
@@ -203,14 +192,18 @@ where
     }
 }
 
-fn max_connections(config: &AppConfig, kind: DatabaseDriver) -> u32 {
+fn max_connections(config: &AppConfig, info: DbInfo) -> u32 {
     config
         .max_database_pool_connections
-        .unwrap_or_else(|| match kind {
-            DatabaseDriver::MySql => 75,
-            DatabaseDriver::Sqlite if config.database_url.contains(":memory:") => 128,
-            DatabaseDriver::Sqlite => 16,
-            DatabaseDriver::Mssql => 100,
+        .unwrap_or_else(|| match info {
+            DbInfo::Native(SupportedDatabase::MySql) => 75,
+            DbInfo::Native(SupportedDatabase::Sqlite)
+                if config.database_url.contains(":memory:") =>
+            {
+                128
+            }
+            DbInfo::Native(SupportedDatabase::Sqlite) => 16,
+            DbInfo::Native(SupportedDatabase::Mssql) => 100,
             _ => 50,
         })
 }
