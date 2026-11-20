@@ -1,7 +1,6 @@
-use std::{sync::Arc, time::Duration};
+use std::{any::Any, sync::Arc, time::Duration};
 
 use anyhow::Context;
-use futures_util::future::BoxFuture;
 use sqlx::pool::PoolOptions;
 use sqlx::{
     AssertSqlSafe, ColumnIndex, ConnectOptions, Connection, Decode, Executor, Row, Type,
@@ -30,7 +29,7 @@ impl Database {
                 if let Some(password) = password {
                     options = options.password(password);
                 }
-                SqlxPool::native(connect(options, config, info, None).await?)
+                SqlxPool::native(connect(options, config, info, 50).await?)
             }
             Some("mysql" | "mariadb") => {
                 info = DbInfo::Native(SupportedDatabase::MySql);
@@ -38,21 +37,16 @@ impl Database {
                 if let Some(password) = password {
                     options = options.password(password);
                 }
-                SqlxPool::native(connect(options, config, info, None).await?)
+                SqlxPool::native(connect(options, config, info, 75).await?)
             }
             Some("sqlite") => {
                 info = DbInfo::Native(SupportedDatabase::Sqlite);
                 if password.is_some() {
                     log::warn!("Setting a password for a SQLite database is not supported");
                 }
+                let default_size = if url.contains(":memory:") { 128 } else { 16 };
                 SqlxPool::native(
-                    connect(
-                        sqlite::options(config)?,
-                        config,
-                        info,
-                        Some(sqlite::register_functions),
-                    )
-                    .await?,
+                    connect(sqlite::options(config)?, config, info, default_size).await?,
                 )
             }
             Some("mssql" | "sqlserver") => {
@@ -69,7 +63,7 @@ impl Database {
                         .map_err(|()| anyhow::anyhow!("Unable to set the SQL Server password"))?;
                 }
                 let options = url.as_str().parse::<MssqlConnectOptions>()?;
-                SqlxPool::native(connect(options, config, info, None).await?)
+                SqlxPool::native(connect(options, config, info, 100).await?)
             }
             _ => {
                 anyhow::ensure!(
@@ -90,7 +84,7 @@ impl Database {
                     .dbms_name()?;
                 log::debug!("ODBC driver reported DBMS {dbms_name:?}");
                 info = DbInfo::Odbc(SupportedDatabase::from_dbms_name(&dbms_name));
-                SqlxPool::odbc(connect(options, config, info, None).await?)
+                SqlxPool::odbc(connect(options, config, info, 50).await?)
             }
         };
 
@@ -107,13 +101,11 @@ fn is_odbc_connection_string(url: &str) -> bool {
         || (upper.contains("DRIVER=") && upper.contains(';'))
 }
 
-type SetupConnection<C> = fn(&mut C) -> BoxFuture<'_, Result<(), sqlx::Error>>;
-
 async fn connect<O, DB>(
     options: O,
     config: &AppConfig,
     info: DbInfo,
-    setup: Option<SetupConnection<O::Connection>>,
+    default_max_connections: u32,
 ) -> anyhow::Result<sqlx::Pool<DB>>
 where
     O: ConnectOptions,
@@ -133,7 +125,11 @@ where
     }
     let on_connect = read_hook(config, ON_CONNECT_FILE);
     let mut pool = PoolOptions::<DB>::new()
-        .max_connections(max_connections(config, info))
+        .max_connections(
+            config
+                .max_database_pool_connections
+                .unwrap_or(default_max_connections),
+        )
         .idle_timeout(config.database_connection_idle_timeout)
         .max_lifetime(config.database_connection_max_lifetime)
         .acquire_timeout(Duration::from_secs_f64(
@@ -142,8 +138,8 @@ where
         .after_connect(move |conn, _| {
             let sql = on_connect.clone();
             Box::pin(async move {
-                if let Some(setup) = setup {
-                    setup(conn).await?;
+                if let Some(sqlite) = (conn as &mut dyn Any).downcast_mut() {
+                    sqlite::register_functions(sqlite).await?;
                 }
                 if let Some(sql) = sql {
                     conn.execute(AssertSqlSafe(sql)).await?;
@@ -190,22 +186,6 @@ where
             }
         }
     }
-}
-
-fn max_connections(config: &AppConfig, info: DbInfo) -> u32 {
-    config
-        .max_database_pool_connections
-        .unwrap_or_else(|| match info {
-            DbInfo::Native(SupportedDatabase::MySql) => 75,
-            DbInfo::Native(SupportedDatabase::Sqlite)
-                if config.database_url.contains(":memory:") =>
-            {
-                128
-            }
-            DbInfo::Native(SupportedDatabase::Sqlite) => 16,
-            DbInfo::Native(SupportedDatabase::Mssql) => 100,
-            _ => 50,
-        })
 }
 
 fn read_hook(config: &AppConfig, file_name: &str) -> Option<Arc<str>> {
