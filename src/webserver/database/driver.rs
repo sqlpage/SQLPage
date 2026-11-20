@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 
-use super::{Parameter, execute_queries::QueryEvent, sql_to_json::DecodeRow};
+use super::{execute_queries::QueryEvent, sql_to_json::DecodeRow};
 use futures_util::{StreamExt, future::BoxFuture, stream, stream::BoxStream};
 use sqlx::migrate::{MigrateError, Migrator};
 use sqlx::pool::PoolConnection;
@@ -19,6 +19,13 @@ pub enum DatabaseDriver {
     Sqlite,
     Mssql,
     Odbc,
+}
+
+#[derive(Clone, Copy)]
+pub enum Parameter<'a> {
+    Text(Option<&'a str>),
+    Bytes(&'a [u8]),
+    Timestamp(DateTime<Utc>),
 }
 
 // Use the same dispatch for every operation that is independent of the selected driver.
@@ -85,37 +92,6 @@ impl DatabasePool {
         dispatch!(Self, self, pool => pool.execute(AssertSqlSafe(sql)).await.map(drop))
     }
 
-    pub(super) async fn execute_with(
-        &self,
-        sql: &str,
-        params: &[Parameter<'_>],
-    ) -> Result<(), Error> {
-        self.acquire().await?.execute_with(sql, params).await
-    }
-
-    pub(super) async fn exists(&self, sql: &str, params: &[Parameter<'_>]) -> Result<bool, Error> {
-        let mut conn = self.acquire().await?;
-        dispatch!(DatabaseConnection, &mut conn, conn =>
-            (&mut **conn).fetch_optional((AssertSqlSafe(sql), bind(params.iter().copied())?)).await.map(|row| row.is_some())
-        )
-    }
-
-    pub(super) async fn fetch_bytes(
-        &self,
-        sql: &str,
-        params: &[Parameter<'_>],
-    ) -> Result<Option<Vec<u8>>, Error> {
-        match self.acquire().await? {
-            DatabaseConnection::Postgres(mut conn) => {
-                bytes::<Postgres>(&mut conn, sql, params).await
-            }
-            DatabaseConnection::MySql(mut conn) => bytes::<MySql>(&mut conn, sql, params).await,
-            DatabaseConnection::Sqlite(mut conn) => bytes::<Sqlite>(&mut conn, sql, params).await,
-            DatabaseConnection::Mssql(mut conn) => bytes::<Mssql>(&mut conn, sql, params).await,
-            DatabaseConnection::Odbc(mut conn) => bytes::<Odbc>(&mut conn, sql, params).await,
-        }
-    }
-
     pub(super) async fn migrate(&self, migrator: &Migrator) -> Result<(), MigrateError> {
         match self {
             Self::Postgres(pool) => migrator.run(pool).await,
@@ -130,13 +106,13 @@ impl DatabasePool {
 }
 
 impl DatabaseConnection {
-    pub(super) fn execute<'a>(&'a mut self, sql: &'a str) -> BoxFuture<'a, Result<(), Error>> {
+    pub fn execute<'a>(&'a mut self, sql: &'a str) -> BoxFuture<'a, Result<(), Error>> {
         Box::pin(async move {
             dispatch!(Self, self, conn => (&mut **conn).execute(AssertSqlSafe(sql)).await.map(drop))
         })
     }
 
-    pub(super) fn execute_with<'a>(
+    pub fn execute_with<'a>(
         &'a mut self,
         sql: &'a str,
         params: &'a [Parameter<'a>],
@@ -146,6 +122,30 @@ impl DatabaseConnection {
                 (&mut **conn).execute((AssertSqlSafe(sql), bind(params.iter().copied())?)).await.map(drop)
             )
         })
+    }
+
+    pub(crate) async fn exists(
+        &mut self,
+        sql: &str,
+        params: &[Parameter<'_>],
+    ) -> Result<bool, Error> {
+        dispatch!(Self, self, conn =>
+            (&mut **conn).fetch_optional((AssertSqlSafe(sql), bind(params.iter().copied())?)).await.map(|row| row.is_some())
+        )
+    }
+
+    pub(crate) async fn fetch_bytes(
+        &mut self,
+        sql: &str,
+        params: &[Parameter<'_>],
+    ) -> Result<Option<Vec<u8>>, Error> {
+        match self {
+            Self::Postgres(conn) => bytes::<Postgres>(conn, sql, params).await,
+            Self::MySql(conn) => bytes::<MySql>(conn, sql, params).await,
+            Self::Sqlite(conn) => bytes::<Sqlite>(conn, sql, params).await,
+            Self::Mssql(conn) => bytes::<Mssql>(conn, sql, params).await,
+            Self::Odbc(conn) => bytes::<Odbc>(conn, sql, params).await,
+        }
     }
 
     pub(super) fn fetch_many<'c>(

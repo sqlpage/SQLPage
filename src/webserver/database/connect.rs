@@ -260,6 +260,9 @@ mod tests {
             .unwrap();
         assert!(
             db.connection
+                .acquire()
+                .await
+                .unwrap()
                 .exists(
                     "SELECT value FROM on_connect_marker WHERE value = 'on_connect ran'",
                     &[],
@@ -290,6 +293,9 @@ mod tests {
         drop(db.connection.acquire().await.unwrap());
         assert!(
             db.connection
+                .acquire()
+                .await
+                .unwrap()
                 .exists("SELECT 1 FROM reset_log", &[])
                 .await
                 .unwrap()

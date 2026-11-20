@@ -17,35 +17,29 @@ async fn store_file_in_db(state: &AppState, path: &str, contents: &[u8]) {
 
     let create_table_sql =
         sqlpage::filesystem::DbFsQueries::get_create_table_sql(state.db.info.database_type);
-    if state
-        .db
-        .connection
+    let mut conn = state.db.connection.acquire().await.unwrap();
+    if conn
         .execute("SELECT 1 FROM sqlpage_files WHERE 1 = 0")
         .await
         .is_err()
     {
-        state.db.connection.execute(create_table_sql).await.unwrap();
+        conn.execute(create_table_sql).await.unwrap();
     }
-    let delete_sql = format!("DELETE FROM sqlpage_files WHERE path = '{path}'");
-    state
-        .db
-        .connection
-        .execute(delete_sql.as_str())
+    let path_param = make_placeholder(state.db.info.kind, 1);
+    let delete_sql = format!("DELETE FROM sqlpage_files WHERE path = {path_param}");
+    conn.execute_with(&delete_sql, &[Parameter::Text(Some(path))])
         .await
         .unwrap();
     let insert_sql = format!(
-        "INSERT INTO sqlpage_files(path, contents) VALUES ({}, {})",
-        make_placeholder(state.db.info.kind, 1),
+        "INSERT INTO sqlpage_files(path, contents) VALUES ({path_param}, {})",
         make_placeholder(state.db.info.kind, 2)
     );
-    state
-        .db
-        .execute_with(
-            &insert_sql,
-            &[Parameter::Text(Some(path)), Parameter::Bytes(contents)],
-        )
-        .await
-        .unwrap();
+    conn.execute_with(
+        &insert_sql,
+        &[Parameter::Text(Some(path)), Parameter::Bytes(contents)],
+    )
+    .await
+    .unwrap();
 }
 
 #[actix_web::test]
