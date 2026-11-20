@@ -1,16 +1,15 @@
 use chrono::{DateTime, Utc};
 
-use super::Parameter;
-use futures_util::{StreamExt, TryStreamExt, future::BoxFuture, stream::BoxStream};
-use serde_json::Value;
+use super::{Parameter, execute_queries::QueryEvent, sql_to_json::DecodeRow};
+use futures_util::{StreamExt, future::BoxFuture, stream::BoxStream};
 use sqlx::migrate::{MigrateError, Migrator};
 use sqlx::pool::PoolConnection;
 use sqlx::{
     Arguments, AssertSqlSafe, ColumnIndex, Database, Either, Error, Execute, Executor, MySql, Pool,
     Postgres, Row, SqlSafeStr, SqlStr, Sqlite, Type, encode::Encode, error::BoxDynError,
 };
-use sqlx_odbc::{Odbc, OdbcRow};
-use sqlx_sqlserver::{Mssql, MssqlRow};
+use sqlx_odbc::Odbc;
+use sqlx_sqlserver::Mssql;
 
 /// The driver selected by the database URL, independently of the DBMS behind ODBC.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -51,39 +50,6 @@ pub enum DatabaseConnection {
     Sqlite(PoolConnection<Sqlite>),
     Mssql(PoolConnection<Mssql>),
     Odbc(PoolConnection<Odbc>),
-}
-
-pub(super) enum FetchedItem {
-    Row(DatabaseRow),
-    FinishedQuery,
-}
-
-pub(super) enum DatabaseRow {
-    Postgres(sqlx::postgres::PgRow),
-    MySql(sqlx::mysql::MySqlRow),
-    Sqlite(sqlx::sqlite::SqliteRow),
-    Mssql(MssqlRow),
-    Odbc(OdbcRow),
-}
-
-impl DatabaseRow {
-    pub(super) fn len(&self) -> usize {
-        dispatch!(Self, self, row => row.columns().len())
-    }
-
-    pub(super) fn json_parts(&self, private_count: usize) -> anyhow::Result<(Value, Vec<Value>)> {
-        use super::sql_to_json::{
-            decode_mssql, decode_mysql, decode_odbc, decode_postgres, decode_sqlite,
-            row_to_json_with_inputs,
-        };
-        match self {
-            Self::Postgres(row) => row_to_json_with_inputs(decode_postgres(row), private_count),
-            Self::MySql(row) => row_to_json_with_inputs(decode_mysql(row), private_count),
-            Self::Sqlite(row) => row_to_json_with_inputs(decode_sqlite(row), private_count),
-            Self::Mssql(row) => row_to_json_with_inputs(decode_mssql(row), private_count),
-            Self::Odbc(row) => row_to_json_with_inputs(decode_odbc(row), private_count),
-        }
-    }
 }
 
 impl DatabasePool {
@@ -186,17 +152,18 @@ impl DatabaseConnection {
         &'c mut self,
         sql: &'c str,
         params: &'c [Option<String>],
-    ) -> BoxStream<'c, Result<FetchedItem, Error>> {
+        json_inputs: &'c [bool],
+    ) -> BoxStream<'c, Result<QueryEvent, Error>> {
         let statement = BoundStatement {
             sql,
             params: Parameters::Text(params),
         };
         match self {
-            Self::Postgres(conn) => fetch::<Postgres>(conn, statement, DatabaseRow::Postgres),
-            Self::MySql(conn) => fetch::<MySql>(conn, statement, DatabaseRow::MySql),
-            Self::Sqlite(conn) => fetch::<Sqlite>(conn, statement, DatabaseRow::Sqlite),
-            Self::Mssql(conn) => fetch::<Mssql>(conn, statement, DatabaseRow::Mssql),
-            Self::Odbc(conn) => fetch::<Odbc>(conn, statement, DatabaseRow::Odbc),
+            Self::Postgres(conn) => fetch::<Postgres>(conn, statement, json_inputs),
+            Self::MySql(conn) => fetch::<MySql>(conn, statement, json_inputs),
+            Self::Sqlite(conn) => fetch::<Sqlite>(conn, statement, json_inputs),
+            Self::Mssql(conn) => fetch::<Mssql>(conn, statement, json_inputs),
+            Self::Odbc(conn) => fetch::<Odbc>(conn, statement, json_inputs),
         }
     }
 }
@@ -222,21 +189,19 @@ where
 fn fetch<'c, DB>(
     conn: &'c mut DB::Connection,
     statement: BoundStatement<'c>,
-    wrap_row: fn(DB::Row) -> DatabaseRow,
-) -> BoxStream<'c, Result<FetchedItem, Error>>
+    json_inputs: &'c [bool],
+) -> BoxStream<'c, Result<QueryEvent, Error>>
 where
     DB: Database,
     for<'e> &'e mut DB::Connection: Executor<'e, Database = DB>,
     BoundStatement<'c>: Execute<'c, DB>,
-    DB::QueryResult: std::fmt::Debug,
+    DB::Row: DecodeRow,
+    usize: ColumnIndex<DB::Row>,
 {
     conn.fetch_many(statement)
-        .map_ok(move |result| match result {
-            Either::Left(result) => {
-                log::debug!("Finished query with result: {result:?}");
-                FetchedItem::FinishedQuery
-            }
-            Either::Right(row) => FetchedItem::Row(wrap_row(row)),
+        .map(move |result| match result? {
+            Either::Left(_) => Ok(QueryEvent::FinishedQuery),
+            Either::Right(row) => row.query_row(json_inputs).map(QueryEvent::Row),
         })
         .boxed()
 }

@@ -1,71 +1,97 @@
 //! Decodes physical driver values and separates generated inputs from public columns.
 
+use super::execute_queries::QueryRow;
 use crate::utils::add_value_to_map;
 use crate::webserver::database::blob_to_data_url::vec_to_data_uri_value;
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, FixedOffset, NaiveDate, NaiveDateTime, NaiveTime, Utc};
 use serde_json::{Map, Value};
-use sqlx::mysql::MySqlRow;
+use sqlx::mysql::{MySqlRow, MySqlTypeInfo, MySqlValueRef};
 use sqlx::postgres::types::{PgInterval, PgRange, PgTimeTz};
-use sqlx::postgres::{PgRow, PgValueFormat, PgValueRef};
-use sqlx::sqlite::SqliteRow;
+use sqlx::postgres::{PgRow, PgTypeInfo, PgValueFormat, PgValueRef};
+use sqlx::sqlite::{SqliteRow, SqliteTypeInfo, SqliteValueRef};
 use sqlx::types::{Json, Uuid};
-use sqlx::{
-    Column, ColumnIndex, Database, Decode, MySql, Postgres, Row, Sqlite, Type, TypeInfo, ValueRef,
-};
-use sqlx_odbc::{Odbc, OdbcRow};
-use sqlx_sqlserver::{Mssql, MssqlRow, MssqlType};
+use sqlx::{Column, ColumnIndex, Database, Decode, Postgres, Row, Type, TypeInfo, ValueRef};
+use sqlx_odbc::{Odbc, OdbcRow, OdbcTypeInfo};
+use sqlx_sqlserver::{MssqlRow, MssqlType, MssqlTypeInfo, MssqlValueRef};
 
-/// The last columns are private bindings for `SQLPage` expressions. Their ordinal
-/// identifies them even if a user selected a column with the same alias.
-pub(super) fn row_to_json_with_inputs(
-    mut pairs: impl ExactSizeIterator<Item = (String, Value)>,
-    internal_count: usize,
-) -> anyhow::Result<(Value, Vec<Value>)> {
-    anyhow::ensure!(pairs.len() >= internal_count, "missing internal columns");
-    let public_count = pairs.len() - internal_count;
-    let mut map = Map::new();
-    for pair in pairs.by_ref().take(public_count) {
-        map = add_value_to_map(map, pair);
+pub(super) trait DecodeRow: Row {
+    fn decode_value(
+        value: <Self::Database as Database>::ValueRef<'_>,
+        declared_type: &<Self::Database as Database>::TypeInfo,
+    ) -> Value;
+
+    fn column_name(name: &str) -> String {
+        name.to_owned()
     }
-    Ok((Value::Object(map), pairs.map(|(_, value)| value).collect()))
+
+    /// Private inputs occupy the last columns, even when a public column has the same name.
+    fn query_row(&self, json_inputs: &[bool]) -> Result<QueryRow, sqlx::Error>
+    where
+        usize: ColumnIndex<Self>,
+    {
+        let public_column_count = self
+            .len()
+            .checked_sub(json_inputs.len())
+            .ok_or_else(|| sqlx::Error::Protocol("missing internal columns".into()))?;
+        let mut columns = self.columns().iter().map(|column| {
+            let value = match self.try_get_raw(column.ordinal()) {
+                Ok(raw) if !raw.is_null() => Self::decode_value(raw, column.type_info()),
+                Ok(_) => Value::Null,
+                Err(err) => {
+                    log::warn!("Unable to extract value from row: {err:?}");
+                    Value::Null
+                }
+            };
+            log::trace!(
+                "Decoded {:?} column {:?}: {value:?}",
+                column.type_info(),
+                column.name()
+            );
+            (column.name(), value)
+        });
+        let public = columns
+            .by_ref()
+            .take(public_column_count)
+            .fold(Map::new(), |map, (name, value)| {
+                add_value_to_map(map, (Self::column_name(name), value))
+            });
+        let inputs = columns
+            .zip(json_inputs)
+            .map(|((_, value), &is_json)| {
+                if is_json
+                    && let Value::String(text) = &value
+                    && let Ok(json) = serde_json::from_str(text)
+                {
+                    return json;
+                }
+                value
+            })
+            .collect();
+        Ok(QueryRow {
+            value: Value::Object(public),
+            inputs,
+            public_column_count,
+        })
+    }
 }
 
-fn decode_columns<DB: Database>(
-    row: &DB::Row,
-    name: impl Fn(&str) -> String,
-    value: impl Fn(DB::ValueRef<'_>, &DB::Column) -> Value,
-) -> impl ExactSizeIterator<Item = (String, Value)>
-where
-    usize: ColumnIndex<DB::Row>,
-{
-    row.columns().iter().map(move |col| {
-        let decoded = match row.try_get_raw(col.ordinal()) {
-            Ok(raw) if !raw.is_null() => value(raw, col),
-            Ok(_) => Value::Null,
-            Err(err) => {
-                log::warn!("Unable to extract value from row: {err:?}");
-                Value::Null
-            }
-        };
-        log::trace!(
-            "Decoded {:?} column {:?}: {decoded:?}",
-            col.type_info(),
-            col.name()
-        );
-        (name(col.name()), decoded)
-    })
+trait DecodeValue<'r>: ValueRef<'r> {
+    fn decode_as<T: Decode<'r, Self::Database> + Default>(self) -> T
+    where
+        Self::Database: Database<ValueRef<'r> = Self>,
+    {
+        T::decode(self).unwrap_or_else(|err| {
+            log::error!(
+                "Failed to decode {} value: {err}",
+                std::any::type_name::<T>()
+            );
+            T::default()
+        })
+    }
 }
 
-fn decode<'r, DB: Database, T: Decode<'r, DB> + Default>(value: DB::ValueRef<'r>) -> T {
-    T::decode(value).unwrap_or_else(|err| {
-        log::error!(
-            "Failed to decode {} value: {err}",
-            std::any::type_name::<T>()
-        );
-        T::default()
-    })
-}
+impl<'r, V: ValueRef<'r>> DecodeValue<'r> for V {}
 
 fn decimal_to_json(decimal: &BigDecimal) -> Value {
     Value::Number(serde_json::Number::from_string_unchecked(
@@ -92,7 +118,7 @@ where
 
 fn postgres_interval(value: PgValueRef<'_>) -> Value {
     if value.format() == PgValueFormat::Text {
-        return decode::<Postgres, String>(value).into();
+        return value.decode_as::<String>().into();
     }
     let Ok(interval) = PgInterval::decode(value) else {
         return Value::Null;
@@ -133,19 +159,18 @@ fn postgres_interval(value: PgValueRef<'_>) -> Value {
     parts.join(" ").into()
 }
 
-pub(super) fn decode_postgres(row: &PgRow) -> impl ExactSizeIterator<Item = (String, Value)> {
-    decode_columns::<Postgres>(row, str::to_owned, |value, _| {
-        let info = value.type_info().into_owned();
-        match info.name() {
-            "INT2" => decode::<Postgres, i16>(value).into(),
-            "INT4" => decode::<Postgres, i32>(value).into(),
-            "INT8" => decode::<Postgres, i64>(value).into(),
-            "FLOAT4" => f64::from(decode::<Postgres, f32>(value)).into(),
-            "FLOAT8" => decode::<Postgres, f64>(value).into(),
-            "NUMERIC" => decimal_to_json(&decode::<Postgres, BigDecimal>(value)),
-            "BOOL" => decode::<Postgres, bool>(value).into(),
-            "DATE" => decode::<Postgres, NaiveDate>(value).to_string().into(),
-            "TIME" => decode::<Postgres, NaiveTime>(value).to_string().into(),
+impl DecodeRow for PgRow {
+    fn decode_value(value: PgValueRef<'_>, declared_type: &PgTypeInfo) -> Value {
+        match declared_type.name() {
+            "INT2" => value.decode_as::<i16>().into(),
+            "INT4" => value.decode_as::<i32>().into(),
+            "INT8" => value.decode_as::<i64>().into(),
+            "FLOAT4" => f64::from(value.decode_as::<f32>()).into(),
+            "FLOAT8" => value.decode_as::<f64>().into(),
+            "NUMERIC" => decimal_to_json(&value.decode_as::<BigDecimal>()),
+            "BOOL" => value.decode_as::<bool>().into(),
+            "DATE" => value.decode_as::<NaiveDate>().to_string().into(),
+            "TIME" => value.decode_as::<NaiveTime>().to_string().into(),
             "TIMETZ" => match PgTimeTz::<NaiveTime, FixedOffset>::decode(value) {
                 Ok(time) => time.time.to_string().into(),
                 Err(err) => {
@@ -153,135 +178,140 @@ pub(super) fn decode_postgres(row: &PgRow) -> impl ExactSizeIterator<Item = (Str
                     NaiveTime::default().to_string().into()
                 }
             },
-            "TIMESTAMP" => decode::<Postgres, NaiveDateTime>(value)
+            "TIMESTAMP" => value
+                .decode_as::<NaiveDateTime>()
                 .and_utc()
                 .to_rfc3339()
                 .into(),
-            "TIMESTAMPTZ" => decode::<Postgres, DateTime<Utc>>(value).to_rfc3339().into(),
+            "TIMESTAMPTZ" => value.decode_as::<DateTime<Utc>>().to_rfc3339().into(),
             "INTERVAL" => postgres_interval(value),
-            "UUID" => decode::<Postgres, Uuid>(value).to_string().into(),
-            "JSON" | "JSONB" => decode::<Postgres, Json<Value>>(value).0,
+            "UUID" => value.decode_as::<Uuid>().to_string().into(),
+            "JSON" | "JSONB" => value.decode_as::<Json<Value>>().0,
             "JSON[]" | "JSONB[]" => Value::Array(
-                decode::<Postgres, Vec<Json<Value>>>(value)
+                value
+                    .decode_as::<Vec<Json<Value>>>()
                     .into_iter()
                     .map(|json| json.0)
                     .collect(),
             ),
-            "BYTEA" => vec_to_data_uri_value(&decode::<Postgres, Vec<u8>>(value)),
+            "BYTEA" => vec_to_data_uri_value(&value.decode_as::<Vec<u8>>()),
             "INT4RANGE" => decode_pg_range::<i32>(value),
             "INT8RANGE" => decode_pg_range::<i64>(value),
             "NUMRANGE" => decode_pg_range::<BigDecimal>(value),
             "DATERANGE" => decode_pg_range::<NaiveDate>(value),
             "TSRANGE" => decode_pg_range::<NaiveDateTime>(value),
             "TSTZRANGE" => decode_pg_range::<DateTime<FixedOffset>>(value),
-            _ => decode::<Postgres, String>(value).into(),
+            _ => value.decode_as::<String>().into(),
         }
-    })
+    }
 }
 
-pub(super) fn decode_mysql(row: &MySqlRow) -> impl ExactSizeIterator<Item = (String, Value)> {
-    decode_columns::<MySql>(row, str::to_owned, |value, _| {
-        let info = value.type_info().into_owned();
-        match info.name() {
+impl DecodeRow for MySqlRow {
+    fn decode_value(value: MySqlValueRef<'_>, declared_type: &MySqlTypeInfo) -> Value {
+        match declared_type.name() {
             "TINYINT" | "SMALLINT" | "MEDIUMINT" | "INT" | "BIGINT" | "YEAR" => {
-                decode::<MySql, i64>(value).into()
+                value.decode_as::<i64>().into()
             }
             "TINYINT UNSIGNED" | "SMALLINT UNSIGNED" | "MEDIUMINT UNSIGNED" | "INT UNSIGNED"
-            | "BIGINT UNSIGNED" => decode::<MySql, u64>(value).into(),
-            "FLOAT" => f64::from(decode::<MySql, f32>(value)).into(),
-            "DOUBLE" => decode::<MySql, f64>(value).into(),
-            "DECIMAL" => decimal_to_json(&decode::<MySql, BigDecimal>(value)),
-            "BOOLEAN" => decode::<MySql, bool>(value).into(),
+            | "BIGINT UNSIGNED" => value.decode_as::<u64>().into(),
+            "FLOAT" => f64::from(value.decode_as::<f32>()).into(),
+            "DOUBLE" => value.decode_as::<f64>().into(),
+            "DECIMAL" => decimal_to_json(&value.decode_as::<BigDecimal>()),
+            "BOOLEAN" => value.decode_as::<bool>().into(),
             "BIT" => {
-                let n = decode::<MySql, u64>(value);
+                let n = value.decode_as::<u64>();
                 if n <= 1 { (n != 0).into() } else { n.into() }
             }
-            "DATE" => decode::<MySql, NaiveDate>(value).to_string().into(),
-            "TIME" => decode::<MySql, NaiveTime>(value).to_string().into(),
-            "DATETIME" => naive_datetime(decode::<MySql, NaiveDateTime>(value)),
-            "TIMESTAMP" => decode::<MySql, DateTime<Utc>>(value).to_rfc3339().into(),
-            "JSON" => decode::<MySql, Json<Value>>(value).0,
+            "DATE" => value.decode_as::<NaiveDate>().to_string().into(),
+            "TIME" => value.decode_as::<NaiveTime>().to_string().into(),
+            "DATETIME" => naive_datetime(value.decode_as::<NaiveDateTime>()),
+            "TIMESTAMP" => value.decode_as::<DateTime<Utc>>().to_rfc3339().into(),
+            "JSON" => value.decode_as::<Json<Value>>().0,
             "BINARY" | "VARBINARY" | "BLOB" | "TINYBLOB" | "MEDIUMBLOB" | "LONGBLOB" => {
-                vec_to_data_uri_value(&decode::<MySql, Vec<u8>>(value))
+                vec_to_data_uri_value(&value.decode_as::<Vec<u8>>())
             }
-            _ => decode::<MySql, String>(value).into(),
+            _ => value.decode_as::<String>().into(),
         }
-    })
+    }
 }
 
-pub(super) fn decode_sqlite(row: &SqliteRow) -> impl ExactSizeIterator<Item = (String, Value)> {
-    decode_columns::<Sqlite>(row, str::to_owned, |value, _| {
+impl DecodeRow for SqliteRow {
+    fn decode_value(value: SqliteValueRef<'_>, _: &SqliteTypeInfo) -> Value {
         let info = value.type_info().into_owned();
         match info.name() {
-            "INTEGER" => decode::<Sqlite, i64>(value).into(),
-            "REAL" => decode::<Sqlite, f64>(value).into(),
-            "BLOB" => vec_to_data_uri_value(&decode::<Sqlite, Vec<u8>>(value)),
-            "BOOLEAN" => decode::<Sqlite, bool>(value).into(),
-            "DATE" => decode::<Sqlite, NaiveDate>(value).to_string().into(),
-            "TIME" => decode::<Sqlite, NaiveTime>(value).to_string().into(),
-            "DATETIME" => naive_datetime(decode::<Sqlite, NaiveDateTime>(value)),
-            _ => decode::<Sqlite, String>(value).into(),
+            "INTEGER" => value.decode_as::<i64>().into(),
+            "REAL" => value.decode_as::<f64>().into(),
+            "BLOB" => vec_to_data_uri_value(&value.decode_as::<Vec<u8>>()),
+            "BOOLEAN" => value.decode_as::<bool>().into(),
+            "DATE" => value.decode_as::<NaiveDate>().to_string().into(),
+            "TIME" => value.decode_as::<NaiveTime>().to_string().into(),
+            "DATETIME" => naive_datetime(value.decode_as::<NaiveDateTime>()),
+            _ => value.decode_as::<String>().into(),
         }
-    })
+    }
 }
 
-pub(super) fn decode_mssql(row: &MssqlRow) -> impl ExactSizeIterator<Item = (String, Value)> {
-    decode_columns::<Mssql>(row, str::to_owned, |value, _| {
-        let info = value.type_info().into_owned();
-        match info.kind() {
+impl DecodeRow for MssqlRow {
+    fn decode_value(value: MssqlValueRef<'_>, _: &MssqlTypeInfo) -> Value {
+        match value.type_info().kind() {
             MssqlType::Null => Value::Null,
-            MssqlType::Real => f64::from(decode::<Mssql, f32>(value)).into(),
-            MssqlType::Float | MssqlType::Money => decode::<Mssql, f64>(value).into(),
-            MssqlType::Decimal => decimal_to_json(&decode::<Mssql, BigDecimal>(value)),
-            MssqlType::BigInt => decode::<Mssql, i64>(value).into(),
-            MssqlType::Int => decode::<Mssql, i32>(value).into(),
-            MssqlType::SmallInt => decode::<Mssql, i16>(value).into(),
-            MssqlType::TinyInt => decode::<Mssql, u8>(value).into(),
-            MssqlType::Bit => decode::<Mssql, bool>(value).into(),
-            MssqlType::Date => decode::<Mssql, NaiveDate>(value).to_string().into(),
-            MssqlType::Time => decode::<Mssql, NaiveTime>(value).to_string().into(),
-            MssqlType::DateTimeOffset => decode::<Mssql, DateTime<FixedOffset>>(value)
+            MssqlType::Real => f64::from(value.decode_as::<f32>()).into(),
+            MssqlType::Float | MssqlType::Money => value.decode_as::<f64>().into(),
+            MssqlType::Decimal => decimal_to_json(&value.decode_as::<BigDecimal>()),
+            MssqlType::BigInt => value.decode_as::<i64>().into(),
+            MssqlType::Int => value.decode_as::<i32>().into(),
+            MssqlType::SmallInt => value.decode_as::<i16>().into(),
+            MssqlType::TinyInt => value.decode_as::<u8>().into(),
+            MssqlType::Bit => value.decode_as::<bool>().into(),
+            MssqlType::Date => value.decode_as::<NaiveDate>().to_string().into(),
+            MssqlType::Time => value.decode_as::<NaiveTime>().to_string().into(),
+            MssqlType::DateTimeOffset => value
+                .decode_as::<DateTime<FixedOffset>>()
                 .to_rfc3339()
                 .into(),
             MssqlType::DateTime | MssqlType::DateTime2 => {
-                naive_datetime(decode::<Mssql, NaiveDateTime>(value))
+                naive_datetime(value.decode_as::<NaiveDateTime>())
             }
-            MssqlType::UniqueIdentifier => decode::<Mssql, Uuid>(value).to_string().into(),
-            MssqlType::VarBinary => vec_to_data_uri_value(&decode::<Mssql, Vec<u8>>(value)),
-            _ => decode::<Mssql, String>(value).into(),
+            MssqlType::UniqueIdentifier => value.decode_as::<Uuid>().to_string().into(),
+            MssqlType::VarBinary => vec_to_data_uri_value(&value.decode_as::<Vec<u8>>()),
+            _ => value.decode_as::<String>().into(),
         }
-    })
+    }
 }
 
-pub(super) fn decode_odbc(row: &OdbcRow) -> impl ExactSizeIterator<Item = (String, Value)> {
-    decode_columns::<Odbc>(row, odbc_column_name, |value, column| {
+impl DecodeRow for OdbcRow {
+    fn decode_value(
+        value: <Odbc as Database>::ValueRef<'_>,
+        declared_type: &OdbcTypeInfo,
+    ) -> Value {
         // The driver transports decimal values as text. Use the declared SQL type.
-        match column.type_info().name() {
-            "REAL" | "FLOAT" | "DOUBLE" => decode::<Odbc, f64>(value).into(),
-            "NUMERIC" | "DECIMAL" => decimal_to_json(&decode::<Odbc, BigDecimal>(value)),
-            "BIGINT" => decode::<Odbc, i64>(value).into(),
-            "INTEGER" => decode::<Odbc, i32>(value).into(),
-            "SMALLINT" | "TINYINT" => decode::<Odbc, i16>(value).into(),
-            "BIT" => decode::<Odbc, bool>(value).into(),
-            "DATE" => decode::<Odbc, NaiveDate>(value).to_string().into(),
-            "TIME" => decode::<Odbc, NaiveTime>(value).to_string().into(),
-            "TIMESTAMP" => decode::<Odbc, DateTime<FixedOffset>>(value)
+        match declared_type.name() {
+            "REAL" | "FLOAT" | "DOUBLE" => value.decode_as::<f64>().into(),
+            "NUMERIC" | "DECIMAL" => decimal_to_json(&value.decode_as::<BigDecimal>()),
+            "BIGINT" => value.decode_as::<i64>().into(),
+            "INTEGER" => value.decode_as::<i32>().into(),
+            "SMALLINT" | "TINYINT" => value.decode_as::<i16>().into(),
+            "BIT" => value.decode_as::<bool>().into(),
+            "DATE" => value.decode_as::<NaiveDate>().to_string().into(),
+            "TIME" => value.decode_as::<NaiveTime>().to_string().into(),
+            "TIMESTAMP" => value
+                .decode_as::<DateTime<FixedOffset>>()
                 .to_rfc3339()
                 .into(),
             "VARBINARY" | "BINARY" | "LONGVARBINARY" => {
-                vec_to_data_uri_value(&decode::<Odbc, Vec<u8>>(value))
+                vec_to_data_uri_value(&value.decode_as::<Vec<u8>>())
             }
-            _ => decode::<Odbc, String>(value).into(),
+            _ => value.decode_as::<String>().into(),
         }
-    })
-}
+    }
 
-fn odbc_column_name(name: &str) -> String {
-    // Some ODBC drivers fold unquoted identifiers to uppercase.
-    if name.chars().all(|c| c.is_ascii_uppercase() || c == '_') {
-        name.to_ascii_lowercase()
-    } else {
-        name.to_owned()
+    fn column_name(name: &str) -> String {
+        // Some ODBC drivers fold unquoted identifiers to uppercase.
+        if name.chars().all(|c| c.is_ascii_uppercase() || c == '_') {
+            name.to_ascii_lowercase()
+        } else {
+            name.to_owned()
+        }
     }
 }
 
@@ -290,9 +320,9 @@ mod tests {
     use crate::app_config::tests::test_database_url;
 
     use super::*;
-    use crate::webserver::database::driver::{DatabaseRow, FetchedItem};
-    use crate::webserver::database::{Database as AppDatabase, DatabaseConnection, DatabaseDriver};
-    use futures_util::TryStreamExt;
+    use crate::webserver::database::execute_queries::QueryEvent;
+    use crate::webserver::database::{Database as AppDatabase, DatabaseDriver};
+    use futures_util::{Stream, TryStreamExt};
 
     async fn connect(url: String) -> anyhow::Result<AppDatabase> {
         let mut config = crate::app_config::tests::test_config();
@@ -301,22 +331,15 @@ mod tests {
         AppDatabase::init(&config).await
     }
 
-    async fn fetch_one(
-        conn: &mut DatabaseConnection,
-        sql: &str,
-        params: &[Option<String>],
-    ) -> anyhow::Result<DatabaseRow> {
-        let mut stream = conn.fetch_many(sql, params);
-        while let Some(result) = stream.try_next().await? {
-            if let FetchedItem::Row(row) = result {
+    async fn first_row(
+        mut stream: impl Stream<Item = Result<QueryEvent, sqlx::Error>> + Unpin,
+    ) -> anyhow::Result<QueryRow> {
+        while let Some(event) = stream.try_next().await? {
+            if let QueryEvent::Row(row) = event {
                 return Ok(row);
             }
         }
         Err(sqlx::Error::RowNotFound.into())
-    }
-
-    fn row_to_json(row: &DatabaseRow) -> Value {
-        row.json_parts(0).unwrap().0
     }
 
     fn setup_logging() {
@@ -339,8 +362,7 @@ mod tests {
         let db_url = test_database_url();
         let db = connect(db_url).await?;
         let mut c = db.connection.acquire().await?;
-        let row = fetch_one(
-            &mut c,
+        let row = first_row(c.fetch_many(
             "SELECT
                 123.456 as one_value,
                 1 as two_values,
@@ -350,10 +372,11 @@ mod tests {
                 'z' as three_values
         ",
             &[],
-        )
+            &[],
+        ))
         .await?;
         expect_json_object_equal(
-            &row_to_json(&row),
+            &row.value,
             &serde_json::json!({
                 "one_value": 123.456,
                 "two_values": [1,2],
@@ -368,18 +391,26 @@ mod tests {
         let db_url = test_database_url();
         let db = connect(db_url).await?;
         let mut connection = db.connection.acquire().await?;
-        let row = fetch_one(
-            &mut connection,
-            "SELECT 'public' AS \"__sqlpage_input_0\", 'private' AS \"__sqlpage_input_0\"",
+        let row = first_row(connection.fetch_many(
+            "SELECT 'public' AS \"__sqlpage_input_0\", 'private' AS \"__sqlpage_input_0\",
+                    '[1]' AS json_input, '[2]' AS text_input",
             &[],
-        )
+            &[false, true, false],
+        ))
         .await?;
-        let (public, inputs) = row.json_parts(1)?;
         expect_json_object_equal(
-            &public,
+            &row.value,
             &serde_json::json!({ "__sqlpage_input_0": "public" }),
         );
-        assert_eq!(inputs, [serde_json::json!("private")]);
+        assert_eq!(row.public_column_count, 1);
+        assert_eq!(
+            row.inputs,
+            [
+                serde_json::json!("private"),
+                serde_json::json!([1]),
+                serde_json::json!("[2]")
+            ]
+        );
         Ok(())
     }
 
@@ -390,8 +421,7 @@ mod tests {
         };
         let db = connect(db_url).await?;
         let mut c = db.connection.acquire().await?;
-        let row = fetch_one(
-            &mut c,
+        let row = first_row(c.fetch_many(
             "SELECT
                 42::INT2 as small_int,
                 42::INT4 as integer,
@@ -422,11 +452,12 @@ mod tests {
                 '[2024-11-12,2024-11-13)'::DATERANGE as daterange
             ",
             &[],
-        )
+            &[],
+        ))
         .await?;
 
         expect_json_object_equal(
-            &row_to_json(&row),
+            &row.value,
             &serde_json::json!({
                 "small_int": 42,
                 "integer": 42,
@@ -469,8 +500,7 @@ mod tests {
         };
         let db = connect(db_url).await?;
         let mut c = db.connection.acquire().await?;
-        let row = fetch_one(
-            &mut c,
+        let row = first_row(c.fetch_many(
             "SELECT
                 '2024-03-14'::DATE as date,
                 '13:14:15'::TIME as time,
@@ -482,11 +512,12 @@ mod tests {
                 '550e8400-e29b-41d4-a716-446655440000'::UUID as uuid
             where CAST($1 AS BOOLEAN)",
             &[Some("true".into())],
-        )
+            &[],
+        ))
         .await?;
 
         expect_json_object_equal(
-            &row_to_json(&row),
+            &row.value,
             &serde_json::json!({
                 "date": "2024-03-14",
                 "time": "13:14:15",
@@ -508,8 +539,7 @@ mod tests {
         };
         let db = connect(db_url).await?;
         let mut c = db.connection.acquire().await?;
-        let row = fetch_one(
-            &mut c,
+        let row = first_row(c.fetch_many(
             "SELECT
                 '[1,5)'::INT4RANGE as int4range,
                 '[2024-11-12 01:02:03,2024-11-12 23:00:00)'::TSRANGE as tsrange,
@@ -517,11 +547,12 @@ mod tests {
                 '[2024-11-12,2024-11-13)'::DATERANGE as daterange
             where CAST($1 AS BOOLEAN)",
             &[Some("true".into())],
-        )
+            &[],
+        ))
         .await?;
 
         expect_json_object_equal(
-            &row_to_json(&row),
+            &row.value,
             &serde_json::json!({
                 "int4range": "[1,5)",
                 "tsrange": "[2024-11-12 01:02:03,2024-11-12 23:00:00)",
@@ -594,10 +625,10 @@ mod tests {
         )
         .await?;
 
-        let row = fetch_one(&mut c, "SELECT * FROM _sqlp_t", &[]).await?;
+        let row = first_row(c.fetch_many("SELECT * FROM _sqlp_t", &[], &[])).await?;
 
         expect_json_object_equal(
-            &row_to_json(&row),
+            &row.value,
             &serde_json::json!({
                 "tiny_int": 127,
                 "small_int": 32767,
@@ -637,19 +668,19 @@ mod tests {
         };
         let db = connect(db_url).await?;
         let mut c = db.connection.acquire().await?;
-        let row = fetch_one(
-            &mut c,
+        let row = first_row(c.fetch_many(
             "SELECT
                 42 as integer,
                 42.25 as real,
                 'xxx' as string,
                 x'68656c6c6f20776f726c64' as blob",
             &[],
-        )
+            &[],
+        ))
         .await?;
 
         expect_json_object_equal(
-            &row_to_json(&row),
+            &row.value,
             &serde_json::json!({
                 "integer": 42,
                 "real": 42.25,
@@ -667,7 +698,8 @@ mod tests {
         };
         let db = connect(db_url).await?;
         let mut c = db.connection.acquire().await?;
-        let row = fetch_one(&mut c, "SELECT
+        let row = first_row(c.fetch_many(
+            "SELECT
                 CAST(1 AS BIT) as true_bit,
                 CAST(0 AS BIT) as false_bit,
                 CAST(NULL AS BIT) as null_bit,
@@ -689,11 +721,11 @@ mod tests {
                 CAST(12.34 AS SMALLMONEY) as small_money_val,
                 CAST(0x6D7373716C AS VARBINARY(10)) as blob_data,
                 CONVERT(UNIQUEIDENTIFIER, '6F9619FF-8B86-D011-B42D-00C04FC964FF') as unique_identifier
-            ", &[])
+            ", &[], &[]))
         .await?;
 
         expect_json_object_equal(
-            &row_to_json(&row),
+            &row.value,
             &serde_json::json!({
                 "true_bit": true,
                 "false_bit": false,
@@ -760,8 +792,7 @@ mod tests {
         let mut c = db.connection.acquire().await?;
 
         // Test various column name formats to ensure canonical_col_name works correctly
-        let row = fetch_one(
-            &mut c,
+        let row = first_row(c.fetch_many(
             r#"SELECT
                 42 as "UPPERCASE_COL",
                 42 as "lowercase_col",
@@ -773,10 +804,11 @@ mod tests {
                 42 as "123_NUMBER_PREFIX"
         "#,
             &[],
-        )
+            &[],
+        ))
         .await?;
 
-        let json_result = row_to_json(&row);
+        let json_result = row.value;
 
         // For ODBC databases, uppercase columns should be converted to lowercase
         // For other databases, names should remain as-is
@@ -816,11 +848,11 @@ mod tests {
         let db_url = test_database_url();
         let db = connect(db_url).await?;
         let mut c = db.connection.acquire().await?;
+
         let dbms_name = db.info.dbms_name;
 
         // Test edge cases for row_to_json
-        let row = fetch_one(
-            &mut c,
+        let row = first_row(c.fetch_many(
             "SELECT
                 NULL as null_col,
                 '' as empty_string,
@@ -832,10 +864,11 @@ mod tests {
 line2' as multiline_string
         ",
             &[],
-        )
+            &[],
+        ))
         .await?;
 
-        let json_result = row_to_json(&row);
+        let json_result = row.value;
 
         // For Oracle databases, empty string is treated as NULL.
         let empty_str_is_null = dbms_name.to_lowercase().contains("oracle");
