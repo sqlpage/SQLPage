@@ -3,14 +3,16 @@ use std::{future::Future, str::FromStr, sync::Arc, time::Duration};
 use anyhow::Context;
 use sqlx::pool::PoolOptions;
 use sqlx::{
-    AssertSqlSafe, ColumnIndex, ConnectOptions, Decode, Executor, Row, SqliteConnection, Type,
-    mysql::MySqlConnectOptions, postgres::PgConnectOptions, sqlite::SqliteConnectOptions,
+    AssertSqlSafe, ColumnIndex, ConnectOptions, Decode, Executor, Row, Type,
+    mysql::MySqlConnectOptions, postgres::PgConnectOptions,
 };
 use sqlx_odbc::OdbcConnectOptions;
 use sqlx_sqlserver::MssqlConnectOptions;
 
 use super::{Database, DatabaseDriver, DatabasePool, DbInfo, SupportedDatabase};
 use crate::{ON_CONNECT_FILE, ON_RESET_FILE, app_config::AppConfig};
+
+mod sqlite;
 
 impl FromStr for DatabaseDriver {
     type Err = anyhow::Error;
@@ -64,15 +66,16 @@ impl Database {
                 if password.is_some() {
                     log::warn!("Setting a password for a SQLite database is not supported");
                 }
-                let mut options = url
-                    .parse::<SqliteConnectOptions>()?
-                    .collation("NOCASE", |a, b| a.to_lowercase().cmp(&b.to_lowercase()));
-                for extension in &config.sqlite_extensions {
-                    log::info!("Loading SQLite extension: {extension}");
-                    // This list is supplied by the server operator, who controls which native code is loaded.
-                    options = unsafe { options.extension(extension.clone()) };
-                }
-                DatabasePool::Sqlite(connect(options, config, kind, hooks, setup_sqlite).await?)
+                DatabasePool::Sqlite(
+                    connect(
+                        sqlite::options(config)?,
+                        config,
+                        kind,
+                        hooks,
+                        sqlite::register_functions,
+                    )
+                    .await?,
+                )
             }
             DatabaseDriver::Mssql => {
                 let mut url =
@@ -187,106 +190,6 @@ where
         .connect_with(options)
         .await
         .with_context(|| format!("Unable to open {kind:?} database pool"))
-}
-
-fn setup_sqlite(
-    conn: &mut SqliteConnection,
-) -> futures_util::future::BoxFuture<'_, Result<(), sqlx::Error>> {
-    Box::pin(async move {
-        use libsqlite3_sys::{
-            SQLITE_DETERMINISTIC, SQLITE_OK, SQLITE_UTF8, sqlite3_create_function_v2,
-        };
-        let mut handle = conn.lock_handle().await?;
-        for (name, callback) in [
-            (c"upper", sqlite_upper as SqliteScalarFunction),
-            (c"lower", sqlite_lower as SqliteScalarFunction),
-        ] {
-            // The locked handle excludes SQLx's worker. The callback has static lifetime
-            // and SQLite supplies exactly one argument for this registration.
-            let result = unsafe {
-                sqlite3_create_function_v2(
-                    handle.as_raw_handle().as_ptr(),
-                    name.as_ptr(),
-                    1,
-                    SQLITE_UTF8 | SQLITE_DETERMINISTIC,
-                    std::ptr::null_mut(),
-                    Some(callback),
-                    None,
-                    None,
-                    None,
-                )
-            };
-            if result != SQLITE_OK {
-                return Err(sqlx::Error::Protocol(format!(
-                    "Unable to register SQLite function {name:?}: error {result}"
-                )));
-            }
-        }
-        Ok(())
-    })
-}
-
-type SqliteScalarFunction = unsafe extern "C" fn(
-    *mut libsqlite3_sys::sqlite3_context,
-    std::ffi::c_int,
-    *mut *mut libsqlite3_sys::sqlite3_value,
-);
-
-unsafe extern "C" fn sqlite_upper(
-    ctx: *mut libsqlite3_sys::sqlite3_context,
-    _: std::ffi::c_int,
-    args: *mut *mut libsqlite3_sys::sqlite3_value,
-) {
-    // SQLite supplies a valid context and one argument for this function.
-    unsafe { sqlite_change_case(ctx, *args, str::to_uppercase) }
-}
-
-unsafe extern "C" fn sqlite_lower(
-    ctx: *mut libsqlite3_sys::sqlite3_context,
-    _: std::ffi::c_int,
-    args: *mut *mut libsqlite3_sys::sqlite3_value,
-) {
-    // SQLite supplies a valid context and one argument for this function.
-    unsafe { sqlite_change_case(ctx, *args, str::to_lowercase) }
-}
-
-unsafe fn sqlite_change_case(
-    ctx: *mut libsqlite3_sys::sqlite3_context,
-    value: *mut libsqlite3_sys::sqlite3_value,
-    change_case: fn(&str) -> String,
-) {
-    use libsqlite3_sys::{
-        SQLITE_NULL, SQLITE_TRANSIENT, SQLITE_UTF8, sqlite3_result_error,
-        sqlite3_result_error_nomem, sqlite3_result_null, sqlite3_result_text64,
-        sqlite3_value_bytes, sqlite3_value_text, sqlite3_value_type,
-    };
-    // SQLite owns the argument and result context throughout this callback.
-    unsafe {
-        if sqlite3_value_type(value) == SQLITE_NULL {
-            sqlite3_result_null(ctx);
-            return;
-        }
-        let data = sqlite3_value_text(value);
-        if data.is_null() {
-            sqlite3_result_error_nomem(ctx);
-            return;
-        }
-        let len = usize::try_from(sqlite3_value_bytes(value)).unwrap_or_default();
-        let bytes = std::slice::from_raw_parts(data, len);
-        let Ok(text) = std::str::from_utf8(bytes) else {
-            sqlite3_result_error(ctx, c"Invalid UTF-8 in SQLite text".as_ptr(), -1);
-            return;
-        };
-        let result = change_case(text);
-        // SQLITE_TRANSIENT makes SQLite copy the bytes before the string is dropped.
-        sqlite3_result_text64(
-            ctx,
-            result.as_ptr().cast(),
-            result.len() as u64,
-            SQLITE_TRANSIENT(),
-            u8::try_from(SQLITE_UTF8).unwrap_or(1),
-        );
-    }
 }
 
 async fn retry_connecting<C, E, F>(
