@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use anyhow::Context;
-use futures_util::StreamExt;
 use sqlparser::ast::{
     CopyLegacyCsvOption, CopyLegacyOption, CopyOption, CopySource, CopyTarget, Statement,
 };
@@ -196,38 +195,32 @@ async fn run_csv_import_insert(
         .escape(format.escape)
         .has_headers(format.header)
         .create_reader(file);
-    let col_idxs = compute_column_indices(&mut reader, csv_import).await?;
-    let mut records = reader.into_records();
-    while let Some(record) = records.next().await {
-        let r = record.with_context(|| "reading csv record")?;
-        process_csv_record(r, db, &insert_stmt, csv_import, &col_idxs).await?;
+    let mut columns: Vec<_> = csv_import.columns.iter().enumerate().collect();
+    if format.header {
+        let by_name: HashMap<_, _> = reader.headers().await?.iter().zip(0..).collect();
+        for (index, name) in &mut columns {
+            *index = *by_name
+                .get(name.as_str())
+                .with_context(|| format!("CSV Column not found: {name}"))?;
+        }
+    }
+
+    let mut record = csv_async::StringRecord::new();
+    while reader
+        .read_record(&mut record)
+        .await
+        .context("reading csv record")?
+    {
+        let mut arguments = Vec::with_capacity(columns.len());
+        for &(index, name) in &columns {
+            let text = record.get(index).unwrap_or_default();
+            let value = (text != format.null_str).then_some(text);
+            log::trace!("CSV value: {name}={value:?}");
+            arguments.push(Parameter::Text(value));
+        }
+        db.execute_with(&insert_stmt, &arguments).await?;
     }
     Ok(())
-}
-
-async fn compute_column_indices<R: AsyncRead + Unpin + Send>(
-    reader: &mut csv_async::AsyncReader<R>,
-    csv_import: &CsvImport,
-) -> anyhow::Result<Vec<usize>> {
-    let mut col_idxs = Vec::with_capacity(csv_import.columns.len());
-    if csv_import.format.header {
-        let headers = reader
-            .headers()
-            .await?
-            .iter()
-            .enumerate()
-            .map(|(i, h)| (h, i))
-            .collect::<HashMap<&str, usize>>();
-        for column in &csv_import.columns {
-            let &idx = headers
-                .get(column.as_str())
-                .ok_or_else(|| anyhow::anyhow!("CSV Column not found: {column}"))?;
-            col_idxs.push(idx);
-        }
-    } else {
-        col_idxs.extend(0..csv_import.columns.len());
-    }
-    Ok(col_idxs)
 }
 
 fn create_insert_stmt(db_kind: DbInfo, csv_import: &CsvImport) -> String {
@@ -238,24 +231,6 @@ fn create_insert_stmt(db_kind: DbInfo, csv_import: &CsvImport) -> String {
         .join(", ");
     let table_name = &csv_import.table_name;
     format!("INSERT INTO {table_name} ({columns}) VALUES ({placeholders})")
-}
-
-async fn process_csv_record(
-    record: csv_async::StringRecord,
-    db: &mut dyn DatabaseConnection,
-    insert_stmt: &str,
-    csv_import: &CsvImport,
-    column_indices: &[usize],
-) -> anyhow::Result<()> {
-    let mut arguments = Vec::with_capacity(column_indices.len());
-    for (&i, column) in column_indices.iter().zip(csv_import.columns.iter()) {
-        let value = record.get(i).unwrap_or_default();
-        let value = (value != csv_import.format.null_str).then_some(value);
-        log::trace!("CSV value: {column}={value:?}");
-        arguments.push(Parameter::Text(value));
-    }
-    db.execute_with(insert_stmt, &arguments).await?;
-    Ok(())
 }
 
 #[cfg(test)]
