@@ -43,45 +43,39 @@ impl std::fmt::Display for NiceDatabaseError {
             self.source_file.display(),
             self.db_err
         )?;
-        if let sqlx::error::Error::Database(db_err) = &self.db_err {
-            let Some(mut offset) = db_err
-                .try_downcast_ref::<sqlx::postgres::PgDatabaseError>()
-                .and_then(sqlx::postgres::PgDatabaseError::position)
-                .and_then(|position| match position {
-                    sqlx::postgres::PgErrorPosition::Original(offset) => self
-                        .query
-                        .char_indices()
-                        .nth(offset.saturating_sub(1))
-                        .map(|(byte, _)| byte),
-                    sqlx::postgres::PgErrorPosition::Internal { .. } => None,
-                })
-            else {
-                write!(f, "{}", self.query)?;
-                self.show_position_info(f)?;
-                return Ok(());
-            };
-            for line in self.query.lines() {
-                if offset > line.len() {
-                    offset -= line.len() + 1;
-                } else {
-                    highlight_line_offset(f, line, offset);
-                    self.show_position_info(f)?;
-                    break;
-                }
-            }
-            Ok(())
+        if let Some((line, column)) = self.postgres_error_line() {
+            highlight_line_offset(f, line, column);
         } else {
             write!(f, "{}", self.query)?;
-            self.show_position_info(f)?;
-            Ok(())
         }
+        write_source_position_info(f, &self.source_file, self.query_position)
     }
 }
 
 impl NiceDatabaseError {
-    fn show_position_info(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-        write_source_position_info(f, &self.source_file, self.query_position)
+    fn postgres_error_line(&self) -> Option<(&str, usize)> {
+        let error = self
+            .db_err
+            .as_database_error()?
+            .try_downcast_ref::<sqlx::postgres::PgDatabaseError>()?;
+        let sqlx::postgres::PgErrorPosition::Original(position) = error.position()? else {
+            return None;
+        };
+        line_at_character(&self.query, position)
     }
+}
+
+// PostgreSQL reports one-based character positions, including line endings.
+fn line_at_character(sql: &str, position: usize) -> Option<(&str, usize)> {
+    let mut offset = position.checked_sub(1)?;
+    for line in sql.split_inclusive('\n') {
+        let len = line.chars().count();
+        if offset < len {
+            return Some((line.trim_end_matches(['\r', '\n']), offset));
+        }
+        offset -= len;
+    }
+    None
 }
 
 impl std::error::Error for NiceDatabaseError {}
@@ -222,4 +216,14 @@ fn test_quote_source_with_highlight() {
     let source = "SELECT *\nFROM table\nWHERE <syntax error>";
     let expected = "FROM table\nWHERE <syntax error>\n     ⬆️\n";
     assert_eq!(quote_source_with_highlight(source, 3, 6), expected);
+}
+
+#[test]
+fn postgres_positions_count_characters_and_crlf() {
+    let query = "SELECT 'é';\r\nSELECT '猫', missing";
+    assert_eq!(
+        line_at_character(query, 26),
+        Some(("SELECT '猫', missing", 12))
+    );
+    assert_eq!(line_at_character(query, 100), None);
 }
