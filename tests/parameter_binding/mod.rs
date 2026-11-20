@@ -1,17 +1,24 @@
+use std::any::Any;
+
 use actix_web::http::StatusCode;
-use sqlpage::webserver::database::{DatabaseConnection, DatabaseDriver};
-use sqlx::Connection as _;
+use sqlpage::webserver::database::DatabaseDriver;
+use sqlx::{Connection, database::HasStatementCache};
 
 use crate::common::{make_app_data, response_with_data};
+
+fn cache_size<C: Connection + 'static>(connection: &dyn Any) -> Option<usize>
+where
+    C::Database: HasStatementCache,
+{
+    connection
+        .downcast_ref::<C>()
+        .map(C::cached_statements_size)
+}
 
 #[actix_web::test]
 async fn test_parameterized_pages_leave_a_prepared_statement_in_the_cache() -> actix_web::Result<()>
 {
     let data = make_app_data().await;
-    if data.db.info.kind == DatabaseDriver::Mssql {
-        return Ok(()); // the MSSQL backend keeps no statement cache
-    }
-
     for _ in 0..3 {
         let resp = response_with_data(
             "/tests/parameter_binding/echo_parameter.sql?x=1447",
@@ -26,14 +33,16 @@ async fn test_parameterized_pages_leave_a_prepared_statement_in_the_cache() -> a
         );
     }
 
-    let connection = data.db.connection.acquire().await.unwrap();
-    let cached_statements = match connection {
-        DatabaseConnection::Postgres(conn) => conn.cached_statements_size(),
-        DatabaseConnection::MySql(conn) => conn.cached_statements_size(),
-        DatabaseConnection::Sqlite(conn) => conn.cached_statements_size(),
-        DatabaseConnection::Odbc(conn) => conn.cached_statements_size(),
-        DatabaseConnection::Mssql(_) => unreachable!("SQL Server has no statement cache"),
-    };
+    if data.db.info.kind == DatabaseDriver::Mssql {
+        return Ok(()); // The native SQL Server driver has no statement cache.
+    }
+    let mut connection = data.db.connection.acquire().await.unwrap();
+    let native = connection.native();
+    let cached_statements = cache_size::<sqlx::SqliteConnection>(native)
+        .or_else(|| cache_size::<sqlx::PgConnection>(native))
+        .or_else(|| cache_size::<sqlx::MySqlConnection>(native))
+        .or_else(|| cache_size::<sqlx_odbc::OdbcConnection>(native))
+        .expect("this driver supports statement caching");
     assert!(
         cached_statements > 0,
         "{:?} ran a parameterized query three times without caching a prepared statement",

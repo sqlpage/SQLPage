@@ -139,7 +139,7 @@ pub(super) fn extract_csv_copy_statement(stmt: &mut Statement) -> Option<CsvImpo
 }
 
 pub(super) async fn run_csv_import(
-    db: &mut DatabaseConnection,
+    db: &mut dyn DatabaseConnection,
     driver: DatabaseDriver,
     csv_import: &CsvImport,
     request: &RequestInfo,
@@ -165,11 +165,10 @@ pub(super) async fn run_csv_import(
         )
     })?;
     let buffered = tokio::io::BufReader::new(file);
-    match db {
-        DatabaseConnection::Postgres(conn) => {
-            run_csv_import_postgres(conn, csv_import, buffered).await
-        }
-        _ => run_csv_import_insert(db, driver, csv_import, buffered).await,
+    if let Some(pg) = db.native().downcast_mut::<PgConnection>() {
+        run_csv_import_postgres(pg, csv_import, buffered).await
+    } else {
+        run_csv_import_insert(db, driver, csv_import, buffered).await
     }
     .with_context(|| {
         let table_name = &csv_import.table_name;
@@ -211,7 +210,7 @@ async fn run_csv_import_postgres(
 }
 
 async fn run_csv_import_insert(
-    db: &mut DatabaseConnection,
+    db: &mut dyn DatabaseConnection,
     driver: DatabaseDriver,
     csv_import: &CsvImport,
     file: impl AsyncRead + Unpin + Send,
@@ -265,7 +264,7 @@ fn create_insert_stmt(db_kind: DatabaseDriver, csv_import: &CsvImport) -> String
 
 async fn process_csv_record(
     record: csv_async::StringRecord,
-    db: &mut DatabaseConnection,
+    db: &mut dyn DatabaseConnection,
     insert_stmt: &str,
     csv_import: &CsvImport,
     column_indices: &[usize],
@@ -350,8 +349,8 @@ async fn test_end_to_end() {
         }
     );
     let pool = sqlx::SqlitePool::connect("sqlite::memory:").await.unwrap();
-    let mut conn = DatabaseConnection::Sqlite(pool.acquire().await.unwrap());
-    conn.execute("CREATE TABLE my_table (col1 TEXT, col2 TEXT)")
+    let mut conn = pool.acquire().await.unwrap();
+    conn.execute_with("CREATE TABLE my_table (col1 TEXT, col2 TEXT)", &[])
         .await
         .unwrap();
     let csv = "col2;col1\na;b\nc;d"; // order is different from the table
@@ -363,11 +362,9 @@ async fn test_end_to_end() {
     )
     .await
     .unwrap();
-    let DatabaseConnection::Sqlite(mut conn) = conn else {
-        unreachable!()
-    };
+    drop(conn);
     let rows: Vec<(String, String)> = sqlx::query_as("SELECT * FROM my_table")
-        .fetch_all(&mut *conn)
+        .fetch_all(&pool)
         .await
         .unwrap();
     assert_eq!(
