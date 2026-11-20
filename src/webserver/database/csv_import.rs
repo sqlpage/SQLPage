@@ -255,18 +255,10 @@ async fn compute_column_indices<R: AsyncRead + Unpin + Send>(
 
 fn create_insert_stmt(db_kind: DatabaseDriver, csv_import: &CsvImport) -> String {
     let columns = csv_import.columns.join(", ");
-    let placeholders = csv_import
-        .columns
-        .iter()
-        .enumerate()
-        .map(|(i, _)| make_placeholder(db_kind, i + 1))
-        .fold(String::new(), |mut acc, f| {
-            if !acc.is_empty() {
-                acc.push_str(", ");
-            }
-            acc.push_str(&f);
-            acc
-        });
+    let placeholders = (1..=csv_import.columns.len())
+        .map(|i| make_placeholder(db_kind, i))
+        .collect::<Vec<_>>()
+        .join(", ");
     let table_name = &csv_import.table_name;
     format!("INSERT INTO {table_name} ({columns}) VALUES ({placeholders})")
 }
