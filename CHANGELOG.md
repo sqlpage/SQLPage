@@ -5,6 +5,7 @@
 - A file input with `multiple` now keeps every selected file, instead of only the last one. The new [`sqlpage.persist_uploaded_files`](https://sql-page.com/functions.sql?function=persist_uploaded_files) function saves them all and returns a JSON array with the `path`, original `name`, `mime_type` and `size` of each file.
 - Native SQL Server connections now run startup migrations. Encrypted connections require [full-session TLS](./configuration.md#database-connection-strings).
 - SQLPage now bundles SQLite 3.51.3, down from 3.54.1.
+- SQLite query errors now show the failing statement without highlighting the individual token.
 - On native MySQL connections, values 0 and 1 in `BIT(2)` through `BIT(8)` columns now produce JSON booleans. Use `CAST(column_name AS UNSIGNED)` to keep numeric output.
 - Set `wrap` on a `big_number` component to show long titles and descriptions across multiple lines.
 
