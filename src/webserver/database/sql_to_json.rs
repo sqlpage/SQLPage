@@ -218,10 +218,13 @@ impl DecodeRow for MySqlRow {
             "DOUBLE" => value.decode_as::<f64>().into(),
             "DECIMAL" => decimal_to_json(&value.decode_as::<BigDecimal>()),
             "BOOLEAN" => value.decode_as::<bool>().into(),
-            "BIT" => {
-                let n = value.decode_as::<u64>();
-                if n <= 1 { (n != 0).into() } else { n.into() }
-            }
+            // SQLx 0.9 does not expose BIT(M)'s declared width. The wire value
+            // includes leading zero bytes for widths above 8.
+            "BIT" => match value.clone().decode_as::<&[u8]>() {
+                [0] => false.into(),
+                [1] => true.into(),
+                _ => value.decode_as::<u64>().into(),
+            },
             "DATE" => value.decode_as::<NaiveDate>().to_string().into(),
             "TIME" => value.decode_as::<NaiveTime>().to_string().into(),
             "DATETIME" => naive_datetime(value.decode_as::<NaiveDateTime>()),
@@ -588,6 +591,9 @@ mod tests {
                 float_num FLOAT,
                 double_num DOUBLE,
                 bit_val BIT(1),
+                bit_false BIT(1),
+                bit_9 BIT(9),
+                bit_64 BIT(64),
                 date_val DATE,
                 time_val TIME,
                 datetime_val DATETIME,
@@ -613,6 +619,9 @@ mod tests {
                 42.25 as float_num,
                 42.25 as double_num,
                 1 as bit_val,
+                0 as bit_false,
+                1 as bit_9,
+                0 as bit_64,
                 '2024-03-14' as date_val,
                 '13:14:15' as time_val,
                 '2024-03-14 13:14:15' as datetime_val,
@@ -644,6 +653,9 @@ mod tests {
                 "float_num": 42.25,
                 "double_num": 42.25,
                 "bit_val": true,
+                "bit_false": false,
+                "bit_9": 1,
+                "bit_64": 0,
                 "date_val": "2024-03-14",
                 "time_val": "13:14:15",
                 "datetime_val": "2024-03-14T13:14:15",
