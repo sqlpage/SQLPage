@@ -125,7 +125,7 @@ impl From<DatabaseDriver> for SupportedDatabase {
 }
 
 pub struct Database {
-    pub connection: DatabasePool,
+    pub connection: std::sync::Arc<dyn DatabasePool>,
     pub info: DbInfo,
 }
 

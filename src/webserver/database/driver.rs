@@ -1,6 +1,6 @@
 //! Native pools share an executor that decodes each row before erasing its driver type.
 
-use std::any::Any;
+use std::{any::Any, sync::Arc};
 
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
@@ -8,12 +8,9 @@ use futures_util::{StreamExt, future::BoxFuture, stream, stream::BoxStream};
 use sqlx::migrate::{MigrateError, Migrator};
 use sqlx::pool::PoolConnection;
 use sqlx::{
-    Arguments, AssertSqlSafe, ColumnIndex, Database, Decode, Either, Encode, Error, Executor,
-    MySql, Pool, Postgres, Row, Sqlite, Type,
+    Arguments, AssertSqlSafe, ColumnIndex, Database, Decode, Either, Encode, Error, Executor, Pool,
+    Row, Type,
 };
-
-use sqlx_odbc::Odbc;
-use sqlx_sqlserver::Mssql;
 
 use super::{execute_queries::QueryEvent, sql_to_json::DecodeRow};
 
@@ -34,65 +31,68 @@ pub enum Parameter<'a> {
     Timestamp(DateTime<Utc>),
 }
 
-// Use the same dispatch for every operation that is independent of the selected driver.
-macro_rules! dispatch {
-    ($kind:ident, $value:expr, $binding:ident => $operation:expr) => {
-        match $value {
-            $kind::Postgres($binding) => $operation,
-            $kind::MySql($binding) => $operation,
-            $kind::Sqlite($binding) => $operation,
-            $kind::Mssql($binding) => $operation,
-            $kind::Odbc($binding) => $operation,
-        }
-    };
+#[async_trait]
+pub trait DatabasePool: Send + Sync {
+    async fn acquire(&self) -> Result<Box<dyn DatabaseConnection>, Error>;
+    async fn close(&self);
+    fn size(&self) -> u32;
+    fn num_idle(&self) -> usize;
+    async fn migrate(&self, migrator: &Migrator) -> Result<(), MigrateError>;
 }
 
-#[derive(Clone)]
-pub enum DatabasePool {
-    Postgres(Pool<Postgres>),
-    MySql(Pool<MySql>),
-    Sqlite(Pool<Sqlite>),
-    Mssql(Pool<Mssql>),
-    Odbc(Pool<Odbc>),
+type Migrate<DB> =
+    for<'a> fn(&'a Pool<DB>, &'a Migrator) -> BoxFuture<'a, Result<(), MigrateError>>;
+
+pub(super) struct SqlxPool<DB: Database> {
+    pool: Pool<DB>,
+    migrate: Option<Migrate<DB>>,
 }
 
-impl DatabasePool {
-    pub fn acquire(&self) -> BoxFuture<'_, Result<Box<dyn DatabaseConnection>, Error>> {
-        Box::pin(async {
-            let conn: Box<dyn DatabaseConnection> =
-                dispatch!(Self, self, pool => Box::new(pool.acquire().await?));
-            Ok(conn)
+impl<DB: Database> SqlxPool<DB>
+where
+    PoolConnection<DB>: DatabaseConnection,
+    DB::Connection: sqlx::migrate::Migrate,
+{
+    pub(super) fn native(pool: Pool<DB>) -> Arc<dyn DatabasePool> {
+        Arc::new(Self {
+            pool,
+            migrate: Some(|pool, migrator| Box::pin(migrator.run(pool))),
         })
     }
+}
 
-    #[must_use]
-    pub fn size(&self) -> u32 {
-        dispatch!(Self, self, pool => pool.size())
+impl SqlxPool<sqlx_odbc::Odbc> {
+    pub(super) fn odbc(pool: Pool<sqlx_odbc::Odbc>) -> Arc<dyn DatabasePool> {
+        Arc::new(Self {
+            pool,
+            migrate: None,
+        })
+    }
+}
+
+#[async_trait]
+impl<DB: Database> DatabasePool for SqlxPool<DB>
+where
+    PoolConnection<DB>: DatabaseConnection,
+{
+    async fn acquire(&self) -> Result<Box<dyn DatabaseConnection>, Error> {
+        Ok(Box::new(self.pool.acquire().await?))
+    }
+    async fn close(&self) {
+        self.pool.close().await;
+    }
+    fn size(&self) -> u32 {
+        self.pool.size()
+    }
+    fn num_idle(&self) -> usize {
+        self.pool.num_idle()
     }
 
-    #[must_use]
-    pub fn num_idle(&self) -> usize {
-        dispatch!(Self, self, pool => pool.num_idle())
-    }
-
-    pub(super) async fn close(&self) {
-        dispatch!(Self, self, pool => pool.close().await);
-    }
-
-    pub async fn execute(&self, sql: &str) -> Result<(), Error> {
-        dispatch!(Self, self, pool => pool.execute(AssertSqlSafe(sql)).await.map(drop))
-    }
-
-    pub(super) async fn migrate(&self, migrator: &Migrator) -> Result<(), MigrateError> {
-        match self {
-            Self::Postgres(pool) => migrator.run(pool).await,
-            Self::MySql(pool) => migrator.run(pool).await,
-            Self::Sqlite(pool) => migrator.run(pool).await,
-            Self::Mssql(pool) => migrator.run(pool).await,
-            Self::Odbc(_) => {
-                Err(Error::Protocol("SQL migrations are unavailable over ODBC".into()).into())
-            }
-        }
+    async fn migrate(&self, migrator: &Migrator) -> Result<(), MigrateError> {
+        let migrate = self
+            .migrate
+            .ok_or_else(|| Error::Protocol("SQL migrations are unavailable over ODBC".into()))?;
+        migrate(&self.pool, migrator).await
     }
 }
 
@@ -118,6 +118,12 @@ pub trait DatabaseConnection: Send {
 impl dyn DatabaseConnection + '_ {
     pub async fn execute(&mut self, sql: &str) -> Result<(), Error> {
         self.execute_with(sql, &[]).await
+    }
+}
+
+impl dyn DatabasePool {
+    pub async fn execute(&self, sql: &str) -> Result<(), Error> {
+        self.acquire().await?.execute(sql).await
     }
 }
 
