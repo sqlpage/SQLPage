@@ -72,7 +72,7 @@ pub(crate) async fn response_with_data(
 }
 
 /// Runs a request through the production app, including its routes and middleware.
-/// Dropping the service disables and drains the pool, including on error or panic.
+/// Dropping the service releases Actix's pooled HTTP requests and their application state.
 /// Standalone `TestRequest::to_srv_request()` would instead leak the application state.
 pub(crate) async fn send_request(
     request: TestRequest,
