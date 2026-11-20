@@ -12,7 +12,6 @@ const STYLESHEET = [
   "node_modules/tom-select/dist/css/tom-select.bootstrap5.css",
   "node_modules/@tabler/core/dist/css/tabler-vendors.min.css",
   "frontend/src/sqlpage.css",
-  "frontend/src/status-bar.css",
 ];
 
 const ICON_SPRITE = "node_modules/@tabler/icons-sprite/dist/tabler-sprite.svg";

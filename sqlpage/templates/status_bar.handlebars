@@ -1,3 +1,20 @@
+<style nonce="{{@csp_nonce}}">
+    /* Tabler's boxed page normally contains fixed elements. Let the bar use the viewport. */
+    :is(.layout-boxed, html[data-bs-layout="boxed"] body) > .page:has(.status-bar.fixed-bottom) {
+        contain: none;
+
+        /* Keep the boxed menu anchored to the page. */
+        > #sqlpage_header > .fixed-top {
+            position: absolute;
+        }
+    }
+    .status-bar > * + :last-child {
+        margin-inline-start: auto;
+    }
+    .status-bar > a:focus-visible {
+        outline-offset: -2px;
+    }
+</style>
 <div role="status" aria-label="{{default label 'Status bar'}}"
     {{#if id}}id="{{id}}"{{/if}}
     class="status-bar d-flex divide-x overflow-x-auto bg-surface fs-5 {{#if (default fixed true)}}fixed-bottom border-top{{else}}my-2 border rounded{{/if}} {{class}}">
