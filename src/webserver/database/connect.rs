@@ -10,7 +10,8 @@ use sqlx::{
 use sqlx_odbc::OdbcConnectOptions;
 use sqlx_sqlserver::MssqlConnectOptions;
 
-use super::{Database, DatabaseDriver, DatabasePool, DbInfo, SupportedDatabase};
+use super::driver::SqlxPool;
+use super::{Database, DatabaseDriver, DbInfo, SupportedDatabase};
 use crate::{ON_CONNECT_FILE, ON_RESET_FILE, app_config::AppConfig};
 
 mod sqlite;
@@ -30,7 +31,7 @@ impl Database {
                 if let Some(password) = password {
                     options = options.password(password);
                 }
-                DatabasePool::Postgres(connect(options, config, kind, None).await?)
+                SqlxPool::native(connect(options, config, kind, None).await?)
             }
             Some("mysql" | "mariadb") => {
                 kind = DatabaseDriver::MySql;
@@ -38,14 +39,14 @@ impl Database {
                 if let Some(password) = password {
                     options = options.password(password);
                 }
-                DatabasePool::MySql(connect(options, config, kind, None).await?)
+                SqlxPool::native(connect(options, config, kind, None).await?)
             }
             Some("sqlite") => {
                 kind = DatabaseDriver::Sqlite;
                 if password.is_some() {
                     log::warn!("Setting a password for a SQLite database is not supported");
                 }
-                DatabasePool::Sqlite(
+                SqlxPool::native(
                     connect(
                         sqlite::options(config)?,
                         config,
@@ -69,7 +70,7 @@ impl Database {
                         .map_err(|()| anyhow::anyhow!("Unable to set the SQL Server password"))?;
                 }
                 let options = url.as_str().parse::<MssqlConnectOptions>()?;
-                DatabasePool::Mssql(connect(options, config, kind, None).await?)
+                SqlxPool::native(connect(options, config, kind, None).await?)
             }
             _ => {
                 anyhow::ensure!(
@@ -89,9 +90,9 @@ impl Database {
                     .await?
                     .dbms_name()?;
                 log::debug!("ODBC driver reported DBMS {dbms_name:?}");
-                detected_name = Some(dbms_name);
                 kind = DatabaseDriver::Odbc;
-                DatabasePool::Odbc(connect(options, config, kind, None).await?)
+                detected_name = Some(dbms_name);
+                SqlxPool::odbc(connect(options, config, kind, None).await?)
             }
         };
 
