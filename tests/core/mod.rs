@@ -1,8 +1,5 @@
 use actix_web::http::StatusCode;
-use sqlpage::{
-    AppState,
-    webserver::{self, make_placeholder},
-};
+use sqlpage::{AppState, webserver};
 
 use crate::common::{
     make_app_data_from_config, response_for, response_with, response_with_data, test_config,
@@ -16,7 +13,7 @@ async fn store_file_in_db(state: &AppState, path: &str, contents: &[u8]) {
     use sqlpage::webserver::database::Parameter;
 
     let create_table_sql =
-        sqlpage::filesystem::DbFsQueries::get_create_table_sql(state.db.info.database_type);
+        sqlpage::filesystem::DbFsQueries::get_create_table_sql(state.db.info.database_type());
     let mut conn = state.db.connection.acquire().await.unwrap();
     if conn
         .execute("SELECT 1 FROM sqlpage_files WHERE 1 = 0")
@@ -25,14 +22,14 @@ async fn store_file_in_db(state: &AppState, path: &str, contents: &[u8]) {
     {
         conn.execute(create_table_sql).await.unwrap();
     }
-    let path_param = make_placeholder(state.db.info.kind, 1);
+    let path_param = state.db.info.placeholder(1);
     let delete_sql = format!("DELETE FROM sqlpage_files WHERE path = {path_param}");
     conn.execute_with(&delete_sql, &[Parameter::Text(Some(path))])
         .await
         .unwrap();
     let insert_sql = format!(
         "INSERT INTO sqlpage_files(path, contents) VALUES ({path_param}, {})",
-        make_placeholder(state.db.info.kind, 2)
+        state.db.info.placeholder(2)
     );
     conn.execute_with(
         &insert_sql,

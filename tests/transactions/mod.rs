@@ -6,7 +6,7 @@ use crate::common::{make_app_data, multipart_request, response_with_data, send_r
 #[actix_web::test]
 async fn test_transaction_error() -> actix_web::Result<()> {
     let data = make_app_data().await;
-    let path = match data.db.info.database_type {
+    let path = match data.db.info.database_type() {
         SupportedDatabase::MySql => "/tests/transactions/failed_transaction_mysql.sql",
         SupportedDatabase::Mssql => "/tests/transactions/failed_transaction_mssql.sql",
         SupportedDatabase::Snowflake | SupportedDatabase::Oracle => {
@@ -22,7 +22,7 @@ async fn test_transaction_error() -> actix_web::Result<()> {
         body_str.contains("error") && body_str.contains("null"),
         "{body_str}\nexpected to contain: constraint failed"
     );
-    if data.db.info.database_type == SupportedDatabase::Sqlite {
+    if data.db.info.database_type() == SupportedDatabase::Sqlite {
         let resp = response_with_data(
             "/tests/transactions/failed_computed_column.sql",
             data.clone(),

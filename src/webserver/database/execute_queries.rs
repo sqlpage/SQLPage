@@ -19,7 +19,9 @@ use crate::webserver::ErrorWithStatus;
 use crate::webserver::http_request_info::ExecutionContext;
 use crate::webserver::single_or_vec::SingleOrVec;
 
-use super::{Database, DatabaseConnection, DatabaseDriver, DbItem, ScalarSubqueryBehavior};
+use super::{
+    Database, DatabaseConnection, DbInfo, DbItem, ScalarSubqueryBehavior, SupportedDatabase,
+};
 
 pub type DbConn = Option<Box<dyn DatabaseConnection>>;
 
@@ -147,7 +149,7 @@ fn create_query_metrics<'a>(
     source_span: SourceSpan,
     query: &BoundQuery<'_>,
 ) -> (tracing::Span, DbQueryMetricsContext<'a>) {
-    let db_system_name = request.app_state.db.info.database_type.otel_name();
+    let db_system_name = request.app_state.db.info.database_type().otel_name();
     let (query_span, operation_name) = create_db_query_span(
         query.sql,
         source_file,
@@ -177,7 +179,7 @@ pub fn stream_query_results_with_conn<'a>(
                 FileStatement::CsvImport(csv_import) => {
                     let connection = take_connection(&request.app_state.db, db_connection, request).await?;
                     log::debug!("Executing CSV import: {csv_import:?}");
-                    Box::pin(run_csv_import(connection, request.app_state.db.info.kind, csv_import, request)).await.with_context(|| format!("Failed to import the CSV file {:?} into the table {:?}", csv_import.uploaded_file, csv_import.table_name))?;
+                    Box::pin(run_csv_import(connection, request.app_state.db.info, csv_import, request)).await.with_context(|| format!("Failed to import the CSV file {:?} into the table {:?}", csv_import.uploaded_file, csv_import.table_name))?;
                 },
                 FileStatement::Query(statement) => match &statement.body {
                   QueryBody::StaticSimpleSelect(query) => {
@@ -392,7 +394,7 @@ async fn execute_scalar_query<'a>(
         .app_state
         .db
         .info
-        .database_type
+        .database_type()
         .scalar_subquery_behavior();
     {
         let connection = take_connection(&request.app_state.db, db_connection, request).await?;
@@ -524,7 +526,7 @@ async fn take_connection<'a>(
     let pool_size = db.connection.size();
     let acquire_span = tracing::info_span!(
         "db.pool.acquire",
-        { otel::DB_SYSTEM_NAME } = db.info.database_type.otel_name(),
+        { otel::DB_SYSTEM_NAME } = db.info.database_type().otel_name(),
         { otel::DB_CLIENT_CONNECTION_POOL_NAME } = "sqlpage",
         sqlpage.db.pool.size = pool_size,
     );
@@ -566,12 +568,12 @@ async fn set_trace_context(connection: &mut dyn DatabaseConnection, db: &Databas
         span_context.span_id(),
         span_context.trace_flags()
     );
-    let sql = match db.info.kind {
-        DatabaseDriver::Postgres => {
+    let sql = match db.info {
+        DbInfo::Native(SupportedDatabase::Postgres) => {
             // postgresqlreceiver expects application_name to be a raw W3C traceparent value.
             format!("SET application_name = '{traceparent}'")
         }
-        DatabaseDriver::MySql => {
+        DbInfo::Native(SupportedDatabase::MySql) => {
             format!("SET @traceparent = '{traceparent}'")
         }
         _ => return,

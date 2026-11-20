@@ -1,7 +1,7 @@
 use crate::webserver::ErrorWithStatus;
 use crate::webserver::database::Parameter;
-use crate::webserver::database::{DatabaseDriver, SupportedDatabase};
-use crate::webserver::{Database, StatusCodeResultExt, make_placeholder};
+use crate::webserver::database::{DbInfo, SupportedDatabase};
+use crate::webserver::{Database, StatusCodeResultExt};
 use crate::{AppState, TEMPLATES_DIR};
 use anyhow::Context;
 use chrono::{DateTime, Utc};
@@ -57,7 +57,7 @@ impl FileSystem {
                         You can host sql files directly in your database by creating the following table: \n\
                         {} \n\
                         The error while trying to use the database file system is: {e:#}",
-                        DbFsQueries::get_create_table_sql(db.info.database_type)
+                        DbFsQueries::get_create_table_sql(db.info.database_type())
                     );
                     None
                 }
@@ -357,8 +357,8 @@ impl DbFsQueries {
             .execute("SELECT path, contents, last_modified FROM sqlpage_files WHERE 1 = 0")
             .await
             .context("Unable to access sqlpage_files")?;
-        let path_param = make_placeholder(db.info.kind, 1);
-        let timestamp_param = make_placeholder(db.info.kind, 2);
+        let path_param = db.info.placeholder(1);
+        let timestamp_param = db.info.placeholder(2);
         Ok(Self {
             was_modified: format!(
                 "SELECT 1 FROM sqlpage_files WHERE path = {path_param} AND last_modified >= {timestamp_param}"
@@ -377,7 +377,7 @@ impl DbFsQueries {
         // SQLite's CURRENT_TIMESTAMP uses a space separator. Preserve the
         // same lexical ordering for existing timestamp strings.
         let sqlite_timestamp;
-        let timestamp = if db.info.kind == DatabaseDriver::Sqlite {
+        let timestamp = if db.info == DbInfo::Native(SupportedDatabase::Sqlite) {
             sqlite_timestamp = since.format("%F %T%.f%:z").to_string();
             Parameter::Text(Some(&sqlite_timestamp))
         } else {
@@ -437,7 +437,7 @@ async fn test_sql_file_read_utf8() -> anyhow::Result<()> {
         return Ok(());
     }
 
-    let create_table_sql = DbFsQueries::get_create_table_sql(state.db.info.database_type);
+    let create_table_sql = DbFsQueries::get_create_table_sql(state.db.info.database_type());
     let db = &state.db;
     let conn = &db.connection;
     // Other tests share this database, so never drop a table their initialized state may use.
@@ -452,11 +452,11 @@ async fn test_sql_file_read_utf8() -> anyhow::Result<()> {
     conn.execute("DELETE FROM sqlpage_files WHERE path = 'unit test file.txt'")
         .await?;
 
-    let dbms = db.info.kind;
+    let dbms = db.info;
     let insert_sql = format!(
         "INSERT INTO sqlpage_files(path, contents) VALUES ({}, {})",
-        make_placeholder(dbms, 1),
-        make_placeholder(dbms, 2)
+        dbms.placeholder(1),
+        dbms.placeholder(2)
     );
     db.connection
         .acquire()

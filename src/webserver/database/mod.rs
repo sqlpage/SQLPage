@@ -11,7 +11,7 @@ mod sqlpage_functions;
 mod error_highlighting;
 mod sql_to_json;
 
-pub use driver::{DatabaseConnection, DatabaseDriver, DatabasePool, Parameter};
+pub use driver::{DatabaseConnection, DatabasePool, Parameter};
 pub use sql::SqlFile;
 
 /// Supported database types in `SQLPage`. Represents an actual DBMS, not a sqlx backend kind (like "Odbc")
@@ -68,12 +68,7 @@ impl SupportedDatabase {
     /// See <https://opentelemetry.io/docs/specs/semconv/registry/attributes/db/#db-system-name>
     #[must_use]
     pub fn otel_name(self) -> &'static str {
-        Self::otel_name_from_kind(self)
-    }
-
-    #[must_use]
-    pub fn otel_name_from_kind(kind: impl Into<SupportedDatabase>) -> &'static str {
-        match kind.into() {
+        match self {
             Self::Sqlite => "sqlite",
             Self::Duckdb => "duckdb",
             Self::Oracle => "oracle.db",
@@ -112,30 +107,25 @@ impl SupportedDatabase {
     }
 }
 
-impl From<DatabaseDriver> for SupportedDatabase {
-    fn from(kind: DatabaseDriver) -> Self {
-        match kind {
-            DatabaseDriver::Postgres => Self::Postgres,
-            DatabaseDriver::MySql => Self::MySql,
-            DatabaseDriver::Sqlite => Self::Sqlite,
-            DatabaseDriver::Mssql => Self::Mssql,
-            DatabaseDriver::Odbc => Self::Generic,
-        }
-    }
-}
-
 pub struct Database {
     pub connection: std::sync::Arc<dyn DatabasePool>,
     pub info: DbInfo,
 }
 
-#[derive(Debug, Clone)]
-pub struct DbInfo {
-    pub dbms_name: String,
-    /// The actual database we are connected to. Can be "Generic" when using an unknown ODBC driver
-    pub database_type: SupportedDatabase,
-    /// The sqlx database backend we are using. Can be "Odbc", in which case we need to use `database_type` to know what database we are actually using.
-    pub kind: DatabaseDriver,
+/// The SQL dialect and how the connection sends parameters to that database.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DbInfo {
+    Native(SupportedDatabase),
+    Odbc(SupportedDatabase),
+}
+
+impl DbInfo {
+    #[must_use]
+    pub fn database_type(self) -> SupportedDatabase {
+        match self {
+            Self::Native(db) | Self::Odbc(db) => db,
+        }
+    }
 }
 
 impl Database {
@@ -155,18 +145,10 @@ pub enum DbItem {
 
 impl std::fmt::Display for Database {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self.info.kind)
-    }
-}
-
-#[inline]
-#[must_use]
-pub fn make_placeholder(dbms: DatabaseDriver, arg_number: usize) -> String {
-    match dbms {
-        DatabaseDriver::Sqlite => format!("?{arg_number}"),
-        DatabaseDriver::Postgres => format!("${arg_number}"),
-        DatabaseDriver::Mssql => format!("@p{arg_number}"),
-        DatabaseDriver::MySql | DatabaseDriver::Odbc => "?".to_owned(),
+        match self.info {
+            DbInfo::Native(db) => f.write_str(db.display_name()),
+            DbInfo::Odbc(db) => write!(f, "{} (ODBC)", db.display_name()),
+        }
     }
 }
 

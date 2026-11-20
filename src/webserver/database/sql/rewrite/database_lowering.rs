@@ -2,7 +2,6 @@
 
 use std::ops::ControlFlow;
 
-use crate::webserver::database::DatabaseDriver;
 use anyhow::anyhow;
 use sqlparser::ast::{
     BinaryOperator, CastKind, CharacterLength, DataType, Expr as SqlExpr, Function, FunctionArg,
@@ -11,7 +10,7 @@ use sqlparser::ast::{
 };
 use sqlparser::tokenizer::Span;
 
-use super::super::dialect::{PlaceholderStyle, placeholder_style};
+use super::super::dialect::PlaceholderStyle;
 use super::sqlpage_expression::{
     StandaloneContext, build_sqlpage_expr, recognize_sqlpage_function, variable_from_expr,
 };
@@ -19,14 +18,14 @@ use crate::webserver::database::sqlpage_expr::{SqlPageExpr, StandaloneExpr};
 use crate::webserver::database::{DbInfo, SupportedDatabase};
 
 /// Lowers SQLPage-owned values in database AST fragments into bindings.
-pub(super) struct DatabaseLowerer<'a> {
-    database: &'a DbInfo,
+pub(super) struct DatabaseLowerer {
+    database: DbInfo,
     bindings: Vec<StandaloneExpr>,
     error: Option<anyhow::Error>,
 }
 
-impl<'a> DatabaseLowerer<'a> {
-    pub(super) fn new(database: &'a DbInfo) -> Self {
+impl DatabaseLowerer {
+    pub(super) fn new(database: DbInfo) -> Self {
         Self {
             database,
             bindings: Vec::new(),
@@ -40,7 +39,7 @@ impl<'a> DatabaseLowerer<'a> {
     }
 
     fn add_binding(&mut self, value: StandaloneExpr) -> SqlExpr {
-        let style = placeholder_style(self.database.kind);
+        let style = self.database.placeholder_style();
         // Variable identity includes its lookup source. Calls may have side effects,
         // and positional placeholders need a separate argument for each occurrence.
         let existing = match (&value, style) {
@@ -65,7 +64,7 @@ impl<'a> DatabaseLowerer<'a> {
         self,
         statement: &mut SqlStatement,
     ) -> anyhow::Result<Box<[StandaloneExpr]>> {
-        let PlaceholderStyle::Positional { token } = placeholder_style(self.database.kind) else {
+        let PlaceholderStyle::Positional { token } = self.database.placeholder_style() else {
             return Ok(self.bindings.into_boxed_slice());
         };
         let mut finalizer = PositionalBindingFinalizer {
@@ -89,7 +88,7 @@ impl<'a> DatabaseLowerer<'a> {
     }
 }
 
-impl VisitorMut for DatabaseLowerer<'_> {
+impl VisitorMut for DatabaseLowerer {
     type Break = ();
 
     fn pre_visit_expr(&mut self, expression: &mut SqlExpr) -> ControlFlow<Self::Break> {
@@ -110,7 +109,11 @@ impl VisitorMut for DatabaseLowerer<'_> {
             SqlExpr::Function(function) => match recognize_sqlpage_function(function) {
                 Ok(Some(_)) => {
                     let owned = std::mem::replace(expression, SqlExpr::value(Value::Null));
-                    match build_sqlpage_expr(self.database, &mut StandaloneContext, owned) {
+                    match build_sqlpage_expr(
+                        self.database.database_type(),
+                        &mut StandaloneContext,
+                        owned,
+                    ) {
                         Ok(value) => Some(self.add_binding(value)),
                         Err(error) => {
                             self.error = Some(error.context(
@@ -130,7 +133,7 @@ impl VisitorMut for DatabaseLowerer<'_> {
                 left,
                 op: BinaryOperator::StringConcat,
                 right,
-            } if self.database.database_type == SupportedDatabase::Mssql => {
+            } if self.database.database_type() == SupportedDatabase::Mssql => {
                 let left = std::mem::replace(left.as_mut(), SqlExpr::value(Value::Null));
                 let right = std::mem::replace(right.as_mut(), SqlExpr::value(Value::Null));
                 Some(make_concat(left, right))
@@ -139,7 +142,7 @@ impl VisitorMut for DatabaseLowerer<'_> {
                 kind: kind @ CastKind::DoubleColon,
                 ..
             } if !matches!(
-                self.database.database_type,
+                self.database.database_type(),
                 SupportedDatabase::Postgres
                     | SupportedDatabase::Duckdb
                     | SupportedDatabase::Snowflake
@@ -217,23 +220,20 @@ fn make_concat(left: SqlExpr, right: SqlExpr) -> SqlExpr {
 }
 
 /// Casts generated placeholders where the backend cannot infer string typing.
-fn cast_placeholder(placeholder: String, database: &DbInfo) -> SqlExpr {
-    let data_type = match database.kind {
-        DatabaseDriver::Sqlite => DataType::Text,
-        DatabaseDriver::Postgres | DatabaseDriver::MySql | DatabaseDriver::Mssql => {
-            return SqlExpr::value(Value::Placeholder(placeholder));
-        }
-        DatabaseDriver::Odbc => match database.database_type {
-            SupportedDatabase::Postgres | SupportedDatabase::Sqlite => DataType::Text,
-            SupportedDatabase::Oracle => DataType::Varchar(Some(CharacterLength::IntegerLength {
+fn cast_placeholder(placeholder: String, database: DbInfo) -> SqlExpr {
+    let data_type = match database {
+        DbInfo::Native(SupportedDatabase::Sqlite)
+        | DbInfo::Odbc(SupportedDatabase::Sqlite | SupportedDatabase::Postgres) => DataType::Text,
+        DbInfo::Odbc(SupportedDatabase::Oracle) => {
+            DataType::Varchar(Some(CharacterLength::IntegerLength {
                 length: 4000,
                 unit: None,
-            })),
-            SupportedDatabase::MySql | SupportedDatabase::Mssql | SupportedDatabase::Duckdb => {
-                return SqlExpr::value(Value::Placeholder(placeholder));
-            }
-            _ => DataType::Varchar(None),
-        },
+            }))
+        }
+        DbInfo::Odbc(SupportedDatabase::Snowflake | SupportedDatabase::Generic) => {
+            DataType::Varchar(None)
+        }
+        _ => return SqlExpr::value(Value::Placeholder(placeholder)),
     };
     SqlExpr::Cast {
         expr: Box::new(SqlExpr::value(Value::Placeholder(placeholder))),
