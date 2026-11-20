@@ -19,13 +19,12 @@ use crate::webserver::ErrorWithStatus;
 use crate::webserver::http_request_info::ExecutionContext;
 use crate::webserver::single_or_vec::SingleOrVec;
 
-use super::driver::FetchedItem;
 use super::{Database, DatabaseConnection, DatabaseDriver, DbItem, ScalarSubqueryBehavior};
 
 pub type DbConn = Option<DatabaseConnection>;
 
 /// Database events before computed columns and dynamic components are evaluated.
-enum QueryEvent {
+pub(super) enum QueryEvent {
     Row(QueryRow),
     FinishedQuery,
 }
@@ -40,10 +39,10 @@ impl QueryEvent {
 }
 
 /// A decoded row together with private values reserved for computed columns.
-struct QueryRow {
-    value: Value,
-    inputs: RowInputs,
-    output_column_count: usize,
+pub(super) struct QueryRow {
+    pub(super) value: Value,
+    pub(super) inputs: Vec<Value>,
+    pub(super) public_column_count: usize,
 }
 
 fn source_line_number(line: usize) -> i64 {
@@ -211,7 +210,7 @@ pub fn stream_query_results_with_conn<'a>(
                     let mut deferred_query_results = Vec::new();
                     {
                         let connection = take_connection(&request.app_state.db, db_connection, request).await?;
-                        let mut stream = connection.fetch_many(query.sql, &query.param_values);
+                        let mut stream = connection.fetch_many(query.sql, &query.param_values, &stmt.row_input_json);
                         loop {
                         let Some(result) = next_query_event(
                             &mut stream, &mut query_metrics, &mut returned_rows,
@@ -406,7 +405,11 @@ async fn execute_scalar_query<'a>(
         .scalar_subquery_behavior();
     {
         let connection = take_connection(&request.app_state.db, db_connection, request).await?;
-        let mut stream = connection.fetch_many(query.sql, &query.param_values);
+        let mut stream = connection.fetch_many(
+            query.sql,
+            &query.param_values,
+            &database_query.row_input_json,
+        );
         loop {
             let Some(result) = next_query_event(
                 &mut stream,
@@ -453,7 +456,9 @@ async fn execute_scalar_query<'a>(
             record_error_and_rollback(connection, &query_metrics, returned_rows, error).await,
         );
     } else if let Some(mut row) = scalar_row {
-        ensure_scalar_column_count(row.output_column_count)?;
+        ensure_scalar_column_count(
+            row.public_column_count + database_query.computed_columns.len(),
+        )?;
         if let Err(error) = prepare_query_row(request, database_query, &mut row, db_connection)
             .instrument(query_span.clone())
             .await
@@ -588,9 +593,9 @@ async fn set_trace_context(connection: &mut DatabaseConnection, db: &Database) {
     }
 }
 
-/// Poll and decode one physical result while measuring only database fetch time.
+/// Measure time spent polling the database stream and attach the SQL source to errors.
 async fn next_query_event(
-    stream: &mut (impl Stream<Item = Result<FetchedItem, sqlx::Error>> + Unpin),
+    stream: &mut (impl Stream<Item = Result<QueryEvent, sqlx::Error>> + Unpin),
     metrics: &mut DbQueryMetricsContext<'_>,
     returned_rows: &mut i64,
     source_file: &Path,
@@ -600,40 +605,12 @@ async fn next_query_event(
     let start_next = std::time::Instant::now();
     let next = stream.next().instrument(metrics.span.clone()).await;
     metrics.add_duration(start_next.elapsed());
-    let result = parse_single_sql_result(source_file, query, source_span, next?);
+    let result =
+        next?.map_err(|error| display_stmt_db_error(source_file, &query.sql, source_span, error));
     if matches!(result, Ok(QueryEvent::Row(_))) {
         *returned_rows += 1;
     }
     Some(result)
-}
-
-#[inline]
-fn parse_single_sql_result(
-    source_file: &Path,
-    query: &DatabaseQuery,
-    source_span: SourceSpan,
-    res: Result<FetchedItem, sqlx::Error>,
-) -> anyhow::Result<QueryEvent> {
-    match res {
-        Ok(FetchedItem::Row(columns)) => {
-            let column_count = columns.len();
-            let (row, mut inputs) = columns.json_parts(query.row_input_json.len())?;
-            decode_json_values(&mut inputs, &query.row_input_json);
-            Ok(QueryEvent::Row(QueryRow {
-                value: row,
-                inputs: RowInputs::new(inputs),
-                output_column_count: column_count - query.row_input_json.len()
-                    + query.computed_columns.len(),
-            }))
-        }
-        Ok(FetchedItem::FinishedQuery) => Ok(QueryEvent::FinishedQuery),
-        Err(err) => Err(display_stmt_db_error(
-            source_file,
-            &query.sql,
-            source_span,
-            err,
-        )),
-    }
 }
 
 fn clone_anyhow_err(source_file: &Path, err: &anyhow::Error) -> anyhow::Error {
@@ -692,10 +669,11 @@ async fn prepare_query_row(
 ) -> anyhow::Result<()> {
     apply_json_columns(&mut row.value, &query.json_columns);
     if let Value::Object(results) = &mut row.value {
+        let mut inputs = RowInputs::new(std::mem::take(&mut row.inputs));
         for column in &query.computed_columns {
             let value = column
                 .value
-                .evaluate(request, db_connection, &mut row.inputs)
+                .evaluate(request, db_connection, &mut inputs)
                 .await?
                 .into_json();
             let old_results = std::mem::take(results);
@@ -731,18 +709,6 @@ fn apply_json_columns(value: &mut Value, json_columns: &[String]) {
                     "The column {column} is missing from the result set, so it cannot be converted to JSON."
                 );
             }
-        }
-    }
-}
-
-fn decode_json_values(values: &mut [Value], json_flags: &[bool]) {
-    debug_assert_eq!(values.len(), json_flags.len());
-    for (value, decode_as_json) in values.iter_mut().zip(json_flags) {
-        if *decode_as_json
-            && let Value::String(json) = value
-            && let Ok(parsed) = serde_json::from_str(json)
-        {
-            *value = parsed;
         }
     }
 }
