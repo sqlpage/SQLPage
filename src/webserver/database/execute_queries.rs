@@ -1,6 +1,6 @@
 use anyhow::{Context, anyhow};
-use futures_util::StreamExt;
 use futures_util::stream::Stream;
+use futures_util::{StreamExt, TryStreamExt, stream};
 use serde_json::Value;
 use std::borrow::Cow;
 use std::path::Path;
@@ -143,29 +143,6 @@ fn create_db_query_span(
     (span, operation_name)
 }
 
-fn create_query_metrics<'a>(
-    request: &'a ExecutionContext,
-    source_file: &Path,
-    source_span: SourceSpan,
-    query: &BoundQuery<'_>,
-) -> (tracing::Span, DbQueryMetricsContext<'a>) {
-    let db_system_name = request.app_state.db.info.database_type().otel_name();
-    let (query_span, operation_name) = create_db_query_span(
-        query.sql,
-        source_file,
-        source_span.start.line,
-        db_system_name,
-    );
-    let query_metrics = DbQueryMetricsContext::new(
-        query_span.clone(),
-        operation_name,
-        db_system_name,
-        &request.app_state.telemetry_metrics,
-    );
-    record_query_params(&query_metrics.span, &query.param_values);
-    (query_span, query_metrics)
-}
-
 #[allow(clippy::too_many_lines)] // Keeps the single-connection statement dispatcher together.
 pub fn stream_query_results_with_conn<'a>(
     sql_file: &'a SqlFile,
@@ -191,74 +168,26 @@ pub fn stream_query_results_with_conn<'a>(
                     }
                   }
                   QueryBody::Database(stmt) => {
-                    let query = bind_query(stmt, request, db_connection)
-                        .await
-                        .map_err(|error| with_stmt_position(source_file, statement.source_span, error))?;
+                    let mut query = RunningQuery::bind(stmt, source_file, statement.source_span, request, db_connection)
+                        .await.map_err(|e| with_stmt_position(source_file, statement.source_span, e))?;
                     request.server_timing.record("bind_params");
-                    log::trace!("Executing query {:?}", query.sql);
-                    let (query_span, mut query_metrics) = create_query_metrics(request, source_file, statement.source_span, &query);
-                    let mut error = None;
-                    let mut returned_rows: i64 = 0;
-                    let buffer_rows = stmt.must_buffer_rows();
-                    let mut deferred_query_results = Vec::new();
-                    {
-                        let connection = take_connection(&request.app_state.db, db_connection, request).await?;
-                        let mut stream = connection.fetch_many(query.sql, &query.param_values, &stmt.row_input_json);
-                        while let Some(result) = next_query_event(
-                            &mut stream, &mut query_metrics, &mut returned_rows,
-                            source_file, stmt, statement.source_span,
-                        ).await {
-                            let event = match result {
-                                Ok(event) => event,
-                                Err(err) => {
-                                    error = Some(err);
-                                    break;
-                                }
-                            };
-                            if buffer_rows {
-                                deferred_query_results.push(event);
-                                continue;
-                            }
-                            let mut computed_connection = None;
-                            match prepare_query_event(request, stmt, event, &mut computed_connection)
-                                .instrument(query_span.clone()).await
-                            {
-                                Ok(item) => {
-                                    for row in parse_dynamic_rows(item) {
-                                        yield row;
-                                    }
-                                }
-                                Err(err) => {
-                                    error = Some(err);
-                                    break;
-                                }
+                    // Fail to acquire before starting the statement or trying to roll it back.
+                    take_connection(&request.app_state.db, db_connection, request).await?;
+                    let error = {
+                        let items = query.project_rows(request, db_connection);
+                        futures_util::pin_mut!(items);
+                        loop {
+                            match items.try_next().await {
+                                Ok(Some(item)) => for row in parse_dynamic_rows(item) { yield row; },
+                                Ok(None) => break None,
+                                Err(error) => break Some(error),
                             }
                         }
-                    }
-                    // The fetch stream has released the connection for nested SQL.
-                    if error.is_none() {
-                        for event in deferred_query_results {
-                            match prepare_query_event(request, stmt, event, db_connection)
-                                .instrument(query_span.clone()).await
-                            {
-                                Ok(item) => {
-                                    for row in parse_dynamic_rows(item) {
-                                        yield row;
-                                    }
-                                }
-                                Err(err) => {
-                                    error = Some(err);
-                                    break;
-                                }
-                            }
-                        }
-                    }
+                    };
                     if let Some(error) = error {
-                        let connection = take_connection(&request.app_state.db, db_connection, request).await?;
-                        let error = record_error_and_rollback(connection, &query_metrics, returned_rows, error).await;
-                        yield DbItem::Error(error);
+                        yield DbItem::Error(query.rollback(db_connection, error).await);
                     } else {
-                        query_metrics.record_success(returned_rows);
+                        query.metrics.record_success(query.returned_rows);
                     }
                   }
                 },
@@ -374,114 +303,73 @@ async fn execute_scalar_query<'a>(
     statement: &Query,
     source_file: &Path,
 ) -> anyhow::Result<Option<String>> {
-    let QueryBody::Database(database_query) = &statement.body else {
-        let QueryBody::StaticSimpleSelect(static_select) = &statement.body else {
-            unreachable!()
-        };
-        ensure_scalar_column_count(static_select.columns.len())?;
-        let row = execute_static_simple_select(static_select, request, db_connection).await?;
-        return scalar_value_from_row(row);
+    let stmt = match &statement.body {
+        QueryBody::Database(stmt) => stmt,
+        QueryBody::StaticSimpleSelect(stmt) => {
+            ensure_scalar_column_count(stmt.columns.len())?;
+            let row = execute_static_simple_select(stmt, request, db_connection).await?;
+            return scalar_value_from_row(row);
+        }
     };
-    let query = bind_query(database_query, request, db_connection).await?;
-    log::debug!("Executing scalar query: {:?}", query.sql);
-    let (query_span, mut query_metrics) =
-        create_query_metrics(request, source_file, statement.source_span, &query);
-
-    let mut scalar_row = None;
-    let mut returned_rows: i64 = 0;
-    let mut error = None;
-    let scalar_subquery_behavior = request
+    let mut query = RunningQuery::bind(
+        stmt,
+        source_file,
+        statement.source_span,
+        request,
+        db_connection,
+    )
+    .await?;
+    let connection = take_connection(&request.app_state.db, db_connection, request).await?;
+    let behavior = request
         .app_state
         .db
         .info
         .database_type()
         .scalar_subquery_behavior();
-    {
-        let connection = take_connection(&request.app_state.db, db_connection, request).await?;
-        let mut stream = connection.fetch_many(
-            query.sql,
-            &query.param_values,
-            &database_query.row_input_json,
-        );
-        while let Some(result) = next_query_event(
-            &mut stream,
-            &mut query_metrics,
-            &mut returned_rows,
-            source_file,
-            database_query,
-            statement.source_span,
-        )
-        .await
-        {
-            match result {
-                Ok(QueryEvent::Row(row)) => {
-                    if scalar_row.is_some() {
-                        debug_assert_eq!(
-                            scalar_subquery_behavior,
-                            ScalarSubqueryBehavior::ErrorOnMultipleRows
-                        );
-                        error = Some(anyhow!(
-                            "SET scalar query returned more than one row. A SET subquery must return zero or one row."
-                        ));
-                        break;
-                    }
-                    scalar_row = Some(row);
-                    if scalar_subquery_behavior == ScalarSubqueryBehavior::FirstRow {
-                        break;
-                    }
-                }
-                Ok(QueryEvent::FinishedQuery) => {}
-                Err(err) => {
-                    error = Some(err);
-                    break;
-                }
-            }
-        }
-    }
+    let row = first_scalar_row(query.fetch(connection), behavior).await;
 
-    let value = if let Some(error) = error {
-        let connection = take_connection(&request.app_state.db, db_connection, request).await?;
-        return Err(
-            record_error_and_rollback(connection, &query_metrics, returned_rows, error).await,
-        );
-    } else if let Some(row) = scalar_row {
-        ensure_scalar_column_count(
-            row.public_column_count + database_query.computed_columns.len(),
-        )?;
-        match prepare_query_row(request, database_query, row, db_connection)
-            .instrument(query_span.clone())
-            .await
-        {
-            Ok(value) => scalar_value_from_row(value)?,
-            Err(error) => {
-                let connection =
-                    take_connection(&request.app_state.db, db_connection, request).await?;
-                return Err(record_error_and_rollback(
-                    connection,
-                    &query_metrics,
-                    returned_rows,
-                    error,
-                )
-                .await);
-            }
+    // Release the fetch stream before evaluating computed columns on its connection.
+    let value = match row {
+        Ok(Some(row)) => {
+            ensure_scalar_column_count(row.public_column_count + stmt.computed_columns.len())?;
+            prepare_query_row(request, stmt, row, db_connection)
+                .instrument(query.metrics.span.clone())
+                .await
+                .map(Some)
         }
-    } else {
-        None
+        Ok(None) => Ok(None),
+        Err(error) => Err(error),
     };
-
-    query_metrics.record_success(returned_rows);
-    Ok(value)
+    match value {
+        Ok(value) => {
+            let scalar = value.map(scalar_value_from_row).transpose()?.flatten();
+            query.metrics.record_success(query.returned_rows);
+            Ok(scalar)
+        }
+        Err(error) => Err(query.rollback(db_connection, error).await),
+    }
 }
 
-async fn record_error_and_rollback(
-    connection: &mut dyn DatabaseConnection,
-    query_metrics: &DbQueryMetricsContext<'_>,
-    returned_rows: i64,
-    error: anyhow::Error,
-) -> anyhow::Error {
-    query_metrics.record_error(returned_rows, &error);
-    try_rollback_transaction(connection).await;
-    error
+async fn first_scalar_row(
+    events: impl Stream<Item = anyhow::Result<QueryEvent>> + Unpin,
+    behavior: ScalarSubqueryBehavior,
+) -> anyhow::Result<Option<QueryRow>> {
+    let mut rows = events.try_filter_map(|event| {
+        std::future::ready(Ok(match event {
+            QueryEvent::Row(row) => Some(row),
+            QueryEvent::FinishedQuery => None,
+        }))
+    });
+    let first = rows.try_next().await?;
+    if first.is_some()
+        && behavior == ScalarSubqueryBehavior::ErrorOnMultipleRows
+        && rows.try_next().await?.is_some()
+    {
+        anyhow::bail!(
+            "SET scalar query returned more than one row. A SET subquery must return zero or one row."
+        );
+    }
+    Ok(first)
 }
 
 fn scalar_value_from_row(value: Value) -> anyhow::Result<Option<String>> {
@@ -583,26 +471,6 @@ async fn set_trace_context(connection: &mut dyn DatabaseConnection, db: &Databas
     }
 }
 
-/// Measure time spent polling the database stream and attach the SQL source to errors.
-async fn next_query_event(
-    stream: &mut (impl Stream<Item = Result<QueryEvent, sqlx::Error>> + Unpin),
-    metrics: &mut DbQueryMetricsContext<'_>,
-    returned_rows: &mut i64,
-    source_file: &Path,
-    query: &DatabaseQuery,
-    source_span: SourceSpan,
-) -> Option<anyhow::Result<QueryEvent>> {
-    let start_next = std::time::Instant::now();
-    let next = stream.next().instrument(metrics.span.clone()).await;
-    metrics.add_duration(start_next.elapsed());
-    let result =
-        next?.map_err(|error| display_stmt_db_error(source_file, &query.sql, source_span, error));
-    if matches!(result, Ok(QueryEvent::Row(_))) {
-        *returned_rows += 1;
-    }
-    Some(result)
-}
-
 fn clone_anyhow_err(source_file: &Path, err: &anyhow::Error) -> anyhow::Error {
     let mut e = anyhow!(
         "{} contains a syntax error preventing SQLPage from parsing and preparing its SQL statements.",
@@ -614,29 +482,104 @@ fn clone_anyhow_err(source_file: &Path, err: &anyhow::Error) -> anyhow::Error {
     e
 }
 
-async fn bind_query<'a>(
-    query: &'a DatabaseQuery,
-    request: &'a ExecutionContext,
-    db_connection: &mut DbConn,
-) -> anyhow::Result<BoundQuery<'a>> {
-    let sql = query.sql.as_str();
-    log::debug!("Preparing statement: {sql}");
-    let mut param_values = Vec::with_capacity(query.bindings.len());
-    let mut inputs = NoInputs;
-    for (param_idx, binding) in query.bindings.iter().enumerate() {
-        log::trace!("\tevaluating binding {}: {:?}", param_idx + 1, binding);
-        let argument = binding
-            .evaluate(request, db_connection, &mut inputs)
-            .await?
-            .into_function_argument();
-        log::debug!(
-            "\tparameter {}: {}",
-            param_idx + 1,
-            argument.as_ref().unwrap_or(&Cow::Borrowed("NULL"))
+struct RunningQuery<'a> {
+    statement: &'a DatabaseQuery,
+    params: Vec<Option<String>>,
+    source_file: &'a Path,
+    source_span: SourceSpan,
+    metrics: DbQueryMetricsContext<'a>,
+    returned_rows: i64,
+}
+
+impl<'a> RunningQuery<'a> {
+    async fn bind(
+        statement: &'a DatabaseQuery,
+        source_file: &'a Path,
+        source_span: SourceSpan,
+        request: &'a ExecutionContext,
+        connection: &mut DbConn,
+    ) -> anyhow::Result<Self> {
+        let mut params = Vec::with_capacity(statement.bindings.len());
+        for binding in &statement.bindings {
+            let value = binding
+                .evaluate(request, connection, &mut NoInputs)
+                .await?
+                .into_function_argument();
+            params.push(value.map(Cow::into_owned));
+        }
+        let system = request.app_state.db.info.database_type().otel_name();
+        let (span, operation) =
+            create_db_query_span(&statement.sql, source_file, source_span.start.line, system);
+        log::debug!("Executing SQL: {}", statement.sql);
+        record_query_params(&span, &params);
+        let metrics = DbQueryMetricsContext::new(
+            span,
+            operation,
+            system,
+            &request.app_state.telemetry_metrics,
         );
-        param_values.push(argument.map(Cow::into_owned));
+        Ok(Self {
+            statement,
+            source_file,
+            source_span,
+            params,
+            metrics,
+            returned_rows: 0,
+        })
     }
-    Ok(BoundQuery { sql, param_values })
+
+    fn fetch<'c>(
+        &'c mut self,
+        connection: &'c mut dyn DatabaseConnection,
+    ) -> impl Stream<Item = anyhow::Result<QueryEvent>> + Unpin + 'c {
+        let mut rows = connection.fetch_many(
+            &self.statement.sql,
+            &self.params,
+            &self.statement.row_input_json,
+        );
+        Box::pin(async_stream::try_stream! {
+            loop {
+                let start = std::time::Instant::now();
+                let next = rows.next().instrument(self.metrics.span.clone()).await;
+                self.metrics.add_duration(start.elapsed());
+                let Some(event) = next else { break };
+                let event = event.map_err(|e| display_stmt_db_error(self.source_file, &self.statement.sql, self.source_span, e))?;
+                if matches!(event, QueryEvent::Row(_)) { self.returned_rows += 1; }
+                yield event;
+            }
+        })
+    }
+
+    fn project_rows<'c>(
+        &'c mut self,
+        request: &'c ExecutionContext,
+        connection: &'c mut DbConn,
+    ) -> impl Stream<Item = anyhow::Result<DbItem>> + 'c {
+        async_stream::try_stream! {
+            let stmt = self.statement;
+            let span = self.metrics.span.clone();
+            let events = self.fetch(connection.as_deref_mut().expect("connection acquired for query"));
+            let mut unused = None;
+            let (mut events, nested_connection) = if stmt.must_buffer_rows() {
+                // Nested SQL must use this session after its active fetch has finished.
+                let rows: Vec<_> = events.try_collect().await?;
+                (stream::iter(rows.into_iter().map(Ok)).left_stream(), connection)
+            } else {
+                (events.right_stream(), &mut unused)
+            };
+            while let Some(event) = events.try_next().await? {
+                yield prepare_query_event(request, stmt, event, nested_connection).instrument(span.clone()).await?;
+            }
+        }
+    }
+
+    async fn rollback(&self, connection: &mut DbConn, error: anyhow::Error) -> anyhow::Error {
+        self.metrics.record_error(self.returned_rows, &error);
+        if let Some(connection) = connection.as_deref_mut() {
+            try_rollback_transaction(connection).await;
+        }
+        error
+    }
 }
 
 async fn prepare_query_event(
@@ -703,12 +646,6 @@ fn apply_json_columns(value: &mut Value, json_columns: &[String]) {
             }
         }
     }
-}
-
-/// Rewritten SQL and evaluated arguments in the form consumed by `sqlx`.
-pub struct BoundQuery<'a> {
-    sql: &'a str,
-    param_values: Vec<Option<String>>,
 }
 
 #[cfg(test)]
