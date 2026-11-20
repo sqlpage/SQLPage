@@ -78,8 +78,6 @@ If you have a `.env` file in the current directory or in any of its parent direc
 
 ### Database connection strings
 
-Startup migrations are supported on native SQLite, PostgreSQL, MySQL, and SQL Server connections.
-
 The `database_url` parameter sets all the connection parameters for the database, including
 
  - the database engine type (`sqlite`, `postgres`, `mysql`, `mssql`, or ODBC connection strings)
@@ -316,7 +314,8 @@ EXEC sp_reset_connection;
 
 ## Migrations
 
-SQLPage allows you to run SQL scripts when the database schema changes, by creating a `sqlpage/migrations` directory.
+On native SQLite, PostgreSQL, MySQL, and SQL Server connections, SQLPage runs pending scripts from `sqlpage/migrations` at startup.
+For ODBC connections, apply the scripts with your database's migration tool.
 We have a guide on [how to create migrations](https://sql-page.com/your-first-sql-website/migrations.sql).
 
 ## Custom URL routes
