@@ -1,0 +1,7 @@
+.status-bar > * + :last-child {
+  margin-inline-start: auto;
+}
+
+.status-bar > a:focus-visible {
+  outline-offset: -2px;
+}

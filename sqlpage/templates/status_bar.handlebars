@@ -1,7 +1,7 @@
 {{#if (default fixed true)}}<sqlpage-fixed-status-bar>{{/if}}
 <div role="status" aria-label="{{default label 'Status bar'}}"
     {{#if id}}id="{{id}}"{{/if}}
-    class="status-bar d-flex overflow-x-auto bg-surface fs-5 {{#if (default fixed true)}}fixed-bottom border-top{{else}}my-2 border rounded{{/if}} {{class}}">
+    class="status-bar d-flex divide-x overflow-x-auto bg-surface fs-5 {{#if (default fixed true)}}fixed-bottom border-top{{else}}my-2 border rounded{{/if}} {{class}}">
     {{#each_row}}
         {{#if link}}<a href="{{link}}"{{else}}<span{{/if}}
             class="d-flex flex-shrink-0 align-items-center gap-1 text-nowrap px-3 py-1 {{#if color}}text-{{color}}{{/if}} {{class}}"
