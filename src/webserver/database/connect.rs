@@ -1,4 +1,4 @@
-use std::{str::FromStr, sync::Arc, time::Duration};
+use std::{sync::Arc, time::Duration};
 
 use anyhow::Context;
 use futures_util::future::BoxFuture;
@@ -15,54 +15,33 @@ use crate::{ON_CONNECT_FILE, ON_RESET_FILE, app_config::AppConfig};
 
 mod sqlite;
 
-impl FromStr for DatabaseDriver {
-    type Err = anyhow::Error;
-
-    fn from_str(url: &str) -> anyhow::Result<Self> {
-        match url.split_once(':').map(|(scheme, _)| scheme) {
-            Some("postgres" | "postgresql") => Ok(Self::Postgres),
-            Some("mysql" | "mariadb") => Ok(Self::MySql),
-            Some("sqlite") => Ok(Self::Sqlite),
-            Some("mssql" | "sqlserver") => Ok(Self::Mssql),
-            Some("odbc") => Ok(Self::Odbc),
-            _ => {
-                let upper = url.to_ascii_uppercase();
-                anyhow::ensure!(
-                    upper.starts_with("DSN=")
-                        || upper.starts_with("DRIVER=")
-                        || upper.starts_with("FILEDSN=")
-                        || (upper.contains("DRIVER=") && upper.contains(';')),
-                    "Unsupported database URL scheme in database_url"
-                );
-                Ok(Self::Odbc)
-            }
-        }
-    }
-}
-
 impl Database {
     pub async fn init(config: &AppConfig) -> anyhow::Result<Self> {
         let url = config.database_url.as_str();
-        let kind = url.parse::<DatabaseDriver>()?;
         let password = config.database_password.as_deref();
-        let mut dbms_name = SupportedDatabase::from(kind).display_name().to_owned();
+        let kind;
+        let mut detected_name = None;
+        let scheme = url.split_once(':').map(|(scheme, _)| scheme);
 
-        let connection = match kind {
-            DatabaseDriver::Postgres => {
+        let connection = match scheme {
+            Some("postgres" | "postgresql") => {
+                kind = DatabaseDriver::Postgres;
                 let mut options = url.parse::<PgConnectOptions>()?;
                 if let Some(password) = password {
                     options = options.password(password);
                 }
                 DatabasePool::Postgres(connect(options, config, kind, None).await?)
             }
-            DatabaseDriver::MySql => {
+            Some("mysql" | "mariadb") => {
+                kind = DatabaseDriver::MySql;
                 let mut options = url.parse::<MySqlConnectOptions>()?;
                 if let Some(password) = password {
                     options = options.password(password);
                 }
                 DatabasePool::MySql(connect(options, config, kind, None).await?)
             }
-            DatabaseDriver::Sqlite => {
+            Some("sqlite") => {
+                kind = DatabaseDriver::Sqlite;
                 if password.is_some() {
                     log::warn!("Setting a password for a SQLite database is not supported");
                 }
@@ -76,7 +55,8 @@ impl Database {
                     .await?,
                 )
             }
-            DatabaseDriver::Mssql => {
+            Some("mssql" | "sqlserver") => {
+                kind = DatabaseDriver::Mssql;
                 let mut url =
                     openidconnect::url::Url::parse(url).context("Invalid SQL Server URL")?;
                 if let Some(password) = password {
@@ -91,7 +71,11 @@ impl Database {
                 let options = url.as_str().parse::<MssqlConnectOptions>()?;
                 DatabasePool::Mssql(connect(options, config, kind, None).await?)
             }
-            DatabaseDriver::Odbc => {
+            _ => {
+                anyhow::ensure!(
+                    scheme == Some("odbc") || is_odbc_connection_string(url),
+                    "Unsupported database URL scheme in database_url"
+                );
                 if password.is_some() {
                     log::warn!(
                         "Setting a password for an ODBC connection is not supported via separate config; include credentials in the DSN or connection string"
@@ -101,13 +85,18 @@ impl Database {
                 options
                     .batch_size(config.max_pending_rows.clamp(1, 1024))
                     .max_column_size(None);
-                dbms_name = open_connection(&options, config.database_connection_retries)
+                let dbms_name = open_connection(&options, config.database_connection_retries)
                     .await?
                     .dbms_name()?;
+                log::debug!("ODBC driver reported DBMS {dbms_name:?}");
+                detected_name = Some(dbms_name);
+                kind = DatabaseDriver::Odbc;
                 DatabasePool::Odbc(connect(options, config, kind, None).await?)
             }
         };
 
+        let dbms_name = detected_name
+            .unwrap_or_else(|| SupportedDatabase::from(kind).display_name().to_owned());
         log::debug!("Initialized {dbms_name:?} database pool");
         Ok(Self {
             connection,
@@ -118,6 +107,14 @@ impl Database {
             },
         })
     }
+}
+
+fn is_odbc_connection_string(url: &str) -> bool {
+    let upper = url.to_ascii_uppercase();
+    upper.starts_with("DSN=")
+        || upper.starts_with("DRIVER=")
+        || upper.starts_with("FILEDSN=")
+        || (upper.contains("DRIVER=") && upper.contains(';'))
 }
 
 type SetupConnection<C> = fn(&mut C) -> BoxFuture<'_, Result<(), sqlx::Error>>;
