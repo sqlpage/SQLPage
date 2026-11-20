@@ -21,16 +21,16 @@ use crate::webserver::single_or_vec::SingleOrVec;
 
 use super::{Database, DatabaseConnection, DatabaseDriver, DbItem, ScalarSubqueryBehavior};
 
-pub type DbConn = Option<DatabaseConnection>;
+pub type DbConn = Option<Box<dyn DatabaseConnection>>;
 
 /// Database events before computed columns and dynamic components are evaluated.
-pub(super) enum QueryEvent {
+pub enum QueryEvent {
     Row(QueryRow),
     FinishedQuery,
 }
 
 /// A decoded row together with private values reserved for computed columns.
-pub(super) struct QueryRow {
+pub struct QueryRow {
     pub(super) value: Value,
     pub(super) inputs: Vec<Value>,
     pub(super) public_column_count: usize,
@@ -324,7 +324,7 @@ async fn execute_static_simple_select(
     Ok(Value::Object(map))
 }
 
-async fn try_rollback_transaction(db_connection: &mut DatabaseConnection) {
+async fn try_rollback_transaction(db_connection: &mut dyn DatabaseConnection) {
     log::debug!("Attempting to rollback transaction");
     match db_connection.execute("ROLLBACK").await {
         Ok(()) => log::debug!("Rolled back transaction"),
@@ -472,7 +472,7 @@ async fn execute_scalar_query<'a>(
 }
 
 async fn record_error_and_rollback(
-    connection: &mut DatabaseConnection,
+    connection: &mut dyn DatabaseConnection,
     query_metrics: &DbQueryMetricsContext<'_>,
     returned_rows: i64,
     error: anyhow::Error,
@@ -517,9 +517,9 @@ async fn take_connection<'a>(
     db: &'a Database,
     conn: &'a mut DbConn,
     request: &ExecutionContext,
-) -> anyhow::Result<&'a mut DatabaseConnection> {
+) -> anyhow::Result<&'a mut dyn DatabaseConnection> {
     if let Some(c) = conn {
-        return Ok(c);
+        return Ok(c.as_mut());
     }
     let pool_size = db.connection.size();
     let acquire_span = tracing::info_span!(
@@ -532,16 +532,14 @@ async fn take_connection<'a>(
         Ok(c) => {
             log::debug!("Acquired a database connection");
             request.server_timing.record("db_conn");
-            *conn = Some(c);
-            let connection = conn.as_mut().unwrap();
+            let connection = conn.insert(c).as_mut();
             set_trace_context(connection, db).await;
             Ok(connection)
         }
         Err(e) => {
-            let db_name = db.info.kind;
             let active_count = db.connection.size();
             let err_msg = format!(
-                "Unable to connect to {db_name:?}. The connection pool currently has {active_count} active connections."
+                "Unable to connect to {db}. The connection pool currently has {active_count} active connections."
             );
             Err(anyhow::Error::new(e).context(err_msg))
         }
@@ -551,7 +549,7 @@ async fn take_connection<'a>(
 /// Sets the current `OTel` trace context on the database connection so it is visible
 /// in `pg_stat_activity.application_name` (`PostgreSQL`) or as a session variable (`MySQL`).
 /// This allows correlating `SQLPage` traces with database-side monitoring.
-async fn set_trace_context(connection: &mut DatabaseConnection, db: &Database) {
+async fn set_trace_context(connection: &mut dyn DatabaseConnection, db: &Database) {
     use opentelemetry::trace::TraceContextExt;
     use tracing_opentelemetry::OpenTelemetrySpanExt;
 
