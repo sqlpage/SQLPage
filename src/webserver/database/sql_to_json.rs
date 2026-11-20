@@ -319,12 +319,8 @@ mod tests {
         Err(sqlx::Error::RowNotFound.into())
     }
 
-    fn setup_logging() {
-        crate::telemetry::init_test_logging();
-    }
-
     fn db_specific_test(db_type: &str) -> Option<String> {
-        setup_logging();
+        crate::telemetry::init_test_logging();
         let db_url = test_database_url();
         if db_url.starts_with(db_type) {
             Some(db_url)
@@ -740,35 +736,21 @@ mod tests {
     }
 
     fn expect_json_object_equal(actual: &Value, expected: &Value) {
-        use std::fmt::Write;
-
-        if json_values_equal(actual, expected) {
-            return;
-        }
-        let actual = actual.as_object().unwrap();
-        let expected = expected.as_object().unwrap();
-
-        let all_keys: std::collections::BTreeSet<_> =
-            actual.keys().chain(expected.keys()).collect();
-        let max_key_len = all_keys.iter().map(|k| k.len()).max().unwrap_or(0);
-
-        let mut comparison_string = String::new();
-        for key in all_keys {
-            let actual_value = actual.get(key).unwrap_or(&Value::Null);
-            let expected_value = expected.get(key).unwrap_or(&Value::Null);
-            if json_values_equal(actual_value, expected_value) {
-                continue;
+        // Drivers can spell the same JSON number as 42, 42.0 or 4.2e1.
+        fn normalize_numbers(value: &Value) -> Value {
+            match value {
+                Value::Number(n) => decimal_to_json(&n.to_string().parse().unwrap()),
+                Value::Array(items) => Value::Array(items.iter().map(normalize_numbers).collect()),
+                Value::Object(fields) => Value::Object(
+                    fields
+                        .iter()
+                        .map(|(k, v)| (k.clone(), normalize_numbers(v)))
+                        .collect(),
+                ),
+                other => other.clone(),
             }
-            writeln!(
-                &mut comparison_string,
-                "{key:<max_key_len$}  actual  : {actual_value:?}\n{key:max_key_len$}  expected: {expected_value:?}\n"
-            )
-            .unwrap();
         }
-        assert_eq!(
-            actual, expected,
-            "JSON objects are not equal:\n\n{comparison_string}"
-        );
+        assert_eq!(normalize_numbers(actual), normalize_numbers(expected));
     }
 
     #[actix_web::test]
@@ -796,34 +778,21 @@ mod tests {
 
         let json_result = row.value;
 
-        // For ODBC databases, uppercase columns should be converted to lowercase
-        // For other databases, names should remain as-is
-        let expected_json = if matches!(db.info, DbInfo::Odbc(_)) {
-            // ODBC database - uppercase should be converted to lowercase
-            serde_json::json!({
-                "uppercase_col": 42,
-                "lowercase_col": 42,
-                "Mixed_Case_Col": 42,
-                "COL_WITH_123_NUMBERS": 42,
-                "col-with-dashes": 42,
-                "col with spaces": 42,
-                "_underscore_prefix": 42,
-                "123_NUMBER_PREFIX": 42
-            })
+        let (uppercase, underscore) = if matches!(db.info, DbInfo::Odbc(_)) {
+            ("uppercase_col", "_underscore_prefix")
         } else {
-            // Non-ODBC database - names remain as-is
-            serde_json::json!({
-                "UPPERCASE_COL": 42,
-                "lowercase_col": 42,
-                "Mixed_Case_Col": 42,
-                "COL_WITH_123_NUMBERS": 42,
-                "col-with-dashes": 42,
-                "col with spaces": 42,
-                "_UNDERSCORE_PREFIX": 42,
-                "123_NUMBER_PREFIX": 42
-            })
+            ("UPPERCASE_COL", "_UNDERSCORE_PREFIX")
         };
-
+        let expected_json = serde_json::json!({
+            uppercase: 42,
+            "lowercase_col": 42,
+            "Mixed_Case_Col": 42,
+            "COL_WITH_123_NUMBERS": 42,
+            "col-with-dashes": 42,
+            "col with spaces": 42,
+            underscore: 42,
+            "123_NUMBER_PREFIX": 42
+        });
         expect_json_object_equal(&json_result, &expected_json);
 
         Ok(())
@@ -870,33 +839,5 @@ line2' as multiline_string
         expect_json_object_equal(&json_result, &expected_json);
 
         Ok(())
-    }
-
-    /// Compare JSON values, treating integers and floats that are numerically equal as equal
-    fn json_values_equal(a: &Value, b: &Value) -> bool {
-        use Value::*;
-
-        match (a, b) {
-            (Null, Null) => true,
-            (Bool(a), Bool(b)) => a == b,
-            (Number(a), Number(b)) => {
-                // Treat integers and floats as equal if they represent the same numerical value
-                a.as_f64() == b.as_f64()
-            }
-            (String(a), String(b)) => a == b,
-            (Array(a), Array(b)) => {
-                a.len() == b.len() && a.iter().zip(b.iter()).all(|(a, b)| json_values_equal(a, b))
-            }
-            (Object(a), Object(b)) => {
-                if a.len() != b.len() {
-                    return false;
-                }
-                a.iter().all(|(key, value)| {
-                    b.get(key)
-                        .is_some_and(|expected_value| json_values_equal(value, expected_value))
-                })
-            }
-            _ => false,
-        }
     }
 }
