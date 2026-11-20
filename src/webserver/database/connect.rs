@@ -1,99 +1,195 @@
-use std::{future::Future, mem::take, sync::Arc, time::Duration};
+use std::{any::Any, sync::Arc, time::Duration};
 
-use super::Database;
-use crate::{
-    ON_CONNECT_FILE, ON_RESET_FILE,
-    app_config::AppConfig,
-    webserver::database::{DbInfo, SupportedDatabase},
-};
 use anyhow::Context;
-use futures_util::future::BoxFuture;
-use sqlx::connection::{ConnectOptions, Connection};
-use sqlx::executor::Executor;
-use sqlx::odbc::OdbcConnectOptions;
+use sqlx::pool::PoolOptions;
 use sqlx::{
-    any::{Any, AnyConnectOptions, AnyConnection, AnyKind},
-    pool::PoolOptions,
-    sqlite::{Function, SqliteConnectOptions, SqliteFunctionCtx},
+    AssertSqlSafe, ColumnIndex, ConnectOptions, Connection, Decode, Executor, Row, Type,
+    mysql::MySqlConnectOptions, postgres::PgConnectOptions,
 };
+use sqlx_odbc::OdbcConnectOptions;
+use sqlx_sqlserver::MssqlConnectOptions;
+
+use super::{Database, DatabasePool, DbInfo, SupportedDatabase, migrations::MigrationPool};
+use crate::{ON_CONNECT_FILE, ON_RESET_FILE, app_config::AppConfig};
+
+mod sqlite;
 
 impl Database {
     pub async fn init(config: &AppConfig) -> anyhow::Result<Self> {
-        let database_url = &config.database_url;
-        let mut connect_options: AnyConnectOptions = database_url
-            .parse()
-            .with_context(|| format!("\"{database_url}\" is not a valid database URL. Please change the \"database_url\" option in the configuration file."))?;
-        if let Some(password) = &config.database_password {
-            set_database_password(&mut connect_options, password);
-        }
-        connect_options.log_statements(log::LevelFilter::Trace);
-        connect_options.log_slow_statements(log::LevelFilter::Warn, Duration::from_millis(250));
-        log::debug!(
-            "Connecting to a {:?} database on {}",
-            connect_options.kind(),
-            database_url
-        );
-        set_custom_connect_options(&mut connect_options, config);
-        log::debug!("Connecting to database: {database_url}");
-        let mut conn: AnyConnection =
-            retry_connecting(config, || AnyConnection::connect_with(&connect_options)).await?;
-        let dbms_name: String = conn.dbms_name().await?;
-        let database_type = SupportedDatabase::from_dbms_name(&dbms_name);
-        drop(conn);
+        let url = config.database_url.as_str();
+        let password = config.database_password.as_deref();
+        let scheme = url.split_once(':').map(|(scheme, _)| scheme);
 
-        let db_kind = connect_options.kind();
-        let pool = Self::create_pool_options(config, db_kind)
-            .connect_with(connect_options)
-            .await
-            .with_context(|| format!("Unable to open connection pool to {database_url}"))?;
+        let db = match scheme {
+            Some("postgres" | "postgresql") => {
+                let info = DbInfo::Native(SupportedDatabase::Postgres);
+                let mut options = url.parse::<PgConnectOptions>()?;
+                if let Some(password) = password {
+                    options = options.password(password);
+                }
+                Self::native(connect(options, config, info, 50).await?, info)
+            }
+            Some("mysql" | "mariadb") => {
+                let info = DbInfo::Native(SupportedDatabase::MySql);
+                let mut options = url.parse::<MySqlConnectOptions>()?;
+                if let Some(password) = password {
+                    options = options.password(password);
+                }
+                Self::native(connect(options, config, info, 75).await?, info)
+            }
+            Some("sqlite") => {
+                let info = DbInfo::Native(SupportedDatabase::Sqlite);
+                if password.is_some() {
+                    log::warn!("Setting a password for a SQLite database is not supported");
+                }
+                let default_size = if url.contains(":memory:") { 128 } else { 16 };
+                let pool = connect(sqlite::options(config)?, config, info, default_size).await?;
+                Self::native(pool, info)
+            }
+            Some("mssql" | "sqlserver") => {
+                let info = DbInfo::Native(SupportedDatabase::Mssql);
+                let mut url =
+                    openidconnect::url::Url::parse(url).context("Invalid SQL Server URL")?;
+                if let Some(password) = password {
+                    let encoded = percent_encoding::utf8_percent_encode(
+                        password,
+                        percent_encoding::NON_ALPHANUMERIC,
+                    )
+                    .to_string();
+                    url.set_password(Some(&encoded))
+                        .map_err(|()| anyhow::anyhow!("Unable to set the SQL Server password"))?;
+                }
+                let options = url.as_str().parse::<MssqlConnectOptions>()?;
+                Self::native(connect(options, config, info, 100).await?, info)
+            }
+            _ => {
+                anyhow::ensure!(
+                    scheme == Some("odbc") || is_odbc_connection_string(url),
+                    "Unsupported database URL scheme in database_url"
+                );
+                if password.is_some() {
+                    log::warn!(
+                        "Setting a password for an ODBC connection is not supported via separate config; include credentials in the DSN or connection string"
+                    );
+                }
+                let mut options = url.parse::<OdbcConnectOptions>()?;
+                options
+                    .batch_size(config.max_pending_rows.clamp(1, 1024))
+                    .max_column_size(None);
+                let probe = open_connection(&options, config.database_connection_retries).await?;
+                let dbms_name = probe.dbms_name();
+                probe.close().await?;
+                let dbms_name = dbms_name?;
+                log::debug!("ODBC driver reported DBMS {dbms_name:?}");
+                let info = DbInfo::Odbc(SupportedDatabase::from_dbms_name(&dbms_name));
+                Self {
+                    connection: Arc::new(connect(options, config, info, 50).await?),
+                    migrations: None,
+                    info,
+                }
+            }
+        };
 
-        log::debug!("Initialized {dbms_name:?} database pool: {pool:#?}");
-        Ok(Database {
-            connection: pool,
-            info: DbInfo {
-                dbms_name,
-                database_type,
-                kind: db_kind,
-            },
-        })
+        log::debug!("Initialized {db} database pool");
+        Ok(db)
     }
 
-    fn create_pool_options(config: &AppConfig, kind: AnyKind) -> PoolOptions<Any> {
-        let ConnectionHooks {
-            on_connect,
-            on_reset,
-        } = ConnectionHooks::read(config);
-        let mut pool_options = PoolOptions::new()
-            .max_connections(max_connections(config, kind))
-            .idle_timeout(config.database_connection_idle_timeout)
-            .max_lifetime(config.database_connection_max_lifetime)
-            .acquire_timeout(Duration::from_secs_f64(
-                config.database_connection_acquire_timeout_seconds,
-            ));
-        pool_options = add_on_return_to_pool(pool_options, on_reset);
-        pool_options = add_on_connection_handler(config, pool_options, on_connect);
-        pool_options
+    fn native(pool: impl DatabasePool + MigrationPool + 'static, info: DbInfo) -> Self {
+        let pool = Arc::new(pool);
+        Self {
+            connection: pool.clone(),
+            migrations: Some(pool),
+            info,
+        }
     }
 }
 
-async fn retry_connecting<C, E, F>(
+fn is_odbc_connection_string(url: &str) -> bool {
+    let upper = url.to_ascii_uppercase();
+    upper.starts_with("DSN=")
+        || upper.starts_with("DRIVER=")
+        || upper.starts_with("FILEDSN=")
+        || (upper.contains("DRIVER=") && upper.contains(';'))
+}
+
+async fn connect<O, DB>(
+    options: O,
     config: &AppConfig,
-    mut connect: impl FnMut() -> F,
-) -> anyhow::Result<C>
+    info: DbInfo,
+    default_max_connections: u32,
+) -> anyhow::Result<sqlx::Pool<DB>>
 where
-    F: Future<Output = Result<C, E>>,
-    E: std::error::Error + Send + Sync + 'static,
+    O: ConnectOptions,
+    O::Connection: Connection<Database = DB> + Sized,
+    DB: sqlx::Database<Connection = O::Connection>,
+    for<'c> &'c mut DB::Connection: Executor<'c, Database = DB>,
+    bool: Type<DB> + for<'r> Decode<'r, DB>,
+    usize: ColumnIndex<DB::Row>,
 {
-    let mut retries = config.database_connection_retries;
+    let options = options
+        .log_statements(log::LevelFilter::Trace)
+        .log_slow_statements(log::LevelFilter::Warn, Duration::from_millis(250));
+    // SQLx pools retry refused connections until their acquire timeout. Probe directly
+    // to respect the configured retry count. ODBC already probed for its DBMS name.
+    if matches!(info, DbInfo::Native(_)) {
+        open_connection(&options, config.database_connection_retries).await?;
+    }
+    let on_connect = read_hook(config, ON_CONNECT_FILE);
+    let mut pool = PoolOptions::<DB>::new()
+        .max_connections(
+            config
+                .max_database_pool_connections
+                .unwrap_or(default_max_connections),
+        )
+        .idle_timeout(config.database_connection_idle_timeout)
+        .max_lifetime(config.database_connection_max_lifetime)
+        .acquire_timeout(Duration::from_secs_f64(
+            config.database_connection_acquire_timeout_seconds,
+        ))
+        .after_connect(move |conn, _| {
+            let sql = on_connect.clone();
+            Box::pin(async move {
+                if let Some(sqlite) = (conn as &mut dyn Any).downcast_mut() {
+                    sqlite::register_functions(sqlite).await?;
+                }
+                if let Some(sql) = sql {
+                    conn.execute(AssertSqlSafe(sql)).await?;
+                }
+                Ok(())
+            })
+        });
+
+    if let Some(on_reset) = read_hook(config, ON_RESET_FILE) {
+        pool = pool.after_release(move |conn, _| {
+            let sql = on_reset.clone();
+            Box::pin(async move {
+                match conn.fetch_optional(AssertSqlSafe(sql)).await? {
+                    Some(row) => row.try_get::<bool, _>(0),
+                    None => Ok(true),
+                }
+            })
+        });
+    }
+    pool.connect_with(options)
+        .await
+        .with_context(|| format!("Unable to open {info:?} database pool"))
+}
+
+async fn open_connection<O: ConnectOptions>(
+    options: &O,
+    mut retries: u32,
+) -> anyhow::Result<O::Connection>
+where
+    O::Connection: Sized,
+{
     loop {
-        match connect().await {
+        match options.connect().await {
             Ok(connection) => return Ok(connection),
             Err(e) => {
                 if retries == 0 {
-                    return Err(anyhow::Error::new(e).context(format!(
-                        "Unable to open connection to {}",
-                        config.database_url
-                    )));
+                    return Err(
+                        anyhow::Error::new(e).context("Unable to open connection to the database")
+                    );
                 }
                 log::warn!("Failed to connect to the database: {e:#}. Retrying in 5 seconds.");
                 retries -= 1;
@@ -103,190 +199,27 @@ where
     }
 }
 
-fn max_connections(config: &AppConfig, kind: AnyKind) -> u32 {
-    if let Some(max) = config.max_database_pool_connections {
-        return max;
-    }
-    // Different databases have a different number of max concurrent connections allowed by default
-    match kind {
-        AnyKind::Postgres | AnyKind::Odbc => 50, // Default to PostgreSQL-like limits for Generic
-        AnyKind::MySql => 75,
-        AnyKind::Sqlite => {
-            if config.database_url.contains(":memory:") {
-                128
-            } else {
-                16
-            }
-        }
-        AnyKind::Mssql => 100,
-    }
-}
-
-struct ConnectionHooks {
-    on_connect: Option<Arc<str>>,
-    on_reset: Option<Arc<str>>,
-}
-
-impl ConnectionHooks {
-    fn read(config: &AppConfig) -> Self {
-        Self {
-            on_connect: read_hook(config, ON_CONNECT_FILE, "database connection handler"),
-            on_reset: read_hook(config, ON_RESET_FILE, "connection cleanup handler"),
-        }
-    }
-}
-
-fn read_hook(config: &AppConfig, file_name: &str, handler: &str) -> Option<Arc<str>> {
-    let hook_file = config.configuration_directory.join(file_name);
-    if !hook_file.exists() {
-        log::debug!(
-            "Not creating a custom SQL {handler} because {} does not exist",
-            hook_file.display()
-        );
-        return None;
-    }
-    log::info!(
-        "Creating a custom SQL {handler} from {}",
-        hook_file.display()
-    );
-    match std::fs::read_to_string(&hook_file) {
+fn read_hook(config: &AppConfig, file_name: &str) -> Option<Arc<str>> {
+    let path = config.configuration_directory.join(file_name);
+    match std::fs::read_to_string(&path) {
         Ok(sql) => {
-            log::trace!("The custom SQL {handler} is:\n{sql}");
+            log::info!("Using SQL connection handler {}", path.display());
             Some(Arc::from(sql))
         }
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
         Err(e) => {
-            log::error!("Unable to read the file {}: {}", hook_file.display(), e);
+            log::error!(
+                "Unable to read SQL connection handler {}: {e}",
+                path.display()
+            );
             None
         }
-    }
-}
-
-fn add_on_return_to_pool(
-    pool_options: PoolOptions<Any>,
-    sql: Option<Arc<str>>,
-) -> PoolOptions<Any> {
-    pool_options.after_release(move |conn, meta| {
-        let sql = sql.clone();
-        Box::pin(async move {
-            if let Some(sql) = sql {
-                on_return_to_pool(conn, meta, sql).await
-            } else {
-                Ok(true)
-            }
-        })
-    })
-}
-
-fn on_return_to_pool(
-    conn: &mut AnyConnection,
-    meta: sqlx::pool::PoolConnectionMetadata,
-    sql: Arc<str>,
-) -> BoxFuture<'_, Result<bool, sqlx::error::Error>> {
-    use sqlx::row::Row;
-    Box::pin(async move {
-        log::trace!("Running the custom SQL connection cleanup handler. {meta:?}");
-        let query_result = conn.fetch_optional(&*sql).await?;
-        if let Some(query_result) = query_result {
-            let is_healthy = query_result.try_get::<bool, _>(0);
-            log::debug!("Is the connection healthy? {is_healthy:?}");
-            is_healthy
-        } else {
-            log::debug!("No result from the custom SQL connection cleanup handler");
-            Ok(true)
-        }
-    })
-}
-
-fn add_on_connection_handler(
-    config: &AppConfig,
-    pool_options: PoolOptions<Any>,
-    sql: Option<Arc<str>>,
-) -> PoolOptions<Any> {
-    let on_connect_file_display = config
-        .configuration_directory
-        .join(ON_CONNECT_FILE)
-        .display()
-        .to_string();
-    pool_options.after_connect(move |conn, _| {
-        let sql = sql.clone();
-        let on_connect_file_display = on_connect_file_display.clone();
-        Box::pin(async move {
-            if let Some(sql) = sql {
-                log::debug!("Running {on_connect_file_display} on new connection");
-                let r = conn.execute(&*sql).await?;
-                log::debug!("Finished running connection handler on new connection: {r:?}");
-            }
-            Ok(())
-        })
-    })
-}
-
-fn set_custom_connect_options(options: &mut AnyConnectOptions, config: &AppConfig) {
-    if let Some(sqlite_options) = options.as_sqlite_mut() {
-        set_custom_connect_options_sqlite(sqlite_options, config);
-    }
-
-    if let Some(odbc_options) = options.as_odbc_mut() {
-        set_custom_connect_options_odbc(odbc_options, config);
-    }
-}
-
-fn set_custom_connect_options_sqlite(
-    sqlite_options: &mut SqliteConnectOptions,
-    config: &AppConfig,
-) {
-    for extension_name in &config.sqlite_extensions {
-        log::info!("Loading SQLite extension: {extension_name}");
-        *sqlite_options = take(sqlite_options).extension(extension_name.clone());
-    }
-    *sqlite_options = take(sqlite_options)
-        .collation("NOCASE", |a, b| a.to_lowercase().cmp(&b.to_lowercase()))
-        .function(make_sqlite_fun("upper", str::to_uppercase))
-        .function(make_sqlite_fun("lower", str::to_lowercase));
-}
-
-fn make_sqlite_fun(name: &str, f: fn(&str) -> String) -> Function {
-    Function::new(name, move |ctx: &SqliteFunctionCtx| {
-        let arg = ctx.try_get_arg::<Option<&str>>(0);
-        match arg {
-            Ok(Some(s)) => ctx.set_result(f(s)),
-            Ok(None) => ctx.set_result(None::<String>),
-            Err(e) => ctx.set_error(&e.to_string()),
-        }
-    })
-}
-
-fn set_custom_connect_options_odbc(odbc_options: &mut OdbcConnectOptions, config: &AppConfig) {
-    // Allow fetching very large text fields when using ODBC by removing the max column size limit
-    let batch_size = config.max_pending_rows.clamp(1, 1024);
-    odbc_options.batch_size(batch_size);
-    log::trace!("ODBC batch size set to {batch_size}");
-    // Disables ODBC batching, but avoids truncation of large text fields
-    odbc_options.max_column_size(None);
-}
-
-fn set_database_password(options: &mut AnyConnectOptions, password: &str) {
-    if let Some(opts) = options.as_postgres_mut() {
-        *opts = take(opts).password(password);
-    } else if let Some(opts) = options.as_mysql_mut() {
-        *opts = take(opts).password(password);
-    } else if let Some(opts) = options.as_mssql_mut() {
-        *opts = take(opts).password(password);
-    } else if let Some(_opts) = options.as_odbc_mut() {
-        log::warn!(
-            "Setting a password for an ODBC connection is not supported via separate config; include credentials in the DSN or connection string"
-        );
-    } else if let Some(_opts) = options.as_sqlite_mut() {
-        log::warn!("Setting a password for a SQLite database is not supported");
-    } else {
-        unreachable!("Unsupported database type");
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sqlx::row::Row;
     use tempfile::TempDir;
 
     fn config_in(dir: &TempDir, database_url: &str) -> AppConfig {
@@ -310,14 +243,18 @@ mod tests {
         let db = Database::init(&config_in(&dir, "sqlite::memory:"))
             .await
             .unwrap();
-        let value: String = sqlx::query::query("SELECT value FROM on_connect_marker")
-            .fetch_one(&db.connection)
-            .await
-            .unwrap()
-            .try_get(0)
-            .unwrap();
-
-        assert_eq!(value, "on_connect ran");
+        assert!(
+            db.connection
+                .acquire()
+                .await
+                .unwrap()
+                .exists(
+                    "SELECT value FROM on_connect_marker WHERE value = 'on_connect ran'",
+                    &[],
+                )
+                .await
+                .unwrap()
+        );
     }
 
     #[actix_web::test]
@@ -339,14 +276,15 @@ mod tests {
 
         let db = Database::init(&config).await.unwrap();
         drop(db.connection.acquire().await.unwrap());
-        let resets: i64 = sqlx::query::query("SELECT COUNT(*) FROM reset_log")
-            .fetch_one(&db.connection)
-            .await
-            .unwrap()
-            .try_get(0)
-            .unwrap();
-
-        assert!(resets > 0);
+        assert!(
+            db.connection
+                .acquire()
+                .await
+                .unwrap()
+                .exists("SELECT 1 FROM reset_log", &[])
+                .await
+                .unwrap()
+        );
     }
 
     #[tokio::test(start_paused = true)]

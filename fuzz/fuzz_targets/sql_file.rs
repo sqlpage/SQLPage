@@ -2,8 +2,7 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use sqlpage::webserver::database::{DbInfo, SqlFile, SupportedDatabase};
-use sqlx::any::AnyKind;
+use sqlpage::webserver::database::{DbInfo, SqlFile, SupportedDatabase::*};
 use std::path::Path;
 
 fuzz_target!(|data: &[u8]| {
@@ -13,34 +12,24 @@ fuzz_target!(|data: &[u8]| {
     let Ok(source) = std::str::from_utf8(source) else {
         return;
     };
-    let database_type = [
-        SupportedDatabase::Sqlite,
-        SupportedDatabase::Postgres,
-        SupportedDatabase::MySql,
-        SupportedDatabase::Mssql,
-        SupportedDatabase::Duckdb,
-        SupportedDatabase::Oracle,
-        SupportedDatabase::Snowflake,
-        SupportedDatabase::Generic,
+    let mut database = [
+        DbInfo::Native(Sqlite),
+        DbInfo::Native(Postgres),
+        DbInfo::Native(MySql),
+        DbInfo::Native(Mssql),
+        DbInfo::Odbc(Duckdb),
+        DbInfo::Odbc(Oracle),
+        DbInfo::Odbc(Snowflake),
+        DbInfo::Odbc(Generic),
     ][usize::from(selector & 7)];
-    let kind = match database_type {
-        _ if selector & 8 != 0 => AnyKind::Odbc,
-        SupportedDatabase::Sqlite => AnyKind::Sqlite,
-        SupportedDatabase::Postgres => AnyKind::Postgres,
-        SupportedDatabase::MySql => AnyKind::MySql,
-        SupportedDatabase::Mssql => AnyKind::Mssql,
-        _ => AnyKind::Odbc,
-    };
-    let database = DbInfo {
-        dbms_name: database_type.display_name().into(),
-        database_type,
-        kind,
-    };
+    if selector & 8 != 0 {
+        database = DbInfo::Odbc(database.database_type());
+    }
     // Construction eagerly parses every statement and runs the production
     // rewrite pipeline. Syntax/rewrite errors are ordinary results; panics,
     // sanitizer failures and timeouts are bugs. No SQL is executed.
     std::hint::black_box(SqlFile::from_db_info(
-        &database,
+        database,
         source,
         Path::new("fuzz.sql"),
     ));

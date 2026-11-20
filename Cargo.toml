@@ -1,3 +1,6 @@
+[workspace]
+members = ["fuzz"]
+
 [package]
 name = "sqlpage"
 version = "0.48.0"
@@ -37,20 +40,22 @@ panic = "abort"
 codegen-units = 2
 
 [dependencies]
-sqlx = { package = "sqlx-core-oldapi", version = "0.6.59", default-features = false, features = [
-    "any",
-    "runtime-tokio-rustls",
+sqlx = { version = "=0.9.1", default-features = false, features = [
+    "runtime-tokio",
+    "tls-rustls-aws-lc-rs",
     "migrate",
     "sqlite",
     "postgres",
     "mysql",
-    "mssql",
-    "odbc",
     "chrono",
     "bigdecimal",
     "json",
     "uuid",
 ] }
+sqlx-odbc = { version = "0.0.5", default-features = false, features = ["bigdecimal", "chrono"] }
+sqlx-sqlserver = { version = "0.0.6", default-features = false, features = ["bigdecimal", "chrono", "migrate", "uuid"] }
+# Keep this in sync with SQLx: SQLite function registration uses its raw handle.
+libsqlite3-sys = "=0.40.0"
 chrono = "0.4.23"
 actix-web = { version = "4", features = ["rustls-0_23", "cookies"] }
 percent-encoding = "2.2.0"
@@ -111,7 +116,6 @@ clap = { version = "4.5.17", features = ["derive"] }
 tokio-util = "0.7.12"
 openidconnect = { version = "4.0.0", default-features = false, features = ["accept-rfc3339-timestamps"] }
 encoding_rs = "0.8.35"
-odbc-sys = { version = "0", optional = true }
 regex = "1"
 lettre = { version = "0.11", default-features = false, features = [
     "aws-lc-rs",
@@ -135,9 +139,13 @@ opentelemetry-http = { version = "0.33", default-features = false }
 opentelemetry-semantic-conventions = { version = "0.33", features = ["semconv_experimental"] }
 
 
+[target.'cfg(target_os = "linux")'.dependencies]
+# Keep Linux release binaries independent of the system OpenSSL version.
+native-tls = { version = "0.2", features = ["vendored"] }
+
 [features]
 default = []
-odbc-static = ["odbc-sys", "odbc-sys/vendored-unix-odbc"]
+odbc-static = ["sqlx-odbc/vendored-unix-odbc"]
 lambda-web = [
     "dep:actix-http",
     "dep:actix-service",

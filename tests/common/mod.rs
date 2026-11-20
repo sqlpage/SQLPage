@@ -37,7 +37,7 @@ pub(crate) async fn make_app_data_from_config(
     config: AppConfig,
 ) -> actix_web::Result<Data<AppState>> {
     init_log();
-    AppState::init(&config)
+    crate::test_database::app_state(&config)
         .await
         .map(Data::new)
         .map_err(actix_web::error::ErrorInternalServerError)
@@ -72,7 +72,7 @@ pub(crate) async fn response_with_data(
 }
 
 /// Runs a request through the production app, including its routes and middleware.
-/// Dropping the service disables and drains the pool, including on error or panic.
+/// Dropping the service releases Actix's pooled HTTP requests and their application state.
 /// Standalone `TestRequest::to_srv_request()` would instead leak the application state.
 pub(crate) async fn send_request(
     request: TestRequest,
@@ -102,7 +102,7 @@ pub(crate) fn supports_database(
     db: &sqlpage::webserver::database::Database,
     kinds: &[sqlpage::webserver::database::SupportedDatabase],
 ) -> bool {
-    kinds.contains(&db.info.database_type)
+    kinds.contains(&db.info.database_type())
 }
 
 pub(crate) async fn make_app_data() -> Data<AppState> {

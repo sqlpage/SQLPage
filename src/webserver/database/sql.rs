@@ -51,19 +51,19 @@ pub(super) use statement::{OutputColumn, SourceLocation};
 impl SqlFile {
     #[must_use]
     pub fn new(db: &Database, sql: &str, source_path: &Path) -> Self {
-        Self::from_db_info(&db.info, sql, source_path)
+        Self::from_db_info(db.info, sql, source_path)
     }
 
     /// Parses and rewrites a SQL file without opening a database connection.
     #[must_use]
-    pub fn from_db_info(database: &DbInfo, sql: &str, source_path: &Path) -> Self {
-        let dialect = dialect::parser_dialect(database.database_type);
+    pub fn from_db_info(database: DbInfo, sql: &str, source_path: &Path) -> Self {
+        let dialect = dialect::parser_dialect(database.database_type());
         log::debug!(
             "Parsing SQL file {} using dialect {:?}",
             source_path.display(),
             dialect
         );
-        let statements = match parse_sql(database, dialect.as_ref(), sql) {
+        let statements = match parse_sql(database, dialect, sql) {
             Ok(statements) => statements.collect::<Vec<_>>().into_boxed_slice(),
             Err(error) => {
                 return Self::from_error(error, source_path);
@@ -100,11 +100,11 @@ impl AsyncFromStrWithState for SqlFile {
 }
 
 fn parse_sql<'a>(
-    database: &'a DbInfo,
+    database: DbInfo,
     dialect: &'a dyn Dialect,
     sql: &'a str,
 ) -> anyhow::Result<impl Iterator<Item = FileStatement> + 'a> {
-    log::trace!("Parsing {} SQL: {sql}", database.dbms_name);
+    log::trace!("Parsing {database:?} SQL: {sql}");
     let tokens = Tokenizer::new(dialect, sql)
         .tokenize_with_location()
         .map_err(|error| {
@@ -130,7 +130,7 @@ fn parse_sql<'a>(
 
 fn parse_single_statement(
     parser: &mut Parser<'_>,
-    database: &DbInfo,
+    database: DbInfo,
     source_sql: &str,
 ) -> Option<FileStatement> {
     if parser.peek_token() == EOF {
@@ -160,7 +160,7 @@ fn parse_single_statement(
     )
 }
 
-fn extract_set_variable(statement: &mut Statement, database: &DbInfo) -> Option<FileStatement> {
+fn extract_set_variable(statement: &mut Statement, database: DbInfo) -> Option<FileStatement> {
     let Statement::Set(Set::SingleAssignment {
         variable: ObjectName(name),
         values,
@@ -275,20 +275,14 @@ mod tests {
     };
     use crate::webserver::database::sqlpage_functions::functions::SqlPageFunctionName;
     use sqlparser::dialect::{MsSqlDialect, MySqlDialect, PostgreSqlDialect};
-    use sqlx::any::AnyKind;
 
     fn database(database_type: SupportedDatabase) -> DbInfo {
-        let kind = match database_type {
-            SupportedDatabase::Postgres => AnyKind::Postgres,
-            SupportedDatabase::Mssql => AnyKind::Mssql,
-            SupportedDatabase::MySql => AnyKind::MySql,
-            SupportedDatabase::Sqlite => AnyKind::Sqlite,
-            _ => AnyKind::Odbc,
-        };
-        DbInfo {
-            dbms_name: database_type.display_name().to_owned(),
-            database_type,
-            kind,
+        match database_type {
+            SupportedDatabase::Postgres
+            | SupportedDatabase::Mssql
+            | SupportedDatabase::MySql
+            | SupportedDatabase::Sqlite => DbInfo::Native(database_type),
+            _ => DbInfo::Odbc(database_type),
         }
     }
 
@@ -298,7 +292,7 @@ mod tests {
 
     fn one_for(database_type: SupportedDatabase, sql: &str) -> FileStatement {
         let database = database(database_type);
-        parse_sql(&database, &PostgreSqlDialect {}, sql)
+        parse_sql(database, &PostgreSqlDialect {}, sql)
             .unwrap()
             .next()
             .unwrap()
@@ -306,7 +300,7 @@ mod tests {
 
     fn one_mssql(sql: &str) -> FileStatement {
         let database = database(SupportedDatabase::Mssql);
-        parse_sql(&database, &MsSqlDialect {}, sql)
+        parse_sql(database, &MsSqlDialect {}, sql)
             .unwrap()
             .next()
             .unwrap()
@@ -487,7 +481,7 @@ mod tests {
     fn positional_bindings_follow_source_order() {
         let database = database(SupportedDatabase::MySql);
         let mut statements = parse_sql(
-            &database,
+            database,
             &MySqlDialect {},
             "select $a, upper(sqlpage.url_encode($b))",
         )
@@ -514,7 +508,7 @@ mod tests {
     fn positional_bindings_follow_cte_rendering_order() {
         let database = database(SupportedDatabase::MySql);
         let statement = parse_sql(
-            &database,
+            database,
             &MySqlDialect {},
             "with c as (select $a as x) select $b as y from c",
         )
@@ -536,7 +530,7 @@ mod tests {
     fn positional_bindings_follow_rendered_projection_order() {
         let database = database(SupportedDatabase::MySql);
         let statement = parse_sql(
-            &database,
+            database,
             &MySqlDialect {},
             "select $a as a, sqlpage.url_encode(upper(col || sqlpage.url_encode($b))) as b, $c as c from t",
         )
@@ -663,7 +657,7 @@ mod tests {
     fn placeholder_like_literal_is_not_rewritten() {
         let database = database(SupportedDatabase::MySql);
         let statement = parse_sql(
-            &database,
+            database,
             &MySqlDialect {},
             "select '@SQLPAGE_TEMP1' where id = $id",
         )
@@ -684,58 +678,44 @@ mod tests {
     #[test]
     fn repeated_variables_follow_placeholder_style() {
         use SupportedDatabase::{Mssql, MySql, Postgres, Sqlite};
-        for (db, kind, expected_sql, reuse) in [
+        for (info, expected_sql, reuse) in [
+            (DbInfo::Native(Postgres), "SELECT $1, $2, $1 FROM t", true),
+            (DbInfo::Native(Mssql), "SELECT @p1, @p2, @p1 FROM t", true),
             (
-                Postgres,
-                AnyKind::Postgres,
-                "SELECT $1, $2, $1 FROM t",
-                true,
-            ),
-            (Mssql, AnyKind::Mssql, "SELECT @p1, @p2, @p1 FROM t", true),
-            (
-                Sqlite,
-                AnyKind::Sqlite,
+                DbInfo::Native(Sqlite),
                 "SELECT CAST(?1 AS TEXT), CAST(?2 AS TEXT), CAST(?1 AS TEXT) FROM t",
                 true,
             ),
-            (MySql, AnyKind::MySql, "SELECT ?, ?, ? FROM t", false),
-            (Mssql, AnyKind::Odbc, "SELECT ?, ?, ? FROM t", false),
+            (DbInfo::Native(MySql), "SELECT ?, ?, ? FROM t", false),
+            (DbInfo::Odbc(Mssql), "SELECT ?, ?, ? FROM t", false),
             (
-                Postgres,
-                AnyKind::Odbc,
+                DbInfo::Odbc(Postgres),
                 "SELECT CAST(? AS TEXT), CAST(? AS TEXT), CAST(? AS TEXT) FROM t",
                 false,
             ),
             (
-                Sqlite,
-                AnyKind::Odbc,
+                DbInfo::Odbc(Sqlite),
                 "SELECT CAST(? AS TEXT), CAST(? AS TEXT), CAST(? AS TEXT) FROM t",
                 false,
             ),
         ] {
-            let mut info = database(db);
-            info.kind = kind;
-            let dialect = dialect::parser_dialect(db);
+            let dialect = dialect::parser_dialect(info.database_type());
             let FileStatement::Query(Query {
                 body: QueryBody::Database(query),
                 ..
-            }) = parse_sql(&info, dialect.as_ref(), "select $b, $a, $b from t")
+            }) = parse_sql(info, dialect, "select $b, $a, $b from t")
                 .unwrap()
                 .next()
                 .unwrap()
             else {
-                panic!("expected database query for {db:?} via {kind:?}");
+                panic!("expected database query for {info:?}");
             };
-            assert_eq!(query.sql, expected_sql, "{db:?} via {kind:?}");
+            assert_eq!(query.sql, expected_sql, "{info:?}");
             let mut expected_bindings = vec![variable("b"), variable("a")];
             if !reuse {
                 expected_bindings.push(variable("b"));
             }
-            assert_eq!(
-                query.bindings.as_ref(),
-                expected_bindings,
-                "{db:?} via {kind:?}"
-            );
+            assert_eq!(query.bindings.as_ref(), expected_bindings, "{info:?}");
         }
     }
 
@@ -1082,7 +1062,7 @@ mod tests {
         );
     }
 
-    fn sql_for_dbinfo(info: &DbInfo, sql: &str) -> String {
+    fn sql_for_dbinfo(info: DbInfo, sql: &str) -> String {
         match parse_sql(info, &PostgreSqlDialect {}, sql).unwrap().next() {
             Some(FileStatement::Query(Query {
                 body: QueryBody::Database(q),
@@ -1093,18 +1073,11 @@ mod tests {
     }
 
     fn sql_for(db: SupportedDatabase, sql: &str) -> String {
-        sql_for_dbinfo(&database(db), sql)
+        sql_for_dbinfo(database(db), sql)
     }
 
     fn odbc_sql_for(db: SupportedDatabase, sql: &str) -> String {
-        sql_for_dbinfo(
-            &DbInfo {
-                dbms_name: db.display_name().to_owned(),
-                database_type: db,
-                kind: AnyKind::Odbc,
-            },
-            sql,
-        )
+        sql_for_dbinfo(DbInfo::Odbc(db), sql)
     }
 
     #[test]

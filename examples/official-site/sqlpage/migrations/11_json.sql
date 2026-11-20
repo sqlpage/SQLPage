@@ -22,6 +22,8 @@ you cannot use this component in the same file.
 SQLPage can also return JSON or JSON Lines when the incoming request says it prefers them with an HTTP `Accept` header, so the same `/users.sql` page can show a table in a browser but return raw data to `curl -H "Accept: application/json" http://localhost:8080/users.sql`.
 
 Use this component when you want to control the payload or force JSON output even for requests that would normally get HTML.
+
+With the native MySQL driver, `BIT(1)` through `BIT(8)` columns return JSON booleans for 0 and 1. Use `CAST(flags AS UNSIGNED) AS flags` to return a JSON number for every value.
 ',
         'code',
         '0.9.0'

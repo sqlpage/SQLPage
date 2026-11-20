@@ -28,6 +28,8 @@ fuels the creation of multimillion-dollar ventures.
 
 ## SQLx: A Rust Marvel
 
+> Update: SQLPage now uses upstream SQLx 0.9 with separate [SQL Server](https://github.com/sqlpage/sqlx-sqlserver) and [ODBC](https://github.com/sqlpage/sqlx-odbc) drivers.
+
 [sqlx](https://crates.io/crates/sqlx) is one of the numerous software libraries
 that lie at the foundation of this software iceberg.
 It’s a formidable SQL database driver for the *Rust* programming language,

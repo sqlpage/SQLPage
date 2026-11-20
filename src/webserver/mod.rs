@@ -46,7 +46,6 @@ pub mod server_timing;
 pub use database::Database;
 pub use error_with_status::{ActixErrorStatusExt, ErrorWithStatus, StatusCodeResultExt};
 
-pub use database::make_placeholder;
 pub use database::migrations::apply;
 pub mod oidc;
 pub mod response_writer;

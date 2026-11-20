@@ -1,6 +1,7 @@
 pub mod blob_to_data_url;
 mod connect;
 mod csv_import;
+mod driver;
 pub mod execute_queries;
 pub mod migrations;
 mod sql;
@@ -10,9 +11,8 @@ mod sqlpage_functions;
 mod error_highlighting;
 mod sql_to_json;
 
+pub use driver::{DatabaseConnection, DatabasePool, Parameter};
 pub use sql::SqlFile;
-use sqlx::any::AnyKind;
-// SupportedDatabase is defined in this module
 
 /// Supported database types in `SQLPage`. Represents an actual DBMS, not a sqlx backend kind (like "Odbc")
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -68,12 +68,7 @@ impl SupportedDatabase {
     /// See <https://opentelemetry.io/docs/specs/semconv/registry/attributes/db/#db-system-name>
     #[must_use]
     pub fn otel_name(self) -> &'static str {
-        Self::otel_name_from_kind(self)
-    }
-
-    #[must_use]
-    pub fn otel_name_from_kind(kind: impl Into<SupportedDatabase>) -> &'static str {
-        match kind.into() {
+        match self {
             Self::Sqlite => "sqlite",
             Self::Duckdb => "duckdb",
             Self::Oracle => "oracle.db",
@@ -112,30 +107,26 @@ impl SupportedDatabase {
     }
 }
 
-impl From<AnyKind> for SupportedDatabase {
-    fn from(kind: AnyKind) -> Self {
-        match kind {
-            AnyKind::Postgres => Self::Postgres,
-            AnyKind::MySql => Self::MySql,
-            AnyKind::Sqlite => Self::Sqlite,
-            AnyKind::Mssql => Self::Mssql,
-            AnyKind::Odbc => Self::Generic,
+pub struct Database {
+    pub connection: std::sync::Arc<dyn DatabasePool>,
+    pub info: DbInfo,
+    migrations: Option<std::sync::Arc<dyn migrations::MigrationPool>>,
+}
+
+/// The SQL dialect and how the connection sends parameters to that database.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DbInfo {
+    Native(SupportedDatabase),
+    Odbc(SupportedDatabase),
+}
+
+impl DbInfo {
+    #[must_use]
+    pub fn database_type(self) -> SupportedDatabase {
+        match self {
+            Self::Native(db) | Self::Odbc(db) => db,
         }
     }
-}
-
-pub struct Database {
-    pub connection: sqlx::any::AnyPool,
-    pub info: DbInfo,
-}
-
-#[derive(Debug, Clone)]
-pub struct DbInfo {
-    pub dbms_name: String,
-    /// The actual database we are connected to. Can be "Generic" when using an unknown ODBC driver
-    pub database_type: SupportedDatabase,
-    /// The sqlx database backend we are using. Can be "Odbc", in which case we need to use `database_type` to know what database we are actually using.
-    pub kind: AnyKind,
 }
 
 impl Database {
@@ -155,18 +146,10 @@ pub enum DbItem {
 
 impl std::fmt::Display for Database {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self.connection.any_kind())
-    }
-}
-
-#[inline]
-#[must_use]
-pub fn make_placeholder(dbms: AnyKind, arg_number: usize) -> String {
-    match dbms {
-        AnyKind::Sqlite => format!("?{arg_number}"),
-        AnyKind::Postgres => format!("${arg_number}"),
-        AnyKind::Mssql => format!("@p{arg_number}"),
-        AnyKind::MySql | AnyKind::Odbc => "?".to_owned(),
+        match self.info {
+            DbInfo::Native(db) => f.write_str(db.display_name()),
+            DbInfo::Odbc(db) => write!(f, "{} (ODBC)", db.display_name()),
+        }
     }
 }
 

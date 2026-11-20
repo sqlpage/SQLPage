@@ -11,7 +11,6 @@ cargo-fuzz = true
 [dependencies]
 libfuzzer-sys = "0.4"
 sqlpage = { path = "..", features = ["odbc-static"] }
-sqlx = { package = "sqlx-core-oldapi", version = "0.6.59", default-features = false, features = ["any"] }
 
 [[bin]]
 name = "sql_file"
@@ -19,5 +18,3 @@ path = "fuzz_targets/sql_file.rs"
 test = false
 doc = false
 bench = false
-
-[workspace]

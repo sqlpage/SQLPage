@@ -116,7 +116,6 @@ jobs:
         uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0
         with:
           shared-key: rust-sqlpage-fuzz
-          workspaces: fuzz -> target
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - run: cargo install cargo-fuzz --locked --version 0.13.2
       - name: Fuzz SQL regression fixtures across database selectors
@@ -294,7 +293,7 @@ jobs:
             ref_scope="pr-${{ github.event.pull_request.number }}"
           fi
 
-          recipe_hash="${{ hashFiles('Dockerfile', '.cargo/**', 'Cargo.toml', 'Cargo.lock', 'build.rs', 'scripts/**', 'sqlpage/**', 'frontend/src/**', 'package.json', 'package-lock.json') }}"
+          recipe_hash="${{ hashFiles('Dockerfile', '.cargo/**', 'Cargo.toml', 'fuzz/Cargo.toml', 'Cargo.lock', 'build.rs', 'scripts/**', 'sqlpage/**', 'frontend/src/**', 'package.json', 'package-lock.json') }}"
           {
             echo "artifact=sqlpage-${ref_scope}${{ matrix.tag_suffix }}-hurl-${recipe_hash}"
             echo "current=sqlpage-${ref_scope}${{ matrix.tag_suffix }}-${recipe_hash}"

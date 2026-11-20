@@ -9,8 +9,8 @@ use super::sqlpage_expression::{
     EmulatedFunction, SqlPageExpressionContext, build_emulated, build_sqlpage_expr,
     emulated_function, expression_arguments, recognize_sqlpage_function,
 };
+use crate::webserver::database::SupportedDatabase;
 use crate::webserver::database::sqlpage_expr::{RowExpr, RowInputId, SqlPageExpr};
-use crate::webserver::database::{DbInfo, SupportedDatabase};
 
 pub(super) const PRIVATE_ROW_INPUT_PREFIX: &str = "__sqlpage_input_";
 
@@ -24,8 +24,8 @@ pub(super) enum PartitionedProjection {
 }
 
 /// Partitions selected expressions and records their private database row inputs.
-pub(super) struct ProjectionPartitioner<'a> {
-    database: &'a DbInfo,
+pub(super) struct ProjectionPartitioner {
+    database: SupportedDatabase,
     pub(super) row_input_json: Vec<bool>,
     pub(super) private_projection: Vec<SelectItem>,
 }
@@ -50,8 +50,8 @@ impl SqlPageExpressionContext for PerRowContext<'_> {
     }
 }
 
-impl<'a> ProjectionPartitioner<'a> {
-    pub(super) fn new(database: &'a DbInfo) -> Self {
+impl ProjectionPartitioner {
+    pub(super) fn new(database: SupportedDatabase) -> Self {
         Self {
             database,
             row_input_json: Vec::new(),
@@ -89,7 +89,7 @@ impl<'a> ProjectionPartitioner<'a> {
                 Ok(PartitionedProjection::PerRow(build_emulated(
                     kind,
                     arguments,
-                    self.database.database_type,
+                    self.database,
                 )?))
             }
             SqlExpr::BinaryOp {
@@ -103,7 +103,7 @@ impl<'a> ProjectionPartitioner<'a> {
                 let right = self.projection_into_row_expr(right)?;
                 Ok(PartitionedProjection::PerRow(SqlPageExpr::Concat {
                     arguments: vec![left, right].into_boxed_slice(),
-                    null_behavior: self.database.database_type.concat_operator_null_behavior(),
+                    null_behavior: self.database.concat_operator_null_behavior(),
                 }))
             }
             SqlExpr::Nested(expression) => match self.partition_projection(*expression)? {

@@ -7,6 +7,21 @@ use sqlx::migrate::MigrateError;
 use sqlx::migrate::Migration;
 use sqlx::migrate::Migrator;
 
+#[async_trait::async_trait]
+pub(super) trait MigrationPool: Send + Sync {
+    async fn run(&self, migrator: &Migrator) -> Result<(), MigrateError>;
+}
+
+#[async_trait::async_trait]
+impl<DB: sqlx::Database> MigrationPool for sqlx::Pool<DB>
+where
+    DB::Connection: sqlx::migrate::Migrate,
+{
+    async fn run(&self, migrator: &Migrator) -> Result<(), MigrateError> {
+        migrator.run(self).await
+    }
+}
+
 pub async fn apply(config: &crate::app_config::AppConfig, db: &Database) -> anyhow::Result<()> {
     let migrations_dir = config.configuration_directory.join(MIGRATIONS_DIR);
     if !migrations_dir.exists() {
@@ -34,9 +49,15 @@ pub async fn apply(config: &crate::app_config::AppConfig, db: &Database) -> anyh
     for m in migrator.iter() {
         log::info!("\t{}", DisplayMigration(m));
     }
-    migrator.run(&db.connection).await.map_err(|err| {
+    let result = match &db.migrations {
+        Some(pool) => pool.run(&migrator).await,
+        None => {
+            Err(sqlx::Error::Protocol("SQL migrations are unavailable over ODBC".into()).into())
+        }
+    };
+    result.map_err(|err| {
         match err {
-            MigrateError::Execute(n, source) => {
+            MigrateError::ExecuteMigration(source, n) => {
                 let migration = failing_migration(&migrator.migrations, n)
                     .expect("sqlx reports the version of a migration it just ran");
                 let source_file = migrations_dir.join(format!(
@@ -45,7 +66,7 @@ pub async fn apply(config: &crate::app_config::AppConfig, db: &Database) -> anyh
                     migration.description.replace(' ', "_"),
                     migration.migration_type.suffix()
                 ));
-                display_db_error(&source_file, &migration.sql, source).context(format!(
+                display_db_error(&source_file, migration.sql.as_str(), source).context(format!(
                     "Failed to apply {} migration {}",
                     db,
                     DisplayMigration(migration)
@@ -106,7 +127,8 @@ mod tests {
             version,
             description.to_owned().into(),
             migration_type,
-            String::new().into(),
+            sqlx::SqlStr::from_static(""),
+            false,
         )
     }
 

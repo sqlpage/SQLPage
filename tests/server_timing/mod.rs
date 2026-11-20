@@ -13,7 +13,7 @@ fn server_timing_header(resp: &actix_web::dev::ServiceResponse) -> &str {
         .unwrap()
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_server_timing_disabled_in_production() -> actix_web::Result<()> {
     let resp = response_with(
         "/tests/sql_test_files/component_rendering/simple.sql",
@@ -32,7 +32,7 @@ async fn test_server_timing_disabled_in_production() -> actix_web::Result<()> {
     Ok(())
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_server_timing_enabled_in_development() -> actix_web::Result<()> {
     let resp = response_with(
         "/tests/sql_test_files/data/postgres_cast_syntax.sql",
@@ -56,7 +56,7 @@ async fn test_server_timing_enabled_in_development() -> actix_web::Result<()> {
     Ok(())
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_server_timing_format() -> actix_web::Result<()> {
     let resp = response_for("/tests/sql_test_files/data/postgres_cast_syntax.sql").await;
 
@@ -85,7 +85,7 @@ async fn test_server_timing_format() -> actix_web::Result<()> {
     Ok(())
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_server_timing_in_redirect() -> actix_web::Result<()> {
     let resp = response_with(
         "/tests/server_timing/redirect_test.sql",

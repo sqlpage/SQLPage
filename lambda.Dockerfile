@@ -8,10 +8,11 @@ RUN node scripts/build-frontend.mjs
 
 FROM rust:1.99.1-alpine AS builder
 RUN rustup component add clippy rustfmt
-RUN apk add --no-cache musl-dev zip
+RUN apk add --no-cache musl-dev make perl zip
 WORKDIR /usr/src/sqlpage
 RUN cargo init .
 COPY Cargo.toml Cargo.lock ./
+COPY fuzz/Cargo.toml fuzz/
 RUN cargo build --release
 COPY . .
 COPY --from=frontend /usr/src/sqlpage/frontend/dist frontend/dist
