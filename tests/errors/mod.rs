@@ -12,7 +12,7 @@ mod invalid_header;
 /// that same reserved path must still be rejected with 403, even while the cache
 /// entry is fresh. Before the fix, the fresh cache hit short-circuited the
 /// unprivileged path guard and the private SQL was executed and served.
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_private_path_not_accessible_after_privileged_cache_priming() {
     // Keep cache entries "fresh" so the bug (skipping the path guard on fresh hits) is exercised.
     let mut config = test_config();
@@ -49,7 +49,7 @@ async fn test_private_path_not_accessible_after_privileged_cache_priming() {
     }
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_privileged_paths_are_not_accessible() {
     let resp_result = response_with("/sqlpage/migrations/0001_init.sql", test_config()).await;
     assert!(
@@ -66,7 +66,7 @@ async fn test_privileged_paths_are_not_accessible() {
     );
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_404_fallback() {
     let app_data = crate::common::make_app_data().await;
     for f in [
@@ -85,7 +85,7 @@ async fn test_404_fallback() {
     }
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_default_404() {
     let app_data = crate::common::make_app_data().await;
     let msg = "The page you were looking for does not exist";
@@ -109,7 +109,7 @@ async fn test_default_404() {
     }
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_requesting_a_directory_is_not_found() {
     let resp_result = response_with("/tests/errors/is_a_directory.d", test_config()).await;
     let status = match resp_result {

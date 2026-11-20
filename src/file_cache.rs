@@ -230,9 +230,11 @@ mod tests {
     use super::*;
     use crate::app_config::tests::test_config;
 
-    #[actix_web::test]
+    #[actix_web::rt::test(system = "crate::test_database::System")]
     async fn metadata_check_releases_cache_lock() {
-        let state = AppState::init(&test_config()).await.unwrap();
+        let state = crate::test_database::app_state(&test_config())
+            .await
+            .unwrap();
         let c = &state.sql_file_cache;
         let path = FileAccess::privileged(Path::new("x"));
         c.cache.write().await.insert("x".into(), Cached::default());

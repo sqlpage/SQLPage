@@ -77,6 +77,8 @@ pub mod telemetry;
 pub mod telemetry_metrics;
 pub mod template_helpers;
 pub mod templates;
+#[cfg(test)]
+mod test_database;
 pub mod utils;
 pub mod webserver;
 

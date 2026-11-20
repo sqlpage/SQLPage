@@ -15,7 +15,7 @@ where
         .map(C::cached_statements_size)
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_parameterized_pages_leave_a_prepared_statement_in_the_cache() -> actix_web::Result<()>
 {
     let data = make_app_data().await;

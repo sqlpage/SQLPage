@@ -1,6 +1,6 @@
 use actix_web::http::header;
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_exec() {
     let resp = crate::common::response_from(
         crate::common::request_for(exec_test_uri()).insert_header(header::Accept::json()),

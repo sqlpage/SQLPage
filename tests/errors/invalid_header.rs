@@ -30,7 +30,7 @@ async fn assert_invalid_header_response(case: &InvalidHeaderCase) {
     );
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_invalid_header_components_return_an_error_response() {
     let cases = vec![
         InvalidHeaderCase {

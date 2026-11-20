@@ -37,7 +37,7 @@ pub(crate) async fn make_app_data_from_config(
     config: AppConfig,
 ) -> actix_web::Result<Data<AppState>> {
     init_log();
-    AppState::init(&config)
+    crate::test_database::app_state(&config)
         .await
         .map(Data::new)
         .map_err(actix_web::error::ErrorInternalServerError)

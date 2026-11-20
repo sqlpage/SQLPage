@@ -422,11 +422,11 @@ impl DbFsQueries {
     }
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_sql_file_read_utf8() -> anyhow::Result<()> {
     use crate::app_config;
     let config = app_config::tests::test_config();
-    let state = AppState::init(&config).await?;
+    let state = crate::test_database::app_state(&config).await?;
 
     // Oracle has specific issues with implicit timestamp conversions and empty strings in this test setup
     // so we skip it for Oracle to avoid complex workarounds in the main codebase.
@@ -507,10 +507,10 @@ async fn test_sql_file_read_utf8() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_local_file_modification_time() -> anyhow::Result<()> {
     let config = crate::app_config::tests::test_config();
-    let state = AppState::init(&config).await?;
+    let state = crate::test_database::app_state(&config).await?;
     let fs = FileSystem::init(".", &state.db).await;
     let committed_file = || FileAccess::unprivileged("tests/it_works.txt".as_ref());
 

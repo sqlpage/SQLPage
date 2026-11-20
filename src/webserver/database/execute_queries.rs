@@ -731,13 +731,13 @@ mod tests {
         assert_eq!(stop_at_first_error(error.chain(later)).count().await, 1);
     }
 
-    #[actix_web::test]
+    #[actix_web::rt::test(system = "crate::test_database::System")]
     async fn dropping_stream_stops_later_rows_and_releases_connection_borrow() {
         let mut config: crate::app_config::AppConfig = serde_json::from_str("{}").unwrap();
         config.database_url = crate::app_config::test_database_url();
         config.max_database_pool_connections = Some(1);
         config.database_connection_acquire_timeout_seconds = 1.0;
-        let state = Arc::new(crate::AppState::init(&config).await.unwrap());
+        let state = Arc::new(crate::test_database::app_state(&config).await.unwrap());
         let mut request = actix_web::test::TestRequest::get().to_srv_request();
         let request = crate::webserver::http_request_info::extract_request_info(
             &mut request,
