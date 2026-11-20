@@ -41,6 +41,18 @@ td > p {
   min-height: calc(100% - 3rem);
 }
 
+.status-bar > * + * {
+  border-inline-start: var(--tblr-border-width) solid var(--tblr-border-color);
+}
+
+.status-bar > * + :last-child {
+  margin-inline-start: auto;
+}
+
+.status-bar > a:focus-visible {
+  outline-offset: -2px;
+}
+
 .datagrid {
   --tblr-datagrid-padding: 1.25rem;
   --tblr-datagrid-item-width: 6rem;
