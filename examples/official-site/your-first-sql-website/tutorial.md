@@ -75,9 +75,9 @@ If you then deploy your website online using a service like [DataPage.app](https
 
 Later, when you want to deploy your website online, you can switch back to a persistent database like
 
-- a SQLite file with `sqlite://your-database-file.db` ([see options](https://docs.rs/sqlx/0.9.0/sqlx/sqlite/struct.SqliteConnectOptions.html)),
-- a PostgreSQL-compatible server with `postgres://user:password@host/database` ([see options](https://docs.rs/sqlx/0.9.0/sqlx/postgres/struct.PgConnectOptions.html)),
-- a MySQL-compatible server with `mysql://user:password@host/database` ([see options](https://docs.rs/sqlx/0.9.0/sqlx/mysql/struct.MySqlConnectOptions.html)),
+- a SQLite file with `sqlite://your-database-file.db` ([see options](https://docs.rs/sqlx/0.9.1/sqlx/sqlite/struct.SqliteConnectOptions.html)),
+- a PostgreSQL-compatible server with `postgres://user:password@host/database` ([see options](https://docs.rs/sqlx/0.9.1/sqlx/postgres/struct.PgConnectOptions.html)),
+- a MySQL-compatible server with `mysql://user:password@host/database` ([see options](https://docs.rs/sqlx/0.9.1/sqlx/mysql/struct.MySqlConnectOptions.html)),
 - a Microsoft SQL Server with `mssql://user:password@host/database` ([see options](https://github.com/sqlpage/SQLPage/blob/main/configuration.md#database-connection-strings), [note about named instances](https://github.com/sqlpage/SQLPage/issues/92)),
 - any ODBC-compatible database like DuckDB, ClickHouse, Databricks, Snowflake, BigQuery, Oracle, Db2, and many more. See [ODBC database connection instructions](https://github.com/sqlpage/SQLPage#odbc-setup).
 
