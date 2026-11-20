@@ -21,6 +21,7 @@ RUN /usr/local/bin/setup-cross-compilation.sh "$TARGETARCH" "$BUILDARCH"
 
 COPY .cargo/ .cargo/
 COPY Cargo.toml Cargo.lock build.rs ./
+COPY fuzz/Cargo.toml fuzz/
 COPY sqlpage/ sqlpage/
 COPY --from=frontend /usr/src/sqlpage/frontend/dist frontend/dist
 RUN /usr/local/bin/build-dependencies.sh
