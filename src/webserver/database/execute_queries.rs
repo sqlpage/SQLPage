@@ -29,15 +29,6 @@ pub(super) enum QueryEvent {
     FinishedQuery,
 }
 
-impl QueryEvent {
-    fn into_db_item(self) -> DbItem {
-        match self {
-            Self::Row(row) => DbItem::Row(row.value),
-            Self::FinishedQuery => DbItem::FinishedQuery,
-        }
-    }
-}
-
 /// A decoded row together with private values reserved for computed columns.
 pub(super) struct QueryRow {
     pub(super) value: Value,
@@ -211,52 +202,52 @@ pub fn stream_query_results_with_conn<'a>(
                     {
                         let connection = take_connection(&request.app_state.db, db_connection, request).await?;
                         let mut stream = connection.fetch_many(query.sql, &query.param_values, &stmt.row_input_json);
-                        loop {
-                        let Some(result) = next_query_event(
+                        while let Some(result) = next_query_event(
                             &mut stream, &mut query_metrics, &mut returned_rows,
                             source_file, stmt, statement.source_span,
-                        ).await else { break; };
-                        let mut query_result = match result {
-                            Ok(event) => event,
-                            Err(e) => {
-                                error = Some(e);
-                                break;
+                        ).await {
+                            let event = match result {
+                                Ok(event) => event,
+                                Err(err) => {
+                                    error = Some(err);
+                                    break;
+                                }
+                            };
+                            if buffer_rows {
+                                deferred_query_results.push(event);
+                                continue;
                             }
-                        };
-                        if buffer_rows {
-                            deferred_query_results.push(query_result);
-                        } else {
                             let mut computed_connection = None;
-                            if let Err(err) = prepare_query_event(request, stmt, &mut query_result, &mut computed_connection)
-                                .instrument(query_span.clone())
-                                .await
+                            match prepare_query_event(request, stmt, event, &mut computed_connection)
+                                .instrument(query_span.clone()).await
                             {
-                                error = Some(err);
-                                break;
-                            }
-                            for db_item in parse_dynamic_rows(query_result.into_db_item()) {
-                                yield db_item;
+                                Ok(item) => {
+                                    for row in parse_dynamic_rows(item) {
+                                        yield row;
+                                    }
+                                }
+                                Err(err) => {
+                                    error = Some(err);
+                                    break;
+                                }
                             }
                         }
-                        }
-                        drop(stream);
                     }
-                    if error.is_none() && buffer_rows {
-                        for mut query_result in deferred_query_results {
-                            if let Err(err) = prepare_query_event(
-                                request,
-                                stmt,
-                                &mut query_result,
-                                db_connection,
-                            )
-                            .instrument(query_span.clone())
-                            .await
+                    // The fetch stream has released the connection for nested SQL.
+                    if error.is_none() {
+                        for event in deferred_query_results {
+                            match prepare_query_event(request, stmt, event, db_connection)
+                                .instrument(query_span.clone()).await
                             {
-                                error = Some(err);
-                                break;
-                            }
-                            for db_item in parse_dynamic_rows(query_result.into_db_item()) {
-                                yield db_item;
+                                Ok(item) => {
+                                    for row in parse_dynamic_rows(item) {
+                                        yield row;
+                                    }
+                                }
+                                Err(err) => {
+                                    error = Some(err);
+                                    break;
+                                }
                             }
                         }
                     }
@@ -410,19 +401,16 @@ async fn execute_scalar_query<'a>(
             &query.param_values,
             &database_query.row_input_json,
         );
-        loop {
-            let Some(result) = next_query_event(
-                &mut stream,
-                &mut query_metrics,
-                &mut returned_rows,
-                source_file,
-                database_query,
-                statement.source_span,
-            )
-            .await
-            else {
-                break;
-            };
+        while let Some(result) = next_query_event(
+            &mut stream,
+            &mut query_metrics,
+            &mut returned_rows,
+            source_file,
+            database_query,
+            statement.source_span,
+        )
+        .await
+        {
             match result {
                 Ok(QueryEvent::Row(row)) => {
                     if scalar_row.is_some() {
@@ -447,7 +435,6 @@ async fn execute_scalar_query<'a>(
                 }
             }
         }
-        drop(stream);
     }
 
     let value = if let Some(error) = error {
@@ -455,24 +442,27 @@ async fn execute_scalar_query<'a>(
         return Err(
             record_error_and_rollback(connection, &query_metrics, returned_rows, error).await,
         );
-    } else if let Some(mut row) = scalar_row {
+    } else if let Some(row) = scalar_row {
         ensure_scalar_column_count(
             row.public_column_count + database_query.computed_columns.len(),
         )?;
-        if let Err(error) = prepare_query_row(request, database_query, &mut row, db_connection)
+        match prepare_query_row(request, database_query, row, db_connection)
             .instrument(query_span.clone())
             .await
         {
-            let connection = take_connection(&request.app_state.db, db_connection, request).await?;
-            return Err(record_error_and_rollback(
-                connection,
-                &query_metrics,
-                returned_rows,
-                error,
-            )
-            .await);
+            Ok(value) => scalar_value_from_row(value)?,
+            Err(error) => {
+                let connection =
+                    take_connection(&request.app_state.db, db_connection, request).await?;
+                return Err(record_error_and_rollback(
+                    connection,
+                    &query_metrics,
+                    returned_rows,
+                    error,
+                )
+                .await);
+            }
         }
-        scalar_value_from_row(row.value)?
     } else {
         None
     };
@@ -652,24 +642,26 @@ async fn bind_query<'a>(
 async fn prepare_query_event(
     request: &ExecutionContext,
     query: &DatabaseQuery,
-    event: &mut QueryEvent,
+    event: QueryEvent,
     db_connection: &mut DbConn,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<DbItem> {
     match event {
-        QueryEvent::Row(row) => prepare_query_row(request, query, row, db_connection).await,
-        QueryEvent::FinishedQuery => Ok(()),
+        QueryEvent::Row(row) => Ok(DbItem::Row(
+            prepare_query_row(request, query, row, db_connection).await?,
+        )),
+        QueryEvent::FinishedQuery => Ok(DbItem::FinishedQuery),
     }
 }
 
 async fn prepare_query_row(
     request: &ExecutionContext,
     query: &DatabaseQuery,
-    row: &mut QueryRow,
+    mut row: QueryRow,
     db_connection: &mut DbConn,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<Value> {
     apply_json_columns(&mut row.value, &query.json_columns);
     if let Value::Object(results) = &mut row.value {
-        let mut inputs = RowInputs::new(std::mem::take(&mut row.inputs));
+        let mut inputs = RowInputs::new(row.inputs);
         for column in &query.computed_columns {
             let value = column
                 .value
@@ -680,7 +672,7 @@ async fn prepare_query_row(
             *results = add_value_to_map(old_results, (column.name.clone(), value));
         }
     }
-    Ok(())
+    Ok(row.value)
 }
 
 fn apply_json_columns(value: &mut Value, json_columns: &[String]) {
