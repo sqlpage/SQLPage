@@ -76,9 +76,10 @@ impl Database {
                 options
                     .batch_size(config.max_pending_rows.clamp(1, 1024))
                     .max_column_size(None);
-                let dbms_name = open_connection(&options, config.database_connection_retries)
-                    .await?
-                    .dbms_name()?;
+                let probe = open_connection(&options, config.database_connection_retries).await?;
+                let dbms_name = probe.dbms_name();
+                probe.close().await?;
+                let dbms_name = dbms_name?;
                 log::debug!("ODBC driver reported DBMS {dbms_name:?}");
                 let info = DbInfo::Odbc(SupportedDatabase::from_dbms_name(&dbms_name));
                 Self {
