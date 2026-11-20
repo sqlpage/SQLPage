@@ -1,0 +1,4 @@
+.sqlpage-icon {
+  /* An inline SVG's baseline is its bottom edge. Center it on capital letters. */
+  vertical-align: calc((1cap - attr(height px)) / 2);
+}

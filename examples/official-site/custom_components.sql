@@ -131,7 +131,7 @@ and SQLPage adds a few more:
 - `array_contains`: returns true if a list contains a value
 - `static_path`: returns the path to one of the static files bundled with SQLPage. Accepts arguments like `sqlpage.js`, `sqlpage.css`, `apexcharts.js`, etc.
 - `app_config`: returns the value of a configuration parameter from sqlpage''s configuration file, such as `max_uploaded_file_size`, `site_prefix`, etc.
-- `icon_img`: generate an svg icon from a *tabler* icon name
+- `icon_img`: render a Tabler SVG icon aligned with adjacent text. An optional second argument sets its size in pixels (default 24).
 - `markdown`: renders markdown text. Accepts an optional 2nd argument `''allow_unsafe''` that will render embedded html blocks: use only on trusted content. See the [Commonmark spec](https://spec.commonmark.org/0.31.2/#html-blocks) for more info.
 - `each_row`: iterates over the rows of a query result
 - `typeof`: returns the type of a value (`string`, `number`, `boolean`, `object`, `array`, `null`)

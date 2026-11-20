@@ -4,6 +4,7 @@
 
 - A file input with `multiple` now keeps every selected file, instead of only the last one. The new [`sqlpage.persist_uploaded_files`](https://sql-page.com/functions.sql?function=persist_uploaded_files) function saves them all and returns a JSON array with the `path`, original `name`, `mime_type` and `size` of each file.
 - Set `wrap` on a `big_number` component to show long titles and descriptions across multiple lines.
+- Inline icons now align with their labels in components such as tabs and steps.
 
 ## v0.48.0 (2026-11-12)
 
