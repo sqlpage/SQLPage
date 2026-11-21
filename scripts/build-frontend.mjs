@@ -11,6 +11,7 @@ const STYLESHEET = [
   "node_modules/@tabler/core/dist/css/tabler.min.css",
   "node_modules/tom-select/dist/css/tom-select.bootstrap5.css",
   "node_modules/@tabler/core/dist/css/tabler-vendors.min.css",
+  "frontend/src/icons.css",
   "frontend/src/sqlpage.css",
 ];
 
