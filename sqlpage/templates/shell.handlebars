@@ -101,7 +101,7 @@
                                     data-bs-auto-close="outside"
                                 {{/if~}}
                                 {{#if this.target}}target="{{this.target}}"{{/if}}
-                                role="button"
+                                {{#if this.submenu}}role="button"{{/if}}
                             >
                                 {{~#if this.image~}}
                                     <span {{~#if this.title}} class="me-1"{{/if}}>
