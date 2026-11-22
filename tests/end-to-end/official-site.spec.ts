@@ -34,7 +34,7 @@ async function expectContrast(
     if (!context) throw new Error("Could not read computed colors");
 
     function luminance(ctx: CanvasRenderingContext2D) {
-      const [red, green, blue] = ctx.getImageData(0, 0, 1, 1).data;
+      const [red = 0, green = 0, blue = 0] = ctx.getImageData(0, 0, 1, 1).data;
       const linearize = (channel: number) => {
         const value = channel / 255;
         return value <= 0.04045
