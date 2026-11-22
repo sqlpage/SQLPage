@@ -8,7 +8,7 @@ select 'dynamic' as component, sqlpage.run_sql('sqlpage/docs-shell.sql', json_ob
     'title', 'SQLPage Documentation',
     'section', 'Documentation',
     'current', 'Documentation',
-    'outline', '[{"title":"Overview","link":"#overview"},{"title":"Reference","link":"#reference"},{"title":"How a page works","link":"#how-it-works"},{"title":"Guides","link":"#guides"}]'
+    'outline', '[{"title":"Overview","link":"#overview"},{"title":"Reference","link":"#reference"},{"title":"Anatomy of a SQL page","link":"#how-it-works"},{"title":"Guides","link":"#guides"}]'
 )) as properties;
 
 select 'docs-intro' as component,
@@ -19,16 +19,18 @@ select 'docs-intro' as component,
     '/your-first-sql-website/' as link, 'Build your first website' as link_text;
 
 select 'docs-links' as component, 'Reference' as title, 'reference' as id;
-select 'Components' as title, 'layout-grid' as icon, '/components.sql' as link,
-    format('Browse %d components with their parameters, SQL examples and previews.', (select count(*) from component)) as description,
-    (select json_group_array(json_object('title', name, 'link', '/component.sql?component=' || name))
-        from (select name from component where name in ('form', 'table', 'map', 'chart', 'button') order by name)) as links;
-select 'Functions' as title, 'function' as icon, '/functions.sql' as link,
-    format('Look up the arguments and behavior of %d built-in SQLPage functions.', (select count(*) from sqlpage_functions)) as description,
-    (select json_group_array(json_object('title', name, 'link', '/functions.sql?function=' || name))
-        from (select name from sqlpage_functions where name in ('fetch', 'link', 'run_sql', 'variables') order by name)) as links;
+select case kind when 'component' then 'Components' else 'Functions' end as title,
+    case kind when 'component' then 'layout-grid' else 'function' end as icon,
+    '/' || kind || 's.sql' as link,
+    case kind when 'component' then format('Browse %d components with their parameters, SQL examples and previews.', count(*))
+        else format('Look up the arguments and behavior of %d built-in SQLPage functions.', count(*)) end as description,
+    json_group_array(json_object('title', name, 'link', link) order by name) filter (where
+        (kind = 'component' and name in ('form', 'table', 'map', 'chart', 'button')) or
+        (kind = 'function' and name in ('fetch', 'link', 'run_sql', 'variables'))
+    ) as links
+from reference_entry group by kind order by kind;
 
-select 'title' as component, 'How a page works' as contents, 2 as level, 'how-it-works' as id;
+select 'title' as component, 'Anatomy of a SQL page' as contents, 2 as level, 'how-it-works' as id;
 select 'text' as component, 'Each SQL file is a page. Its first SELECT names a component and sets its top-level parameters. The rows returned by the next SELECT supply the row-level parameters. This list uses both.' as contents;
 select 'docs-example' as component, 1 as number, 'A reading list' as title, true as preview,
     sqlpage.read_file_as_text('sqlpage/docs-intro-example.sql') as source;

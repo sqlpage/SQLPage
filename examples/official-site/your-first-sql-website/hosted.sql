@@ -12,11 +12,9 @@ select 'docs-intro' as component,
     'Host your website' as link_text;
 
 SELECT 'text' as component,
-    'Try SQLPage online today' as title,
-    '
-If you want to fiddle around with SQLPage without installing anything on your computer, you can still try it out online today.
+    '## Run SQLPage in your browser
 
-Repl.it is an online development environment that allows you to run SQLPage in your browser.
+Replit is an online development environment that lets you run SQLPage without a local installation.
 
 Try [the SQLPage repl](https://replit.com/@pimaj62145/SQLPage).
 Click *Use template* to create your own editable copy of the demo website, then click *Run* to see the result.

@@ -88,11 +88,11 @@ VALUES (
         'photo-up',
         'Returns the raw request body encoded in base64. This is useful when receiving binary data or when you need to handle non-text content in your API endpoints.
 
-### What is Base64?
+## Base64 encoding
 
 Base64 is a way to encode binary data (like images or files) into text that can be safely stored and transmitted. This function automatically converts the incoming request body into this format.
 
-### Example: Handling Binary Data in an API
+## Receiving binary data in an API
 
 This example shows how to receive and process an image uploaded directly in the request body:
 

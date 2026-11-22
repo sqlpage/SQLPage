@@ -12,8 +12,6 @@ select 'hero' as component,
     'not_found.jpg' as image;
 
 select 'text' as component, '
-# Handling custom URLs
-
 By default, SQLPage serves the file that matches the URL requested by the client.
 If your users enter `https://example.com/about`, SQLPage will serve the file `about/index.sql` in your project.
 If you create a file named `about.sql`, SQLPage will serve it when the user requests either `https://example.com/about.sql` or `https://example.com/about` (since v0.33, the `.sql` suffix is optional).

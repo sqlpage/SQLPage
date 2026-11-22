@@ -127,23 +127,8 @@
   top: calc(var(--docs-header-height) + 1.25rem);
 }
 .catalog-categories summary {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   margin: 0 0 0.6rem;
   padding: 0.6rem 0.65rem;
-  color: #b5c3d4;
-  font-size: 0.78rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  list-style: none;
-}
-.catalog-categories summary::-webkit-details-marker {
-  display: none;
-}
-:where(.catalog-categories[open]) summary svg {
-  transform: rotate(180deg);
 }
 .catalog-selected-category {
   margin-left: auto;
@@ -166,19 +151,9 @@
   justify-content: space-between;
   gap: 0.55rem;
   padding: 0.55rem 0.7rem;
-  border-radius: 0.35rem;
   color: var(--docs-muted);
   line-height: 1.35;
   text-decoration: none;
-}
-.catalog-categories nav a:hover {
-  color: var(--tblr-heading-color);
-  background: var(--docs-surface);
-}
-.catalog-categories nav a[aria-current] {
-  color: #c1dfff;
-  background: #172b42;
-  box-shadow: inset 2px 0 #86baff;
 }
 .catalog-categories nav span,
 .catalog-count {

@@ -47,7 +47,10 @@
   display: grid;
   grid-template-columns: minmax(9rem, 30%) minmax(0, 1fr);
   gap: 0.5rem 1.25rem;
-  padding: 1rem 0;
+  padding: 1rem 0.6rem;
+}
+.docs-parameters dl > div:target {
+  background: var(--tblr-bg-surface-secondary);
 }
 .docs-parameters dl > div + div {
   border-top: 1px solid var(--tblr-border-color);

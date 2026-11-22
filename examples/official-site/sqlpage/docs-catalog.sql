@@ -15,7 +15,7 @@ set groups = (
             or ($kind = 'function' and $search in (
                 name || '()', name || '(' || replace(replace(arguments, '[', ''), ']', '') || ')'
             )) as matches
-        from reference_catalog where kind = $kind
+        from reference_entry where kind = $kind
     ), categories as (
         select category_id, category_title, category_order,
             json_group_array(json_object(
@@ -50,7 +50,7 @@ select 'docs-catalog' as component, $kind as kind, $kind || 's' as plural,
     json(case when $kind = 'component' then (
         select json_group_array(json_object('name', name, 'link', link)
             order by case name when 'table' then 1 when 'form' then 2 else 3 end)
-        from reference_catalog where kind = 'component' and name in ('table', 'form', 'chart')
+        from reference_entry where kind = 'component' and name in ('table', 'form', 'chart')
     ) end) as picks,
     case when $kind = 'function' then sqlpage.url_encode('hello world') end as encoded_example
 from json_each($groups);

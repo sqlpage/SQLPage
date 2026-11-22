@@ -1,4 +1,4 @@
-## How SQLPage runs your SQL
+## SQL statement execution
 
 SQLPage reads your SQL file and runs one statement at a time. For each statement, it
 
@@ -12,7 +12,7 @@ SQLPage reads your SQL file and runs one statement at a time. For each statement
 This page explains every step of the process,
 with examples and details about differences between how SQLPage understands SQL and how your database does.
 
-## What runs where
+## SQLPage and database responsibilities
 
 ### Handled locally by SQLPage
 
@@ -136,7 +136,7 @@ SET my_var = 'custom value';  -- This value takes precedence over ?my_var=...
 
 This means `SET` variables always take precedence over request parameters when using `$var` or `:var` syntax.
 
-**How SET works:**
+**Assignment rules**
 - If the right-hand side is purely literals/variables, SQLPage computes it directly. See the section about *static simple select* above.
 - If it needs the database (for example, calls a database function), SQLPage runs an internal `SELECT` to compute it and stores the first column of the first row of results.
 

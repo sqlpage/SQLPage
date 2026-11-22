@@ -135,20 +135,30 @@
   color: var(--docs-blue);
 }
 
-.docs-rail-title {
+.docs-primary > a[aria-current] {
+  font-weight: 650;
+}
+
+.docs-disclosure > summary {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 0.3rem;
+  color: #a5b6c9;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   list-style: none;
   cursor: pointer;
 }
 
-.docs-rail-title::-webkit-details-marker {
+.docs-disclosure > summary::-webkit-details-marker {
   display: none;
 }
 
-.docs-topic-list a:hover {
-  background: #172331;
+:where(.docs-disclosure[open]) > summary svg {
+  transform: rotate(180deg);
 }
 
 .docs-tools {
@@ -184,6 +194,23 @@
 .docs-search input {
   width: 8rem;
   padding-right: 0.55rem;
+}
+
+.docs-search kbd {
+  margin-right: 0.45rem;
+  padding: 0.1rem 0.3rem;
+  border: 1px solid var(--docs-line);
+  border-radius: 0.25rem;
+  background: transparent;
+  color: var(--docs-muted);
+  font: 0.75rem / 1.4 var(--tblr-font-monospace);
+  white-space: nowrap;
+}
+
+@media (max-width: 61.999rem), (pointer: coarse) {
+  .docs-search kbd {
+    display: none;
+  }
 }
 
 .docs-search input::placeholder,
@@ -230,12 +257,30 @@
   margin-inline: auto;
 }
 
+.docs-main,
+.docs-main :where([id]) {
+  scroll-margin-top: calc(var(--docs-header-height) + 1rem);
+}
+
 .with-topics > .docs-main {
   grid-column: 2;
 }
 
-.docs-main :where([id]) {
-  scroll-margin-top: calc(var(--docs-header-height) + 1rem);
+.docs-self-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.docs-self-link:is(:hover, :focus-visible) {
+  color: var(--docs-blue);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+:where(h1, h2, h3, h4) > .docs-self-link::after {
+  content: " #" / "";
+  color: var(--docs-muted);
+  font: 0.7em var(--tblr-font-monospace);
 }
 
 .docs-main .article-text {
@@ -249,6 +294,14 @@
   font: inherit;
 }
 
+.docs-main blockquote {
+  margin-inline: 0;
+  padding: 0.75rem 1rem;
+  border: 0;
+  border-radius: 0.4rem;
+  background: var(--docs-surface);
+}
+
 .docs-main :where(p, li) {
   overflow-wrap: anywhere;
 }
@@ -256,6 +309,45 @@
 .docs-main pre {
   max-width: 100%;
   overflow-x: auto;
+}
+
+.docs-snippet-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.65rem;
+  border: 1px solid var(--docs-line);
+  border-radius: 0.5rem 0.5rem 0 0;
+  background: var(--tblr-bg-surface-secondary);
+  color: var(--docs-muted);
+  font: 0.8rem var(--tblr-font-monospace);
+}
+
+.docs-main .docs-snippet-tools + pre {
+  margin-top: 0;
+  border-radius: 0 0 0.5rem 0.5rem;
+}
+
+.docs-snippet-copy,
+.docs-example-toolbar button {
+  margin-left: auto;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid var(--docs-line);
+  border-radius: 0.3rem;
+  background: var(--tblr-bg-surface);
+  color: var(--tblr-secondary-color);
+  font: 0.875rem var(--tblr-font-sans-serif);
+}
+
+:is(.docs-snippet-tools, .docs-example-toolbar) button:hover {
+  border-color: var(--docs-blue);
+  color: var(--docs-blue);
+}
+
+@media print {
+  .docs-snippet-tools {
+    display: none;
+  }
 }
 
 .docs-main img {
@@ -276,14 +368,8 @@
 }
 
 .docs-rail-title {
-  justify-content: space-between;
   margin: 0 0 0.85rem;
   padding-block: 0.4rem;
-  color: #a5b6c9;
-  font-size: 0.8rem;
-  font-weight: 600;
-  letter-spacing: 0.11em;
-  text-transform: uppercase;
 }
 
 .docs-filter {
@@ -325,25 +411,27 @@
   font-size: 0.86rem;
 }
 
-.docs-topic-list a {
-  border-radius: 0.3rem;
+.docs-disclosure nav a {
+  border-radius: 0.35rem;
 }
 
-.docs-topic-list a[aria-current] {
-  background: #17283c;
-  color: #bad9fe;
-  box-shadow: inset 2px 0 #8dbcf4;
+.docs-disclosure nav a:hover {
+  background: #172331;
+  color: var(--tblr-heading-color);
 }
 
-.docs-outline a {
-  border-left: 1px solid var(--docs-line);
-  padding-left: 0.85rem;
+.docs-disclosure nav a[aria-current],
+.docs-site
+  .list-group-item:is(.active, :has(.list-group-selectable-check:checked)) {
+  background: #192d43;
+  color: #c1dfff;
+  font-weight: 600;
+  box-shadow: none;
 }
 
-.docs-outline a:hover,
-.docs-outline a[aria-current] {
-  border-color: var(--docs-blue);
-  color: var(--docs-blue);
+/* Both scrollable rails clip an outline placed outside their links. */
+.docs-disclosure nav a:focus-visible {
+  outline-offset: -2px;
 }
 
 .docs-site .docs-rail-return {

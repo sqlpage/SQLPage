@@ -103,16 +103,14 @@
   gap: 0.45rem;
 }
 .docs-example-toolbar button:not([hidden]) {
-  margin-left: auto;
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.35rem 0.55rem;
-  border: 1px solid var(--tblr-border-color);
-  border-radius: 0.3rem;
-  background: var(--tblr-bg-surface);
-  color: var(--tblr-secondary-color);
-  font: 0.875rem var(--tblr-font-sans-serif);
+}
+@media print {
+  .docs-example-toolbar button:not([hidden]) {
+    display: none;
+  }
 }
 .docs-example-source pre,
 .docs-example-source pre code {

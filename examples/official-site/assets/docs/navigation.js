@@ -1,4 +1,41 @@
-// Keep both rails directly browsable when JavaScript is unavailable.
+const search = document.querySelector(".docs-search input");
+const shortcut = document.querySelector(".docs-search kbd");
+shortcut.textContent = /Mac|iPhone|iPad/.test(navigator.platform)
+  ? "⌘ K"
+  : "Ctrl K";
+shortcut.hidden = false;
+search.setAttribute("aria-keyshortcuts", "Control+k Meta+k");
+let shortcutOrigin;
+
+search.addEventListener("blur", () => {
+  shortcutOrigin = null;
+});
+document.addEventListener("keydown", (event) => {
+  if (event.defaultPrevented || event.isComposing) return;
+  if (event.key === "Escape" && event.target === search && shortcutOrigin) {
+    event.preventDefault();
+    const origin = shortcutOrigin;
+    search.blur();
+    origin.focus({ preventScroll: true });
+    return;
+  }
+  if (
+    event.key.toLowerCase() === "k" &&
+    (event.ctrlKey || event.metaKey) &&
+    !event.altKey &&
+    !event.shiftKey &&
+    !event.target.closest(
+      "input, textarea, select, [contenteditable], [role=textbox], dialog, [aria-modal=true]",
+    )
+  ) {
+    event.preventDefault();
+    shortcutOrigin = document.activeElement;
+    search.focus();
+    search.select();
+  }
+});
+
+// Keep navigation directly browsable when JavaScript is unavailable.
 const narrow = window.matchMedia("(max-width: 61.999rem)");
 const rails = document.querySelectorAll(".docs-disclosure");
 function sizeRails() {
@@ -10,23 +47,31 @@ narrow.addEventListener("change", sizeRails);
 const filter = document.querySelector(".docs-filter");
 if (filter) {
   const input = filter.querySelector("input");
-  const list = document.querySelector(".docs-topic-list");
+  const list = document.getElementById(input.getAttribute("aria-controls"));
   const links = Array.from(list.querySelectorAll("a"));
-  const empty = document.querySelector(".docs-no-matches");
+  const status = filter.parentElement.querySelector('[role="status"]');
   filter.hidden = false;
   input.addEventListener("input", () => {
     const query = input.value.trim().toLowerCase();
+    let matches = 0;
     for (const link of links) {
       link.hidden = !link.textContent.toLowerCase().includes(query);
+      if (!link.hidden) matches++;
     }
-    empty.hidden = links.some((link) => !link.hidden);
+    status.textContent = query ? `${matches} of ${links.length} shown` : "";
     list.scrollTop = 0;
+    if (!query) revealCurrent();
   });
 
   const current = list.querySelector('[aria-current="page"]');
   function revealCurrent() {
-    if (current && current.offsetTop > list.scrollTop + list.clientHeight) {
-      list.scrollTop = current.offsetTop - list.clientHeight / 2;
+    if (!current || current.hidden || !list.clientHeight) return;
+    const top = current.offsetTop;
+    if (
+      top < list.scrollTop ||
+      top + current.offsetHeight > list.scrollTop + list.clientHeight
+    ) {
+      list.scrollTop = top - (list.clientHeight - current.offsetHeight) / 2;
     }
   }
   revealCurrent();
@@ -51,6 +96,7 @@ if (sections.length) {
       return position >= 0 && position < innerHeight / 2;
     });
     const nearEnd =
+      window.scrollY > 0 &&
       window.scrollY + innerHeight >= document.documentElement.scrollHeight - 1;
     const section =
       selected ??

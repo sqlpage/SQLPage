@@ -1,28 +1,25 @@
--- Each matching parameter or example points back to its documentation page.
 CREATE VIRTUAL TABLE documentation_fts USING fts5(
     title, description, example_source,
-    page UNINDEXED, parameters UNINDEXED
+    page UNINDEXED, parameters UNINDEXED, fragment UNINDEXED
 );
 
 INSERT INTO documentation_fts(title, description, page)
-SELECT title, description, link FROM guide;
+SELECT title, description, link FROM guide
+UNION ALL
+SELECT CASE kind WHEN 'component' THEN name || ' component' ELSE 'sqlpage.' || name || '()' END,
+    description_md, link FROM reference_entry;
+
+INSERT INTO documentation_fts(title, description, page, fragment)
+SELECT CASE p.kind WHEN 'component' THEN p.entry || ' component: ' || p.name
+        ELSE 'sqlpage.' || p.entry || '(' || p.name || ')' END,
+    p.description_md, e.link, p.anchor
+FROM reference_parameter AS p
+JOIN reference_entry AS e ON e.kind = p.kind AND e.name = p.entry;
+
+INSERT INTO documentation_fts(title, description, example_source, page, fragment)
+SELECT component || ' component example', description, properties, e.link, 'example-' || example_number
+FROM example_with_source AS x
+JOIN reference_entry AS e ON e.kind = 'component' AND e.name = x.component;
 
 INSERT INTO documentation_fts(title, description, page, parameters)
-SELECT name || ' component', description, '/component.sql', json_object('component', name)
-FROM component
-UNION ALL
-SELECT component || ' component: ' || name, coalesce(description_md, description), '/component.sql', json_object('component', component)
-FROM parameter
-UNION ALL
-SELECT 'sqlpage.' || name || '()', description_md, '/functions.sql', json_object('function', name)
-FROM sqlpage_functions
-UNION ALL
-SELECT 'sqlpage.' || function || '(' || name || ')', description_md, '/functions.sql', json_object('function', function)
-FROM sqlpage_function_parameters
-UNION ALL
-SELECT title, description, '/blog.sql', json_object('post', title)
-FROM blog_posts;
-
-INSERT INTO documentation_fts(title, description, example_source, page, parameters)
-SELECT component || ' component example', description, properties, '/component.sql', json_object('component', component)
-FROM example;
+SELECT title, description, '/blog.sql', json_object('post', title) FROM blog_posts;

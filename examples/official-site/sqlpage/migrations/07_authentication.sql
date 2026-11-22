@@ -120,10 +120,10 @@ but it is not very flexible nor user-friendly,
 because the browser will show an unstyled popup asking for the username and password.
 
 For more advanced authentication, you can store user information and user sessions in your database.
-You can then use the [`form`](components.sql?component=form#component) component to create a custom login form.
+You can then use the [`form`](/component.sql?component=form#component) component to create a custom login form.
 When the user submits the form, you check if the password is correct using the `authentication` component.
 You then store a unique string of numbers and letters (a session token) both in the user''s browser
-using the [`cookie`](components.sql?component=cookie#component) component and in your database.
+using the [`cookie`](/component.sql?component=cookie#component) component and in your database.
 Then, in all the pages that require authentication, you check if the cookie is present and matches the session token in your database.
 
 You can check if the user has sent the correct password in a form, and if not, redirect them to a login page.

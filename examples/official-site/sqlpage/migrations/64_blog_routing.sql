@@ -12,7 +12,7 @@ No complex configuration is needed. Just create files and they become accessible
 
 This guide explains how SQLPage resolves URLs, handles different file types, and manages 404 errors so you can structure your application effectively.
 
-## How SQLPage Routes Requests
+## Request routing order
 
 ### 1. Site Prefix Handling
 
@@ -52,7 +52,7 @@ products/
 └── categories.sql    # Product categories (/products/categories)
 ```
 
-**How it works**:
+**Request paths**
 - `/products/` → Executes `products/index.sql` (product listing)
 - `/products/123` → No `123.sql` file exists, so executes `products/404.sql`
 - `/products/laptop` → No `laptop.sql` file exists, so executes `products/404.sql`

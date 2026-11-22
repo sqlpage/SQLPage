@@ -140,30 +140,45 @@ WITH copy(name, category, summary) AS (VALUES
 UPDATE sqlpage_functions SET (catalog_category, catalog_summary) = (copy.category, copy.summary)
 FROM copy WHERE sqlpage_functions.name = copy.name;
 
-CREATE VIEW sqlpage_functions_with_arguments AS
-SELECT f.*, coalesce((
-    SELECT group_concat(CASE WHEN optional THEN '[' || name || ']' ELSE name END, ', ' ORDER BY "index")
-    FROM sqlpage_function_parameters WHERE "function" = f.name
-), '') AS arguments
-FROM sqlpage_functions AS f;
-
-CREATE VIEW reference_catalog AS
+-- The catalog, topic navigation, and reference pages use the same entries and links.
+CREATE VIEW reference_entry AS
 WITH entries AS (
-    SELECT 'component' AS kind, name, icon, catalog_category, catalog_summary, description,
+    SELECT 'component' AS kind, name, icon, catalog_category, catalog_summary,
+        description AS description_md, introduced_in_version, NULL AS return_type,
         '/component.sql?component=' || name AS link,
         (SELECT count(*) FROM example WHERE example.component = component.name) AS example_count,
         NULL AS arguments
     FROM component
     UNION ALL
-    SELECT 'function', name, icon, catalog_category, catalog_summary, description_md,
-        '/functions.sql?function=' || name, NULL, arguments
-    FROM sqlpage_functions_with_arguments
+    SELECT 'function', name, icon, catalog_category, catalog_summary,
+        description_md, introduced_in_version, return_type, '/functions.sql?function=' || name, NULL,
+        coalesce((SELECT group_concat(CASE WHEN optional THEN '[' || name || ']' ELSE name END, ', ' ORDER BY "index")
+            FROM sqlpage_function_parameters WHERE "function" = f.name), '')
+    FROM sqlpage_functions AS f
 )
-SELECT kind, name, icon, link, example_count, arguments,
+SELECT kind, name, icon, link, description_md, introduced_in_version, return_type, example_count, arguments,
     coalesce(category.id, 'other') AS category_id,
     coalesce(category.title, 'Other') AS category_title,
     coalesce(category.sort_order, 99) AS category_order,
-    coalesce(catalog_summary, substr(trim(description, char(10) || ' #'), 1,
-        instr(trim(description, char(10) || ' #') || char(10), char(10)) - 1)) AS summary
+    coalesce(catalog_summary, substr(trim(description_md, char(10) || ' #'), 1,
+        instr(trim(description_md, char(10) || ' #') || char(10), char(10)) - 1)) AS summary
 FROM entries
 LEFT JOIN reference_category AS category ON category.id = entries.catalog_category;
+
+-- The section is part of the anchor: a component can accept the same name at both levels.
+CREATE VIEW reference_parameter AS
+WITH fields AS (
+    SELECT 'component' AS kind, component AS entry,
+        CASE WHEN top_level THEN 'top-level-parameters' ELSE 'row-level-parameters' END AS section,
+        name, type, optional, coalesce(description_md, description) AS description_md, optional AS position
+    FROM parameter
+    UNION ALL
+    SELECT 'function', "function", 'parameters', name, type, optional, description_md, "index"
+    FROM sqlpage_function_parameters
+), sections(section, title, introduction, section_order) AS (VALUES
+    ('top-level-parameters', 'Top-level parameters', 'Set these in the SELECT that names the component.', 1),
+    ('row-level-parameters', 'Row-level parameters', 'Return these columns in the rows that follow the component.', 2),
+    ('parameters', 'Parameters', NULL, 1)
+)
+SELECT fields.*, title, introduction, section_order, section || '-' || name AS anchor
+FROM fields JOIN sections USING (section);

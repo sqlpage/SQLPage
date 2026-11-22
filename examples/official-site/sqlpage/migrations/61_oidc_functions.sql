@@ -10,9 +10,7 @@ VALUES
         'user_info_token',
         '0.35.0',
         'key',
-        '# Accessing information about the current user, when logged in with SSO
-
-This function can be used only when you have [configured Single Sign-On with an OIDC provider](/sso).
+        'This function can be used only when you have [configured Single Sign-On with an OIDC provider](/sso).
 
 ## The ID Token
 
@@ -24,7 +22,7 @@ You can then use [your database''s JSON functions](/blog.sql?post=JSON+in+SQL%3A
 If you need to access a specific claim, it is easier and more performant to use the
 [`sqlpage.user_info()`](?function=user_info) function instead.
 
-### Example: Displaying User Information
+## Displaying user claims
 
 ```sql
 select ''list'' as component;
@@ -38,7 +36,7 @@ This sqlite-specific example will show all the information available about the c
 - `email`: The user''s email address
 - `picture`: A URL to the user''s profile picture
 
-### Security Notes
+## Security notes
 
 - The ID token is automatically verified by SQLPage to ensure it hasn''t been tampered with.
 - The token is only available to authenticated users: if no user is logged in or sso is not configured, this function returns NULL
@@ -59,15 +57,13 @@ VALUES
         'user_info',
         '0.34.0',
         'user',
-        '# Accessing Specific User Information
-
-The `sqlpage.user_info` function is a convenient way to access specific pieces of information about the currently logged-in user.
+        'The `sqlpage.user_info` function is a convenient way to access specific pieces of information about the currently logged-in user.
 When you [configure Single Sign-On](/sso), your OIDC provider will issue an [ID token](https://openid.net/specs/openid-connect-core-1_0.html#IDToken) for the user,
 which contains *claims*, with information about the user.
 
 Calling `sqlpage.user_info(claim_name)` lets you access these claims directly from SQL.
 
-## How to Use
+## Read a claim
 
 The function takes one parameter: the name of the *claim* (the piece of information you want to retrieve).
 
@@ -183,9 +179,7 @@ VALUES
         'oidc_logout_url',
         '0.41.0',
         'logout',
-        '# Secure OIDC Logout
-
-The `sqlpage.oidc_logout_url` function generates a secure logout URL for users authenticated via [OIDC Single Sign-On](/sso).
+        'The `sqlpage.oidc_logout_url` function generates a secure logout URL for users authenticated via [OIDC Single Sign-On](/sso).
 
 When a user visits this URL, SQLPage will:
 1. Remove the authentication cookie
@@ -202,7 +196,7 @@ This function provides protection against **Cross-Site Request Forgery (CSRF)** 
 
 This means that malicious websites cannot trick your users into logging out by simply including an image or link to your logout URL.
 
-## How to Use
+## Add a logout button
 
 ```sql
 select ''button'' as component;

@@ -1,11 +1,11 @@
 set search = nullif(trim($search), '');
 
--- Open an exact reference match directly.
-set redirect = CASE
-    WHEN EXISTS (SELECT 1 FROM component WHERE name = $search) THEN sqlpage.link('/component.sql', json_object('component', $search))
-    WHEN EXISTS (SELECT 1 FROM sqlpage_functions WHERE name = $search) THEN sqlpage.link('/functions.sql', json_object('function', $search))
-END;
-SELECT 'redirect' as component, $redirect as link WHERE $redirect IS NOT NULL;
+-- An unqualified name shared by a component and a function opens the component.
+select 'redirect' as component, link from reference_entry
+where name = lower($search) or (kind = 'function' and lower($search) in (
+    name || '()', 'sqlpage.' || name, 'sqlpage.' || name || '()'
+))
+order by kind limit 1;
 
 select 'shell-docs' as component, coalesce($search || ' | ', '') || 'SQLPage documentation search' as title;
 
@@ -23,14 +23,14 @@ select 'list' as component, 'Search results' as title, 'No results' as empty_tit
 where $search is not null;
 
 with matches as (
-    select title, trim(description, char(13) || char(10) || ' ') as summary, page, parameters, rank,
+    select title, trim(description, char(13) || char(10) || ' ') as summary, page, parameters, fragment, rank,
         row_number() over (partition by page, parameters order by rank, rowid) as position
     from documentation_fts
     where documentation_fts match $escaped_search
 )
 select title,
     ltrim(substr(summary, 1, instr(summary || char(10), char(10)) - 1), '# ') as description,
-    sqlpage.link(page, parameters) as link
+    sqlpage.link(page, parameters, fragment) as link
 from matches
 where position = 1
 order by rank, title;

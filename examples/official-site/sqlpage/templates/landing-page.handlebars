@@ -193,7 +193,7 @@
         <div class="section-inner">
           <p class="eyebrow" data-section-reveal="detail">-- real SQLPage components, a few lines each</p>
           <div class="section-heading">
-            <h2 id="demo-title" data-section-reveal="heading">Data,<br />but clickable</h2>
+            <h2 id="demo-title" data-section-reveal="heading">Live SQL<br />demos</h2>
             <div class="scene-stop" data-scene-stop></div>
           </div>
           <p class="eyebrow picker-caption" data-section-reveal="detail">-- pick a component</p>
@@ -209,8 +209,8 @@
               <div class="demo-preview" data-section-reveal="reading"><iframe title="Live SQLPage component demo" src="/landing-demos/demo.sql?component=table" loading="lazy"></iframe></div>
               <p class="demo-annotation" data-section-reveal="detail">Actually rendered by<br />SQLPage, live {{icon_img "arrow-down-left"}}</p>
               <div class="sql-editor" data-section-reveal="reading">
-                <div class="sql-editor-header"><div class="source-tabs" role="tablist" aria-label="SQL files"><button id="demo-filename" role="tab" aria-selected="true" aria-controls="demo-source" data-file="main">table.sql</button><button id="demo-save-filename" role="tab" aria-selected="false" aria-controls="demo-source" tabindex="-1" data-file="save" hidden>save.sql</button></div><button type="button" data-copy-sql aria-label="Copy SQL">{{icon_img "copy"}} <span>Copy</span></button></div>
-                <pre class="code-panel"><code id="demo-source" role="tabpanel" aria-labelledby="demo-filename">{{demo_source}}</code></pre>
+                <div class="sql-editor-header"><div class="source-tabs" role="tablist" aria-label="SQL files"><button id="demo-filename" role="tab" aria-selected="true" aria-controls="demo-source" data-file="main">table.sql</button><button id="demo-save-filename" role="tab" aria-selected="false" aria-controls="demo-source" tabindex="-1" data-file="save" hidden>save.sql</button></div><button type="button" data-copy-sql aria-label="Copy SQL" hidden>{{icon_img "copy"}} <span>Copy</span></button></div>
+                <pre class="code-panel"><code id="demo-source" role="tabpanel" aria-labelledby="demo-filename" tabindex="0">{{demo_source}}</code></pre>
               </div>
               <p data-section-reveal="detail" class="demo-status" role="status"></p>
               <a data-section-reveal="control" class="demo-docs" href="/component.sql?component=table">Explore the table component {{icon_img "arrow-up-right"}}</a>
@@ -234,7 +234,7 @@
           </div>
           <div class="purpose-grid">
             <div class="stack-comparison" data-stack="typical">
-              <p class="eyebrow" data-section-reveal="detail">-- What do you have to maintain?</p>
+              <p class="eyebrow" data-section-reveal="detail">-- Application layers to maintain</p>
               <div data-section-reveal="control" class="segmented" role="group" aria-label="Application stack">
                 <button aria-pressed="true" data-stack="typical">A typical webapp</button>
                 <button aria-pressed="false" data-stack="sqlpage">A SQLPage app</button>
@@ -343,9 +343,9 @@
       <section class="landing-section comparison-section" id="compare" aria-labelledby="comparison-title">
         {{> landing-wave}}
         <div class="section-inner">
-          <p class="eyebrow" data-section-reveal="detail">-- one refunds tool, six ways to build it, on day 100</p>
+          <p class="eyebrow" data-section-reveal="detail">-- maintenance after 100 days</p>
           <div class="section-heading">
-            <h2 id="comparison-title" data-section-reveal="heading">Low Effort.<br /><em>Low Drama.</em></h2>
+            <h2 id="comparison-title" data-section-reveal="heading">Refund app,<br /><em>six ways.</em></h2>
             <p class="comparison-intro" data-section-reveal="reading">Building got cheap.<br />Owning what got built is still expensive.</p>
             <div class="scene-stop" data-scene-stop></div>
           </div>
@@ -395,7 +395,7 @@
                     </div>
                   </div>
                 {{/comparison-card}}
-                {{#> comparison-card id="compare-spreadsheet" title="Spreadsheet" caption="Excel, Google Sheets" verdict="Great until the data drifts." aside="-- which one is real?" glyph="table"}}
+                {{#> comparison-card id="compare-spreadsheet" title="Spreadsheet" caption="Excel, Google Sheets" verdict="Great until the data drifts." aside="-- conflicting copies" glyph="table"}}
                   <div class="comparison-window comparison-sheet">
                     <div class="comparison-window-bar comparison-row">
                       <span class="comparison-row">Refunds</span>
@@ -500,7 +500,7 @@
             <a data-section-reveal="card" href="https://github.com/sqlpage/SQLPage#odbc-setup">BigQuery<small>-- through ODBC</small></a>
             <a data-section-reveal="card" href="https://github.com/sqlpage/SQLPage#odbc-setup">Databricks<small>-- through ODBC</small></a>
             <a data-section-reveal="card" href="https://github.com/sqlpage/SQLPage#odbc-setup">DuckDB<small>-- quack <span class="emoji">🦆 👍</span></small></a>
-            <a data-section-reveal="card" href="https://github.com/sqlpage/SQLPage#odbc-setup">Db2<small>-- yes, but why ?</small></a>
+            <a data-section-reveal="card" href="https://github.com/sqlpage/SQLPage#odbc-setup">Db2<small>-- through ODBC</small></a>
           </div>
         </div>
       </section>

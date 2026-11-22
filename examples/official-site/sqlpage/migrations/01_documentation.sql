@@ -32,7 +32,9 @@ CREATE TABLE example(
 -- The reference shows the SQL and renders the same stored component rows.
 -- Arrays with several items become repeated column aliases, as in handwritten SQLPage files.
 CREATE VIEW example_with_source AS
-SELECT example.rowid AS example_id, example.*,
+SELECT example.rowid AS example_id,
+    row_number() OVER (PARTITION BY component ORDER BY example.rowid) AS example_number,
+    example.*,
     (SELECT group_concat('select' || char(10) || (
         WITH fields AS (
             SELECT field.key AS name, coalesce(item.type, field.type) AS type,
@@ -241,19 +243,19 @@ INSERT INTO example(component, description, properties) VALUES
 
 INSERT INTO component(name, icon, description) VALUES
     ('form', 'cursor-text', '
-# Building forms in SQL
+## Building forms in SQL
 
 The form component will display a series of input fields of various types, that can be filled in by the user.
 When the user submits the form, the data is posted to an SQL file specified in the `action` property.
 
-## Handle Data with SQL
+### Handling submitted values
 
 The receiving SQL page will be able to handle the data,
 and insert it into the database, use it to perform a search, format it, update existing data, etc.
 
 A value in a field named "x" will be available as `:x` in the SQL query of the target page.
 
-## Examples
+### Form projects
 
  - [A multi-step form](https://github.com/sqlpage/SQLPage/tree/main/examples/forms-with-multiple-steps), guiding the user through a process without overwhelming them with a large form.
  - [File upload form](https://github.com/sqlpage/SQLPage/tree/main/examples/image%20gallery%20with%20user%20uploads), letting users upload images to a gallery.
@@ -1140,7 +1142,7 @@ Numbers can be displayed
     ),
     (
     'table',
-    '# Dynamic column names in a table
+    '#### Dynamic column names in a table
 
 In all the previous examples, the column names were hardcoded in the SQL query.
 This makes it very easy to quickly visualize the results of a query as a table,

@@ -141,6 +141,9 @@ test("browse, filter and copy a component example on a phone", async ({
     .getByRole("link", { name: "Components" })
     .click();
   const search = page.getByRole("searchbox", { name: "Search components" });
+  await search.focus();
+  await page.keyboard.press("Control+k");
+  await expect(search).toBeFocused();
   await search.fill("table");
   await search.press("Enter");
   const catalog = page.locator("#catalog");
@@ -154,6 +157,7 @@ test("browse, filter and copy a component example on a phone", async ({
   await topics
     .getByRole("searchbox", { name: "Filter components" })
     .fill("butt");
+  await expect(topics.getByRole("status")).toHaveText(/\d+ of \d+ shown/);
   await expect(
     topics.getByRole("link", { name: "chart", exact: true }),
   ).toBeHidden();
@@ -274,6 +278,16 @@ test("search a guide and follow its link to the function reference", async ({
     name: "Search documentation",
     exact: true,
   });
+  const guides = page
+    .getByRole("navigation", { name: "Main navigation" })
+    .getByRole("link", { name: "Guides" });
+  await guides.focus();
+  await page.keyboard.press("Control+k");
+  await expect(search).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(guides).toBeFocused();
+  await page.keyboard.press("Meta+k");
+  await expect(search).toBeFocused();
   await search.fill("first website");
   await search.press("Enter");
   await page
@@ -284,6 +298,27 @@ test("search a guide and follow its link to the function reference", async ({
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
     /sqlpage\.variables\(/,
   );
+});
+
+test("tutorial code can be selected when clipboard writes are blocked", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "clipboard", { value: undefined });
+  });
+  await page.goto("/your-first-sql-website/");
+  const copy = page
+    .getByRole("button", { name: "Copy code", exact: true })
+    .first();
+  await copy.click();
+  const block = page.locator(".docs-snippet-tools + pre").first();
+  await expect(block).toBeFocused();
+  expect(
+    await page.evaluate(() => window.getSelection()?.getRangeAt(0).toString()),
+  ).toBe(await block.locator("code").textContent());
+  await expect(
+    page.getByRole("button", { name: "Code selected. Use Copy." }),
+  ).toBeVisible();
 });
 
 test("chart documentation renders its examples without browser errors", async ({

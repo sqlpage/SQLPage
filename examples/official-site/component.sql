@@ -6,45 +6,9 @@ select 'http_header' as component,
     'public, max-age=600, stale-while-revalidate=3600, stale-if-error=86400' as "Cache-Control",
     printf('<%s>; rel="canonical"', sqlpage.link('component', json_object('component', $component))) as "Link";
 
-set outline = (
-    select json_group_array(json_object('title', title, 'link', link))
-    from (
-        select 'Overview' as title, '#component' as link
-        union all select 'Top-level parameters', '#top-level-parameters' where exists
-            (select 1 from parameter where component = $component and top_level)
-        union all select 'Row-level parameters', '#row-level-parameters' where exists
-            (select 1 from parameter where component = $component and not top_level)
-        union all select 'Examples', '#examples' where exists
-            (select 1 from example where component = $component)
-    )
-);
-
-select 'dynamic' as component, sqlpage.run_sql('sqlpage/docs-shell.sql', json_object(
-    'title', $component || ' - SQLPage Documentation', 'section', 'Components',
-    'current', $component, 'outline', $outline
+select 'dynamic' as component, sqlpage.run_sql('sqlpage/docs-reference.sql', json_object(
+    'kind', 'component', 'name', $component
 )) as properties;
-
-select 'docs-reference-heading' as component, 'component' as id,
-    'Component reference' as section, '/components.sql' as link,
-    'The ' || name || ' component' as title, icon, introduced_in_version as version,
-    case when exists (select 1 from example where component = $component) then '#examples' end as jump_link,
-    'View examples' as jump_text
-from component where name = $component;
-
-select 'text' as component, true as article, description as contents_md
-from component where name = $component;
-
-select 'docs-parameters' as component, 'Top-level parameters' as title, 'top-level-parameters' as id,
-    'Set these in the SELECT that names the component.' as description
-where exists (select 1 from parameter where component = $component and top_level);
-select name, type, not optional as required, coalesce(description_md, description) as description_md
-from parameter where component = $component and top_level order by optional, name;
-
-select 'docs-parameters' as component, 'Row-level parameters' as title, 'row-level-parameters' as id,
-    'Return these columns in the rows that follow the component.' as description
-where exists (select 1 from parameter where component = $component and not top_level);
-select name, type, not optional as required, coalesce(description_md, description) as description_md
-from parameter where component = $component and not top_level order by optional, name;
 
 select 'title' as component, 2 as level, 'Examples' as contents, 'examples' as id
 where exists (select 1 from example where component = $component);
@@ -60,7 +24,7 @@ with examples as (
 )
 select 'dynamic' as component, json_array(
     json_object(
-        'component', 'docs-example', 'number', row_number() over (order by example_id),
+        'component', 'docs-example', 'number', example_number,
         'title', short_title, 'description_md', case when short_title is null then description end,
         'source', source,
         'preview', result is not null

@@ -1,10 +1,11 @@
+{{#each_row}}
 <section id="{{id}}" class="docs-parameters">
-    <h2>{{title}}</h2>
-    {{#if description}}<p>{{description}}</p>{{/if}}
+    <h2><a class="docs-self-link" href="#{{id}}">{{title}}</a></h2>
+    {{#if introduction}}<p>{{introduction}}</p>{{/if}}
     <dl>
-        {{#each_row}}
-            <div>
-                <dt><code>{{name}}</code>
+        {{#each (to_array parameters)}}
+            <div id="{{anchor}}">
+                <dt><code><a class="docs-self-link" href="#{{anchor}}">{{name}}</a></code>
                     <small>
                         {{#if (eq type "COLOR")}}<a href="/colors.sql">{{type}}</a>
                         {{else if (eq type "ICON")}}<a href="https://tabler-icons.io/?ref=sqlpage">{{type}}</a>
@@ -14,6 +15,7 @@
                 </dt>
                 <dd>{{{markdown description_md}}}</dd>
             </div>
-        {{/each_row}}
+        {{/each}}
     </dl>
 </section>
+{{/each_row}}

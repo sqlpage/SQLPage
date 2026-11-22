@@ -1,3 +1,4 @@
+import { copyCode } from "../../copy-code.js";
 import { initSqlHighlight } from "./sql-highlight.js";
 import { initTabs, selectTab } from "./tabs.js";
 
@@ -63,15 +64,12 @@ export function initComponentDemos(root, signal) {
   preview.addEventListener("load", fitPreview, { signal });
   fitPreview();
 
-  root.querySelector("[data-copy-sql]").addEventListener(
+  const copy = root.querySelector("[data-copy-sql]");
+  copy.hidden = false;
+  copy.addEventListener(
     "click",
     async () => {
-      try {
-        await navigator.clipboard.writeText(source.textContent);
-        status.textContent = "SQL copied.";
-      } catch {
-        status.textContent = "Copy unavailable. Select the SQL below.";
-      }
+      status.textContent = await copyCode(source, "SQL");
     },
     { signal },
   );

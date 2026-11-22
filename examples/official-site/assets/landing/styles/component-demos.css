@@ -38,31 +38,20 @@
   display: flex;
   align-self: stretch;
 }
-.sql-editor-header .source-tabs button {
-  border-radius: 0;
-  border: 0;
-  border-right: 1px solid var(--tblr-bg-surface-tertiary);
+.source-tabs button {
   padding: 12px 18px;
-  background: transparent;
-  color: var(--tblr-muted-color);
-  font: 12px var(--tblr-font-monospace);
-  box-shadow: inset 0 2px transparent;
 }
-.sql-editor-header .source-tabs button[aria-selected="true"] {
-  color: var(--tblr-body-color);
+.source-tabs button[aria-selected="true"] {
+  color: var(--tblr-primary);
   background: var(--tblr-bg-surface-secondary);
-  box-shadow: inset 0 2px var(--tblr-primary);
+  font-weight: 600;
+}
+.sql-editor-header button:focus-visible {
+  outline-offset: -3px;
 }
 .sql-editor-header svg {
   width: 15px;
   height: 15px;
-}
-.sql-editor .code-panel {
-  margin: 0;
-  border: 0;
-  border-radius: 0;
-  padding: 18px 20px;
-  overflow-x: auto;
 }
 #demo-source {
   color: var(--tblr-secondary-color);
@@ -86,6 +75,22 @@
   text-align: right;
   user-select: none;
 }
+.demo-annotation {
+  position: absolute;
+  top: -86px;
+  left: 48%;
+  margin: 0;
+  color: var(--landing-light-muted);
+  font: italic 17px / 1.35 cursive;
+  transform: rotate(-6deg);
+  pointer-events: none;
+}
+.demo-annotation svg {
+  display: block;
+  width: 36px;
+  height: 36px;
+  margin-left: 18px;
+}
 .demo-layout {
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr);
@@ -108,10 +113,7 @@
   border-radius: 6px;
   background: transparent;
   color: inherit;
-  transition:
-    background 0.2s,
-    box-shadow 0.2s,
-    transform 0.2s;
+  transition: background 0.2s;
 }
 .component-picker button > svg {
   width: 28px;
@@ -131,16 +133,12 @@
   margin-top: 6px;
 }
 .component-picker button:hover {
-  transform: translateX(3px);
   background: color-mix(in srgb, var(--tblr-blue) 6.27%, transparent);
 }
 .component-picker button[aria-selected="true"] {
-  background: var(--tblr-body-bg);
-  color: white;
-  border-color: var(--tblr-bg-surface-tertiary);
-  border-left: 3px solid var(--tblr-primary);
-  box-shadow: 0 12px 28px
-    color-mix(in srgb, var(--tblr-body-bg) 18.82%, transparent);
+  background: var(--tblr-bg-surface-secondary);
+  color: var(--tblr-heading-color);
+  border-color: var(--tblr-primary);
 }
 .component-picker button[aria-selected="true"] svg {
   color: var(--tblr-blue);
@@ -148,22 +146,6 @@
 #demo-panel {
   position: relative;
   min-width: 0;
-}
-.demo-annotation {
-  position: absolute;
-  top: -86px;
-  left: 48%;
-  margin: 0;
-  color: var(--landing-light-muted);
-  font: italic 17px / 1.35 cursive;
-  transform: rotate(-6deg);
-  pointer-events: none;
-}
-.demo-annotation svg {
-  display: block;
-  width: 36px;
-  height: 36px;
-  margin-left: 18px;
 }
 .demo-preview {
   position: relative;
@@ -186,12 +168,13 @@
   pointer-events: none;
 }
 .code-panel {
+  margin: 0;
+  border: 0;
+  padding: 18px 20px;
   background: var(--tblr-body-bg);
   color: var(--tblr-secondary-color);
   font: 13px / 1.8 var(--tblr-font-monospace);
-  border: 1px solid var(--tblr-blue);
-  border-radius: 12px;
-  padding: 22px;
+  overflow-x: auto;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
@@ -232,9 +215,6 @@
   .demo-annotation {
     display: none;
   }
-  .sql-editor .code-panel {
-    padding: 16px 12px;
-  }
   .sql-line {
     white-space: pre-wrap;
     overflow-wrap: anywhere;
@@ -271,7 +251,7 @@
     flex-basis: 22px;
   }
   .code-panel {
-    padding: 16px;
+    padding: 16px 12px;
     font-size: 11px;
   }
 }

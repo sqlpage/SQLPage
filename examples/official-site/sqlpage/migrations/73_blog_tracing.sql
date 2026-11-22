@@ -19,7 +19,7 @@ SQLPage now supports [OpenTelemetry](https://opentelemetry.io/), the standard wa
 
 If you want a ready-to-run demo, see the [OpenTelemetry + Grafana example](https://github.com/sqlpage/SQLPage/tree/main/examples/telemetry), which this article is based on.
 
-## What tracing gives you
+## Tracing a request across services
 
 With tracing enabled, one HTTP request becomes a tree of timed operations called spans. In a typical SQLPage app, you will see something like:
 
@@ -39,7 +39,7 @@ This is immediately useful for:
 
 Tracing is especially helpful in SQLPage because one request often maps cleanly to one SQL file. That makes traces easy to interpret even when you are not used to application performance tooling.
 
-## The easiest way to try it
+## Run the example stack
 
 The simplest way to explore tracing is to run 
 [the example shipped with SQLPage](https://github.com/sqlpage/SQLPage/tree/main/examples/telemetry).
@@ -86,7 +86,7 @@ The `OTEL_SERVICE_NAME` variable controls how the service appears in your tracin
 
 If `OTEL_EXPORTER_OTLP_ENDPOINT` is not set, SQLPage falls back to normal logging and tracing stays disabled.
 
-## What you will see in the trace
+## SQLPage spans
 
 The most useful spans emitted by SQLPage are:
 
@@ -153,7 +153,7 @@ The example uses Grafana Tempo and Loki, but SQLPage is not tied to a single bac
 
 In small setups, SQLPage can often send traces directly to the backend. In larger deployments, placing an OpenTelemetry collector in the middle is usually better because it centralizes routing, batching, and authentication.
 
-## When to enable tracing
+## Production tracing use cases
 
 Tracing is particularly valuable when:
 

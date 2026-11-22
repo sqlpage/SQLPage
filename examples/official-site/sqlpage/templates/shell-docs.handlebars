@@ -25,9 +25,9 @@
     {{/if}}
     <script defer nonce="{{@csp_nonce}}" src="{{static_path 'sqlpage.js'}}"></script>
     <script defer nonce="{{@csp_nonce}}" src="/assets/docs/navigation.js"></script>
+    <script type="module" nonce="{{@csp_nonce}}" src="/assets/docs/examples.js"></script>
     {{#if (or (eq section "Documentation") (and (eq section "Components") current_item))}}
         <link rel="stylesheet" href="/assets/docs/examples.css">
-        <script defer nonce="{{@csp_nonce}}" src="/assets/docs/examples.js"></script>
     {{/if}}
     <script type="module" nonce="{{@csp_nonce}}" src="/assets/highlightjs-launch.js"></script>
 </head>
@@ -48,9 +48,10 @@
                 <a href="/examples/" {{#if (eq section "Examples")}}aria-current="location"{{/if}}>Examples</a>
             </nav>
             <div class="docs-tools">
-                <form class="docs-search" action="/search.sql" role="search">
+                <form class="docs-search" action="/search.sql" role="search" aria-label="Documentation">
                     <button aria-label="Search documentation">{{icon_img "search" 17}}</button>
                     <input aria-label="Search documentation" type="search" name="search" placeholder="Search">
+                    <kbd hidden aria-hidden="true">Ctrl K</kbd>
                 </form>
                 <a class="docs-github" href="https://github.com/sqlpage/SQLPage" aria-label="SQLPage on GitHub">{{icon_img "brand-github" 20}}</a>
             </div>
@@ -67,16 +68,16 @@
                 {{#if catalog_link}}
                     <label class="docs-filter" hidden>
                         {{icon_img "filter" 16}}
-                        <input type="search" aria-label="Filter {{topic_label}}" placeholder="Filter {{topic_label}}">
+                        <input type="search" aria-label="Filter {{topic_label}}" aria-controls="docs-topic-list" placeholder="Filter {{topic_label}}" autocomplete="off">
                     </label>
                 {{/if}}
-                <div class="docs-topic-list">
+                <div class="docs-topic-list" id="docs-topic-list">
                     {{#each (to_array topics)}}
                         <a href="{{link}}" {{#if (eq title ../current_item)}}aria-current="page"{{/if}}>{{title}}</a>
                     {{/each}}
                 </div>
-                <small class="docs-no-matches" role="status" hidden>No matches</small>
                 {{#if catalog_link}}
+                    <small role="status"></small>
                     <a class="docs-rail-return" href="{{catalog_link}}">{{icon_img "list" 16}} All {{topic_label}}</a>
                 {{/if}}
             </nav>
@@ -104,6 +105,13 @@
             <a href="https://github.com/sqlpage/SQLPage/blob/main/configuration.md">Configuration</a>
             <a href="https://github.com/sqlpage/SQLPage/discussions">Community</a>
         </nav>
+        <a href="#sqlpage_main_wrapper">{{icon_img "arrow-up" 16}} Back to top</a>
     </footer>
+    <template id="docs-snippet-tools">
+        <div class="docs-snippet-tools">
+            <span></span>
+            <button type="button" class="docs-snippet-copy" aria-live="polite">Copy code</button>
+        </div>
+    </template>
 </body>
 </html>

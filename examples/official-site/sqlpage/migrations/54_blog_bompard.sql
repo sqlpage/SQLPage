@@ -9,7 +9,7 @@ VALUES
         '
 # How I Built And Deployed An Exhaustive Performance Monitoring Tool For a 100M€/year Company Using SQL Queries Only
 
-### What is SQLPage ?
+### Building web applications in SQL
 
 > [SQLPage](http://sql-page.com) allows anyone with SQL skills to build and deploy digital tools (websites, data applications, dashboards, user forms…) using only **SQL queries**. Official website: [https://sql-page.com/](https://sql-page.com/)
 
@@ -19,7 +19,7 @@ The execution of the project is straightforward: simply run a single executable 
 
 Finally, it’s open source with an MIT license.
 
-### Why SQLPage became a game-changer for me, as a Head of Data
+### Choosing SQLPage for my data team
 
 As a Head of Data at a mid-size company, I understand the challenge of juggling multiple tools — often expensive and proprietary — alongside a variety of dashboards. Building an **all-in-one**, **user-friendly**, **mobile-compatible** platform for data monitoring and visualization that serves everyone, from C-level executives to store managers, is no small feat.
 
@@ -56,7 +56,7 @@ Here are some pages I built using only SQL queries, allowing everyone in the com
     
 *Examples of views built with SQLPage to provide a 360° tool for the company.
 
-### How Does It Work ?
+### Populating a chart from a query
 
 The process in SQLPage follows a simple pattern:
 
@@ -101,7 +101,7 @@ That’s it! Each component comes with customizable parameters, allowing you to 
 
 The ability to perform CRUD operations and interact directly with databases is a game changer compared to traditional BI tools. You can try it yourself by clicking “add” in the column “COMMENT THIS YEAR” [https://demo-test.datapage.app/lets_see_some_graphs.sql](https://demo-test.datapage.app/lets_see_some_graphs.sql)
 
-### What About GenAI ?
+### Generating SQL queries with AI
 
 I couldn’t write an article about data in 2024 without mentioning GenAI. The great news is that SQLPage, relying solely on SQL queries, is naturally GenAI-friendly. In fact, I rarely write SQL queries myself anymore — I let GenAI handle that. My workflow in SQLPage now becomes:
 
@@ -113,11 +113,11 @@ I couldn’t write an article about data in 2024 without mentioning GenAI. The g
 
 *Example of Generated SQL to display a specific format of numbers.*
 
-### How to Host Your SQLPage Application
+### Hosting the application
 
 Once my app was ready, I could have chosen to host it myself on any server for a few euros a month, but I opted for SQLPage’s official hosting service, DataPage ([https://datapage.app/](https://beta.datapage.app/)), which is fully managed and very convenient. My app was hosted at _domainname.datapage.app._ The service includes a Postgres database, allowing you to either store your data on the server or connect directly to your existing database (Microsoft SQL Server, SQLite, Postgres, MySQL, etc).
 
-### What Difficulties Can Be Encountered With SQLPage
+### Maintaining complex SQL queries
 
 While SQLPage simplifies the process of building digital tools, it does come with some challenges.
 

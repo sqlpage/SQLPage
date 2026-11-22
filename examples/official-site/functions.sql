@@ -6,17 +6,14 @@ select 'http_header' as component,
         iif($function is not null, sqlpage.link('functions', json_object('function', $function)), 'functions.sql')
     ) as "Link";
 
-set outline = case when exists (select 1 from sqlpage_function_parameters where "function" = $function) then
-    '[{"title":"Overview","link":"#function"},{"title":"Parameters","link":"#parameters"}]'
-    when exists (select 1 from sqlpage_functions where name = $function) then
-    '[{"title":"Overview","link":"#function"}]'
-end;
+select 'dynamic' as component, sqlpage.run_sql('sqlpage/docs-reference.sql', json_object(
+    'kind', 'function', 'name', $function
+)) as properties where $function is not null;
 
 select 'dynamic' as component, sqlpage.run_sql('sqlpage/docs-shell.sql', json_object(
-    'title', coalesce('sqlpage.' || $function, 'Functions') || ' - SQLPage Documentation',
-    'section', 'Functions', 'current', $function, 'outline', $outline,
-    'description', case when $function is null then 'Find SQLPage functions by purpose and see their arguments at a glance.' end
-)) as properties;
+    'title', 'Functions - SQLPage Documentation', 'section', 'Functions',
+    'description', 'Find SQLPage functions by purpose and see their arguments at a glance.'
+)) as properties where $function is null;
 
 select 'empty_state' as component, 'Function not found' as title, 'function' as icon,
     'Browse functions' as link_text, '/functions.sql' as link
@@ -26,7 +23,7 @@ select 'dynamic' as component, sqlpage.run_sql('sqlpage/docs-catalog.sql', json_
     'kind', 'function', 'q', $q, 'category', $category
 )) as properties where $function is null;
 
-select 'title' as component, 'How SQLPage evaluates functions' as contents, 2 as level, 'evaluation' as id where $function is null;
+select 'title' as component, 'Function evaluation' as contents, 2 as level, 'evaluation' as id where $function is null;
 select 'text' as component, true as article, '
 SQLPage evaluates its built-in functions itself, either before or after the database query.
 
@@ -44,17 +41,3 @@ If a function should run only when a database row exists, put it as a standalone
 
 For more information about how SQLPage functions are evaluated, and data types in SQLPage, read [the SQLPage data model documentation](/extensions-to-sql).
 ' as contents_md where $function IS NULL;
-
-select 'docs-reference-heading' as component, 'function' as id,
-    'Function reference' as section, '/functions.sql' as link, icon,
-    'sqlpage.' || name || '(' || arguments || ')' as title,
-    introduced_in_version as version, return_type
-from sqlpage_functions_with_arguments where name = $function;
-
-select 'text' as component, true as article, description_md as contents_md
-from sqlpage_functions where name = $function;
-
-select 'docs-parameters' as component, 'Parameters' as title, 'parameters' as id
-where exists (select 1 from sqlpage_function_parameters where "function" = $function);
-select name, type, not optional as required, description_md
-from sqlpage_function_parameters where "function" = $function order by "index";
