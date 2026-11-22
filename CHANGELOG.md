@@ -7,6 +7,7 @@
 - A file input with `multiple` now keeps every selected file, instead of only the last one. The new [`sqlpage.persist_uploaded_files`](https://sql-page.com/functions.sql?function=persist_uploaded_files) function saves them all and returns a JSON array with the `path`, original `name`, `mime_type` and `size` of each file.
 - Set `wrap` on a `big_number` component to show long titles and descriptions across multiple lines.
 - Inline icons now align with their labels in components such as tabs and steps.
+- Keyboard users can now Tab to a dismissible alert’s Close button and press Enter or Space to dismiss it. ([#1612](https://github.com/sqlpage/SQLPage/issues/1612))
 
 ## v0.48.0 (2026-11-12)
 
