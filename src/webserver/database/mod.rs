@@ -10,6 +10,8 @@ mod sqlpage_functions;
 mod error_highlighting;
 mod sql_to_json;
 
+#[cfg(feature = "config-schema")]
+pub(crate) use connect::default_max_connections;
 pub use sql::SqlFile;
 use sqlx::any::AnyKind;
 // SupportedDatabase is defined in this module

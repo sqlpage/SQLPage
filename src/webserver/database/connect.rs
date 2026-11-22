@@ -104,20 +104,17 @@ where
 }
 
 fn max_connections(config: &AppConfig, kind: AnyKind) -> u32 {
-    if let Some(max) = config.max_database_pool_connections {
-        return max;
-    }
-    // Different databases have a different number of max concurrent connections allowed by default
+    config
+        .max_database_pool_connections
+        .unwrap_or_else(|| default_max_connections(kind, config.database_url.contains(":memory:")))
+}
+
+pub(crate) fn default_max_connections(kind: AnyKind, in_memory: bool) -> u32 {
     match kind {
         AnyKind::Postgres | AnyKind::Odbc => 50, // Default to PostgreSQL-like limits for Generic
         AnyKind::MySql => 75,
-        AnyKind::Sqlite => {
-            if config.database_url.contains(":memory:") {
-                128
-            } else {
-                16
-            }
-        }
+        AnyKind::Sqlite if in_memory => 128,
+        AnyKind::Sqlite => 16,
         AnyKind::Mssql => 100,
     }
 }

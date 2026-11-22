@@ -63,6 +63,7 @@ jobs:
           shared-key: rust-sqlpage-proj-test
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - run: cargo fmt --all -- --check
+      - run: cargo test --locked --features config-schema --test mod configuration_docs
       - run: cargo clippy --all-targets --all-features -- -D warnings
       # The database matrix below runs the same Rust test harnesses against
       # different DATABASE_URL values. Package the Linux test executables once
