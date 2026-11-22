@@ -124,7 +124,7 @@ select
 
 ## Supported databases
 
-- [SQLite](https://www.sqlite.org/index.html), including the ability to [load extensions](./configuration.md) such as *Spatialite*.
+- [SQLite](https://www.sqlite.org/index.html), including the ability to [load extensions](https://sql-page.com/configuration#sqlite_extensions) such as *Spatialite*.
 - [PostgreSQL](https://www.postgresql.org/), and other compatible databases such as *YugabyteDB*, *CockroachDB* and *Aurora*.
 - [MySQL](https://www.mysql.com/), and other compatible databases such as *MariaDB* and *TiDB*.
 - [Microsoft SQL Server](https://www.microsoft.com/en-us/sql-server), and all compatible databases and providers such as *Azure SQL* and *Amazon RDS*.
@@ -218,7 +218,7 @@ You still need to install or provide the database-specific ODBC driver for the d
  - Find your [connection string](https://www.connectionstrings.com/).
    - It will look like this: `Driver=/opt/snowflake_odbc/lib/libSnowflake.so;Server=xyz.snowflakecomputing.com;Database=MY_DB;Schema=PUBLIC;UID=my_user;PWD=my_password`
    - It must reference the path to the database driver you installed earlier, plus any connection parameter required by the driver itself. Follow the instructions from the driver's own documentation.
- - Use it in the [DATABASE_URL configuration option](./configuration.md)
+ - Use it in the [DATABASE_URL configuration option](https://sql-page.com/configuration#database_url)
 
 
 ## How it works

@@ -2,6 +2,7 @@
 
 ## unreleased
 
+- The [configuration reference](https://sql-page.com/configuration) now lists server settings and their defaults directly from SQLPage. Search for a setting by name or link to it with a URL such as `/configuration#listen_on`.
 - The first-website tutorial now lets you choose an installation target, copy a command, or download an archive for macOS, Windows, Linux, or AWS Lambda.
 - Missing component pages on the official site return HTTP 404 and link to the catalog. Action buttons in colored alerts stay readable.
 - The `shell` sidebar now uses `navbar_title` and preserves the colors of the supplied logo in dark mode.

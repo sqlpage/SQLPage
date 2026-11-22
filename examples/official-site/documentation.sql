@@ -29,6 +29,8 @@ select case kind when 'component' then 'Components' else 'Functions' end as titl
         (kind = 'function' and name in ('fetch', 'link', 'run_sql', 'variables'))
     ) as links
 from reference_entry group by kind order by kind;
+select 'Configuration' as title, 'settings' as icon, '/configuration' as link,
+    'Look up server settings, accepted values, and defaults.' as description;
 
 select 'title' as component, 'Anatomy of a SQL page' as contents, 2 as level, 'how-it-works' as id;
 select 'text' as component, 'Each SQL file is a page. Its first SELECT names a component and sets its top-level parameters. The rows returned by the next SELECT supply the row-level parameters. This list uses both.' as contents;
