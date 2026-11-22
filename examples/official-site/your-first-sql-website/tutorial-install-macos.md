@@ -1,10 +1,10 @@
-# Install SQLPage on macOS
+## Install SQLPage on macOS
 
 For a quick start on an Apple silicon Mac (M-series), download SQLPage below.
 If you already use [Homebrew](https://brew.sh/) or want easier updates, use the Homebrew instructions instead.
 On an Intel Mac, use Homebrew.
 
-## Download SQLPage for Apple silicon
+### Download SQLPage for Apple silicon
 
 [Download SQLPage for Apple silicon](https://github.com/sqlpage/SQLPage/releases/latest/download/sqlpage-macos.tgz).
 Open the downloaded archive to extract it. Keep `sqlpage.bin` and the `sqlpage` folder together in your website folder.
@@ -19,7 +19,7 @@ To update later, download the latest version and replace `sqlpage.bin`. Keep you
 
 Starting with SQLPage v0.47.0, this download is for Apple silicon only. On an Intel Mac, use Homebrew below.
 
-## Install with Homebrew
+### Install with Homebrew
 
 If you do not already have Homebrew, open Terminal and install it:
 

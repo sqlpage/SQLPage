@@ -1,4 +1,4 @@
-# Building your website locally
+## Building your website locally
 
 Create a folder on your computer where you will store all contents related to your sql website.
 In the rest of this tutorial, we will call this folder the **root folder** of your website.
@@ -15,7 +15,7 @@ You can open your website locally by visiting [`http://localhost:8080`](http://l
 
 SQLPage should have automatically created a folder called `sqlpage` with a SQLite database file named `sqlpage.db`. This is your website's default database - don't worry, we'll learn how to connect to other databases like PostgreSQL, MySQL, or SQL Server later!
 
-# Your website's first SQL file
+## Your website's first SQL file
 
 In the root folder of your SQLPage website, create a new SQL file called `index.sql`.
 Open it in a text editor that supports SQL syntax highlighting (I recommend [VSCode](https://code.visualstudio.com/)).
@@ -39,9 +39,9 @@ SELECT 'Hello' AS title,
 The first line of the file defines the component that will be used to display the data, and properties of that component.
 In this case, we use the [`list` component](/component.sql?component=list) to display a list of items.
 The second line defines the data that will populate the component.
-All the components you can use and their properties are documented in [SQLPage's online documentation](https://sql-page.com/documentation.sql).
+All the components you can use and their properties are documented in [SQLPage's online documentation](/components.sql).
 
-# Your database schema
+## Your database schema
 
 > If you already have a database populated with data,
 > or if you intend to use other tools to manage your database structure,
@@ -69,7 +69,7 @@ learn how to maintain your database schema in the long term.
 > **Note**: The migration system is not supported on Microsoft SQL Server databases.
 > If you are using a SQL Server database, you should create your tables using a different tool, such as _SQL Server Management Studio_.
 
-# Connect to a custom database
+<h2 id="connect-to-a-custom-database">Connect to a custom database</h2>
 
 By default, SQLPage uses a [SQLite](https://www.sqlite.org/about.html) database stored in a file named `sqlpage.db`
 in the `sqlpage` configuration folder.
@@ -102,7 +102,7 @@ For more information about the properties that can be set in sqlpage.json, see [
 
 ![screenshot for the full sql website folder organisation](full-website.png)
 
-# Use parameterized SQL queries to let users interact with your database
+<h2 id="forms">Use parameterized SQL queries to let users interact with your database</h2>
 
 ### Displaying a form
 
@@ -113,7 +113,7 @@ SELECT 'form' AS component, 'Add a user' AS title;
 SELECT 'Username' as name, TRUE as required;
 ```
 
-The first SELECT statement opens the [`form` component](https://sql-page.com/component.sql?component=form).
+The first SELECT statement opens the [`form` component](/component.sql?component=form).
 The second SELECT statement adds a field to the form. Since we do not specify a `type`, it will be a text field. The label displayed above the field will be the same as its name by default.
 
 ### Handling form submission
@@ -174,7 +174,7 @@ Here is a screenshot of the final result:
 To go further, have a look at [the examples](../examples/).
 
 
-# Deploy your SQLPage website online
+<h2 id="deploy">Deploy your SQLPage website online</h2>
 
 ### Using DataPage.app
 To deploy your SQLPage website online, the easiest way is to use [DataPage.app](https://datapage.app),
@@ -193,10 +193,10 @@ If you prefer to host your website yourself, you can use a cloud provider or a V
 - Optionally, setup a TLS certificate to enable HTTPS
 - Configure connection to a cloud database or a database running on your server in [`sqlpage.json`](https://github.com/sqlpage/SQLPage/blob/main/configuration.md#configuring-sqlpage)
 
-# Go further
+## Go further
 
 - Check out [learnsqlpage.com](https://learnsqlpage.com) by Nick Antonaccio for an in-depth tutorial with many examples
-- Read the [SQLPage documentation](/documentation.sql) to learn about all the components available in SQLPage
+- Read the [component reference](/components.sql) to learn about all the components available in SQLPage
 - Read about [SQLPage's extensions to SQL](/extensions-to-sql) for a specification of the SQL syntax you can use in SQLPage, the data types used when exchanging data with the browser and with the database, a clear explanation of how *SQLPage variables* and *SQLPage functions* work.
 - Join the [SQLPage community](https://github.com/sqlpage/SQLPage/discussions) to ask questions and share your projects
 - If you like videos better, check this series that shows how to build and deploy your app from scratch [SQLPage on Youtube](https://www.youtube.com/playlist?list=PLTue_qIAHxAf9fEjBY2CN0N_5XOiffOk_)

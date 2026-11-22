@@ -1,0 +1,19 @@
+<section id="{{id}}" class="docs-parameters">
+    <h2>{{title}}</h2>
+    {{#if description}}<p>{{description}}</p>{{/if}}
+    <dl>
+        {{#each_row}}
+            <div>
+                <dt><code>{{name}}</code>
+                    <small>
+                        {{#if (eq type "COLOR")}}<a href="/colors.sql">{{type}}</a>
+                        {{else if (eq type "ICON")}}<a href="https://tabler-icons.io/?ref=sqlpage">{{type}}</a>
+                        {{else}}{{type}}{{/if}}
+                        {{#if required}}<strong>Required</strong>{{/if}}
+                    </small>
+                </dt>
+                <dd>{{{markdown description_md}}}</dd>
+            </div>
+        {{/each_row}}
+    </dl>
+</section>

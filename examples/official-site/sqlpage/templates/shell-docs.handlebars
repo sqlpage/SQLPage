@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{default title "SQLPage documentation"}}</title>
+    <meta property="og:title" content="{{default title 'SQLPage documentation'}}">
+    <meta name="description" content="{{default description 'Tutorials, working examples, and the component and function reference for SQLPage.'}}">
+    <meta property="og:description" content="{{default description 'Tutorials, working examples, and the component and function reference for SQLPage.'}}">
+    <meta property="og:image" content="https://sql-page.com/sqlpage_social_preview.webp">
+    <meta name="twitter:image" content="https://sql-page.com/sqlpage_social_preview.webp">
+    <meta name="generator" content="SQLPage v{{buildinfo 'CARGO_PKG_VERSION'}}">
+    <link rel="icon" href="/favicon.ico">
+    <link rel="stylesheet" href="{{static_path 'sqlpage.css'}}">
+    <link rel="stylesheet" href="/assets/highlightjs-and-tabler-theme.css">
+    <link rel="stylesheet" href="/assets/docs/shell.css">
+    {{#if (or (eq section "Components") (eq section "Functions"))}}
+        <link rel="stylesheet" href="/assets/docs/reference.css">
+    {{else if (any (eq section "Guides") (eq section "Documentation") (eq section "Examples"))}}
+        <link rel="stylesheet" href="/assets/docs/guides.css">
+    {{/if}}
+    <script defer nonce="{{@csp_nonce}}" src="{{static_path 'sqlpage.js'}}"></script>
+    <script defer nonce="{{@csp_nonce}}" src="/assets/docs/navigation.js"></script>
+    {{#if (and (eq section "Components") current_item)}}
+        <script defer nonce="{{@csp_nonce}}" src="/assets/docs/reference.js"></script>
+    {{/if}}
+    <script type="module" nonce="{{@csp_nonce}}" src="/assets/highlightjs-launch.js"></script>
+</head>
+<body class="docs-site">
+    <a class="docs-skip" href="#sqlpage_main_wrapper">Skip to content</a>
+    <header class="docs-header" id="sqlpage_header">
+        <div class="docs-bar">
+            <div class="docs-wordmark">
+                <a class="docs-brand" href="/" aria-label="SQLPage home">
+                    <img src="/assets/icon.webp" width="38" height="43" alt="">SQLPage
+                </a>
+                <a class="docs-home" href="/documentation.sql">Docs</a>
+            </div>
+            <nav class="docs-primary" aria-label="Main navigation">
+                <a href="/documentation.sql#guides" {{#if (eq section "Guides")}}aria-current="location"{{/if}}>Guides</a>
+                <a href="/components.sql" {{#if (eq section "Components")}}aria-current="location"{{/if}}>Components</a>
+                <a href="/functions.sql" {{#if (eq section "Functions")}}aria-current="location"{{/if}}>Functions</a>
+                <a href="/examples/" {{#if (eq section "Examples")}}aria-current="location"{{/if}}>Examples</a>
+            </nav>
+            <div class="docs-tools">
+                <form class="docs-search" action="/search.sql" role="search">
+                    <button aria-label="Search documentation">{{icon_img "search" 17}}</button>
+                    <input aria-label="Search documentation" type="search" name="search" placeholder="Search">
+                </form>
+                <a class="docs-github" href="https://github.com/sqlpage/SQLPage" aria-label="SQLPage on GitHub">{{icon_img "brand-github" 20}}</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="page docs-layout{{#if topics}} with-topics{{/if}}{{#if outline}} with-outline{{/if}}">
+        {{#if topics}}
+        <details open class="docs-topics docs-disclosure">
+            <summary class="docs-rail-title">
+                {{topic_label}} {{icon_img "chevron-down" 14}}
+            </summary>
+            <nav aria-label="Browse {{topic_label}}">
+                {{#if catalog_link}}
+                    <label class="docs-filter" hidden>
+                        {{icon_img "filter" 16}}
+                        <input type="search" aria-label="Filter {{topic_label}}" placeholder="Filter {{topic_label}}">
+                    </label>
+                {{/if}}
+                <div class="docs-topic-list">
+                    {{#each (to_array topics)}}
+                        <a href="{{link}}" {{#if (eq title ../current_item)}}aria-current="page"{{/if}}>{{title}}</a>
+                    {{/each}}
+                </div>
+                <small class="docs-no-matches" role="status" hidden>No matches</small>
+                {{#if catalog_link}}
+                    <a class="docs-rail-return" href="{{catalog_link}}">{{icon_img "list" 16}} All {{topic_label}}</a>
+                {{/if}}
+            </nav>
+        </details>
+        {{/if}}
+        {{#if outline}}
+        <details open class="docs-outline docs-disclosure">
+            <summary class="docs-rail-title">On this page {{icon_img "chevron-down" 14}}</summary>
+            <nav aria-label="On this page">
+                {{#each (to_array outline)}}<a href="{{link}}">{{title}}</a>{{/each}}
+            </nav>
+        </details>
+        {{/if}}
+        <main id="sqlpage_main_wrapper" tabindex="-1" class="docs-main">
+            {{~#each_row~}}{{~/each_row~}}
+        </main>
+    </div>
+
+    <footer class="docs-footer" id="sqlpage_footer">
+        <a href="https://github.com/sqlpage/SQLPage/tree/main/examples/official-site">Built with SQLPage</a>
+        <nav aria-label="Resources">
+            <a href="/blog.sql">Blog</a>
+            <a href="/performance.sql">Performance</a>
+            <a href="/safety.sql">Security</a>
+            <a href="https://github.com/sqlpage/SQLPage/blob/main/configuration.md">Configuration</a>
+            <a href="https://github.com/sqlpage/SQLPage/discussions">Community</a>
+        </nav>
+    </footer>
+</body>
+</html>

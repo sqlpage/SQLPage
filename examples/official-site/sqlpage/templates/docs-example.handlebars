@@ -1,0 +1,14 @@
+<section class="docs-example" id="example-{{number}}">
+    <h3><a href="#example-{{number}}">{{#if title}}{{title}}{{else}}Example {{number}}{{/if}}</a></h3>
+    {{#if description_md}}<div class="docs-example-notes">{{{markdown description_md}}}</div>{{/if}}
+    {{#if source}}
+        <div class="docs-example-source">
+            <div class="docs-example-toolbar">
+                <span>{{icon_img "file-code" 18}} index.sql</span>
+                <button type="button" hidden>{{icon_img "copy" 16}} <span aria-live="polite">Copy SQL</span></button>
+            </div>
+            <pre tabindex="0" aria-label="Example {{number}} SQL"><code class="language-sql">{{source}}</code></pre>
+        </div>
+    {{/if}}
+    {{#if preview}}<h4 class="docs-example-preview">{{icon_img "player-play" 16}} Result</h4>{{/if}}
+</section>

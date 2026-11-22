@@ -24,7 +24,7 @@ Key features:
 
 ## Core Documentation
 
-- [Components reference](/documentation.sql): List of all ' || (
+- [Components reference](/components.sql): List of all ' || (
         select
             count(*)
         from

@@ -124,6 +124,66 @@ test("light color swatches and homepage links have readable labels", async ({
   await expectContrast(page.locator(".demo-docs"), 4.5);
 });
 
+test("browse, filter and copy a component example on a phone", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/your-first-sql-website/");
+  await page
+    .getByRole("navigation", { name: "Main navigation" })
+    .getByRole("link", { name: "Components" })
+    .click();
+  await page.locator("summary", { hasText: "Components" }).click();
+  const topics = page.getByRole("navigation", { name: "Browse components" });
+  await topics
+    .getByRole("searchbox", { name: "Filter components" })
+    .fill("butt");
+  await expect(
+    topics.getByRole("link", { name: "chart", exact: true }),
+  ).toBeHidden();
+  await topics.getByRole("link", { name: "button", exact: true }).click();
+
+  await page.locator("summary", { hasText: "On this page" }).click();
+  await page
+    .getByRole("navigation", { name: "On this page" })
+    .getByRole("link", { name: "Examples" })
+    .click();
+  await expect(page).toHaveURL(/#examples$/);
+  const example = page.locator("#example-1");
+  await example.getByRole("button", { name: "Copy SQL" }).click();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+    await example.locator("pre code").textContent(),
+  );
+  await expect(
+    page.getByRole("button", { name: "Enabled", exact: true }),
+  ).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
+    390,
+  );
+});
+
+test("search a guide and follow its link to the function reference", async ({
+  page,
+}) => {
+  await page.goto("/documentation.sql");
+  const search = page.getByRole("searchbox", {
+    name: "Search documentation",
+    exact: true,
+  });
+  await search.fill("first website");
+  await search.press("Enter");
+  await page
+    .getByRole("main")
+    .getByRole("link", { name: /Your first website/ })
+    .click();
+  await page.getByRole("link", { name: "Read request variables" }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    /sqlpage\.variables\(/,
+  );
+});
+
 test("chart documentation renders its examples without browser errors", async ({
   page,
 }) => {
@@ -187,7 +247,7 @@ test("form example", async ({ page }) => {
 
 test("File upload", async ({ page }) => {
   await page.goto("/your-first-sql-website");
-  await page.getByRole("button", { name: "Examples", exact: true }).click();
+  await page.getByRole("link", { name: "Examples", exact: true }).click();
   await page.getByText("File uploads").click();
   const my_svg = '<svg><text y="20">Hello World</text></svg>';
   const buffer = Buffer.from(my_svg);

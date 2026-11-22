@@ -1,117 +1,36 @@
 set search = nullif(trim($search), '');
 
--- Check for exact matches and redirect if found
-set redirect = CASE 
+-- Open an exact reference match directly.
+set redirect = CASE
     WHEN EXISTS (SELECT 1 FROM component WHERE name = $search) THEN sqlpage.link('/component.sql', json_object('component', $search))
     WHEN EXISTS (SELECT 1 FROM sqlpage_functions WHERE name = $search) THEN sqlpage.link('/functions.sql', json_object('function', $search))
-END
+END;
 SELECT 'redirect' as component, $redirect as link WHERE $redirect IS NOT NULL;
 
-select 'dynamic' as component, json_patch(json_extract(properties, '$[0]'), json_object(
-    'title', coalesce($search || ' | ', '') || 'SQLPage documentation search'
-)) as properties
-FROM example WHERE component = 'shell' LIMIT 1;
+select 'shell-docs' as component, coalesce($search || ' | ', '') || 'SQLPage documentation search' as title;
 
-SELECT 'form' as component,
-    'GET' as method,
-    true as auto_submit,
-    'Search documentation' as title;
+select 'title' as component, 'Search documentation' as contents, 1 as level;
 
-SELECT 'text' as type,
-    'search' as name,
-    '' as label,
-    true as autofocus,
-    'Search for components, parameters, functions...' as placeholder,
-    $search as value;
+select 'form' as component, 'GET' as method, 'Search' as validate;
+select 'search' as type, 'search' as name, 'Search the documentation' as label,
+    'Tutorials, components, functions…' as placeholder, true as autofocus, $search as value;
 
-set escaped_search = '"' || replace($search, '"', '""') || '"';
+-- Treat the input as a literal phrase in SQLite's full-text query syntax.
+set escaped_search = '"' || replace(coalesce($search, ''), '"', '""') || '"';
 
-SELECT 'text' as component,
-    CASE 
-        WHEN $search IS NULL THEN 'Enter a search term above to find documentation about components, parameters, functions, and blog posts.'
-        WHEN NOT EXISTS (
-            SELECT 1 FROM documentation_fts 
-            WHERE documentation_fts = $escaped_search
-        ) THEN 'No results found for "' || $search || '".'
-        ELSE NULL
-    END as contents;
+select 'list' as component, 'Search results' as title, 'No results' as empty_title,
+    'No documentation matched “' || $search || '”.' as empty_description
+where $search is not null;
 
-SELECT 'list' as component,
-    'Search Results' as title,
-    'No results found for "' || $search || '".' as empty_description
-WHERE $search IS NOT NULL;
-
-WITH search_results AS (
-    SELECT 
-        COALESCE(
-              component_name || ' component: parameter ' || parameter_name
-            , component_name || ' component' || IF(component_example_description IS NULL, '', ' example')
-            , 'blog: ' || blog_title
-            , 'sqlpage.' || function_name || '(...' || function_parameter_name || '...)'
-            , 'sqlpage.' || function_name || '(...)'
-        ) as title,
-        COALESCE(
-            component_description,
-            parameter_description,
-            blog_description,
-            function_parameter_description,
-            function_description,
-            component_example_description
-        ) as description,
-        CASE 
-            WHEN component_name IS NOT NULL THEN 
-                json_object(
-                    'page', '/component.sql',
-                    'parameters', json_object('component', component_name)
-                )
-            WHEN parameter_name IS NOT NULL THEN 
-                json_object(
-                    'page', '/component.sql',
-                    'parameters', json_object('component', (
-                        SELECT component 
-                        FROM parameter 
-                        WHERE name = parameter_name 
-                        LIMIT 1
-                    ))
-                )
-            WHEN blog_title IS NOT NULL THEN 
-                json_object(
-                    'page', '/blog.sql',
-                    'parameters', json_object('post', blog_title)
-                )
-            WHEN function_name IS NOT NULL THEN 
-                json_object(
-                    'page', '/functions.sql',
-                    'parameters', json_object('function', function_name)
-                )
-            WHEN function_parameter_name IS NOT NULL THEN 
-                json_object(
-                    'page', '/functions.sql',
-                    'parameters', json_object('function', (
-                        SELECT function 
-                        FROM sqlpage_function_parameters 
-                        WHERE name = function_parameter_name 
-                        LIMIT 1
-                    ))
-                )
-        END as link_data,
-        rank
-    FROM documentation_fts
-    WHERE $search IS NOT NULL 
-    AND documentation_fts = $escaped_search
+with matches as (
+    select title, trim(description, char(13) || char(10) || ' ') as summary, page, parameters, rank,
+        row_number() over (partition by page, parameters order by rank, rowid) as position
+    from documentation_fts
+    where documentation_fts match $escaped_search
 )
-SELECT 
-    max(title) as title,
-    max(description) as description,
-    sqlpage.link(link_data->>'page', link_data->'parameters') as link
-FROM search_results
-GROUP BY link_data
-ORDER BY 
-    rank,
-    CASE 
-        WHEN title LIKE 'component:%' THEN 1
-        WHEN title LIKE 'parameter:%' THEN 2
-        WHEN title LIKE 'blog:%' THEN 3
-        WHEN title LIKE 'function:%' THEN 4
-    END,
-    description;
+select title,
+    ltrim(substr(summary, 1, instr(summary || char(10), char(10)) - 1), '# ') as description,
+    sqlpage.link(page, parameters) as link
+from matches
+where position = 1
+order by rank, title;

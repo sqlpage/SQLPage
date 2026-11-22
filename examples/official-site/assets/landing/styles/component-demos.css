@@ -295,7 +295,6 @@
 }
 #demo-panel[data-demo="catalog"] .sql-editor,
 #demo-panel[data-demo="catalog"] .demo-annotation,
-#demo-panel[data-demo="catalog"] .demo-docs,
 #demo-panel[data-demo="catalog"] .demo-status {
   display: none;
 }

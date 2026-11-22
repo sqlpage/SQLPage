@@ -1,6 +1,9 @@
-select 'dynamic' as component, properties FROM example WHERE component = 'shell' LIMIT 1;
+select 'dynamic' as component, sqlpage.run_sql('sqlpage/docs-shell.sql', json_object(
+    'title', 'Creating custom components | SQLPage',
+    'section', 'Guides', 'current', 'Custom components'
+)) as properties;
 
-select 'text' as component, '
+select 'text' as component, true as article, '
 
 # Creating your own SQLPage components
 
@@ -171,6 +174,12 @@ If you don''t want to start from scratch, you can copy the default `shell` compo
 
 ## Examples
 
+The documentation you are reading uses the same features. Its
+[shell template](https://github.com/sqlpage/SQLPage/blob/main/examples/official-site/sqlpage/templates/shell-docs.handlebars)
+renders the guide and reference navigation. The
+[documentation home page](https://github.com/sqlpage/SQLPage/blob/main/examples/official-site/documentation.sql)
+selects rows for a [custom links component](https://github.com/sqlpage/SQLPage/blob/main/examples/official-site/sqlpage/templates/docs-links.handlebars).
+
 All the default components are written in handlebars, and you can read their source code to learn how to write your own.
 [See the default components source code](https://github.com/sqlpage/SQLPage/blob/main/sqlpage/templates).
 
@@ -184,3 +193,9 @@ Some interesting examples are:
     - and the `@key` to work with objects whose keys are not known in advance.
 
 ' as contents_md;
+
+select 'docs-links' as component, 'Related reference' as title, 'reference' as id;
+select 'Shell parameters' as title, 'layout' as icon, '/component.sql?component=shell' as link,
+    'Explore the built-in shell and its navigation, layout and asset options.' as description;
+select 'Component catalog' as title, 'layout-grid' as icon, '/components.sql' as link,
+    'Inspect the behavior and examples of the built-in components.' as description;

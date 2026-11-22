@@ -1,4 +1,4 @@
-select 'dynamic' as component, properties FROM example WHERE component = 'shell' LIMIT 1;
+select 'shell-docs' as component, 'Booking confirmation | SQLPage' as title, 'Examples' as section;
 
 select 'hero' as component,
     'Booking confirmation' as title,

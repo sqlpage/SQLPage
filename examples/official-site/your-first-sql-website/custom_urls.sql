@@ -1,7 +1,10 @@
 select 'http_header' as component,
     'public, max-age=300, stale-while-revalidate=3600, stale-if-error=86400' as "Cache-Control";
 
-select 'dynamic' as component, properties FROM example WHERE component = 'shell' LIMIT 1;
+select 'dynamic' as component, sqlpage.run_sql('sqlpage/docs-shell.sql', json_object(
+    'title', 'Custom URLs | SQLPage',
+    'section', 'Guides', 'current', 'Custom URLs'
+)) as properties;
 
 select 'hero' as component,
     'Custom URLs' as title,

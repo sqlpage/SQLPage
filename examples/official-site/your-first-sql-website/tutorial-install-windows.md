@@ -1,4 +1,4 @@
-# Download the SQLPage executable for Windows 
+## Download the SQLPage executable for Windows
 
 SQLPage offers a small executable file (`sqlpage.exe`) that will take requests to your website,
 execute the SQL files you write, and render the database responses as nice web pages.

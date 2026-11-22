@@ -15,8 +15,14 @@ GET http://localhost:8080/documentation.sql
 HTTP 200
 [Asserts]
 body contains "SQLPage v"
-body contains "components"
-body contains "shell"
+xpath "string(//main//a[normalize-space()='Components']/@href)" == "/components.sql"
+xpath "string(//main//a[normalize-space()='Functions']/@href)" == "/functions.sql"
+body not contains "An error occurred"
+
+GET http://localhost:8080/components.sql
+HTTP 200
+[Asserts]
+xpath "string(//main//a[normalize-space()='shell']/@href)" == "/component.sql?component=shell"
 body not contains "An error occurred"
 
 GET http://localhost:8080/component.sql?component=form
@@ -37,6 +43,29 @@ GET http://localhost:8080/search.sql?search=form
 HTTP 302
 [Asserts]
 header "Location" == "/component.sql?component=form"
+
+GET http://localhost:8080/search.sql?search=migrations
+HTTP 200
+[Asserts]
+xpath "//main//a[@href='/your-first-sql-website/migrations.sql']" count == 1
+body not contains "An error occurred"
+
+GET http://localhost:8080/your-first-sql-website/
+HTTP 200
+[Asserts]
+xpath "//main//h1" count == 1
+xpath "//*[@id='connect-to-a-custom-database']" count == 1
+
+GET http://localhost:8080/examples/tabs/?db=postgres
+HTTP 302
+[Asserts]
+header "Location" == "/examples/?db=postgres#projects"
+
+GET http://localhost:8080/examples/?db=postgres
+HTTP 200
+[Asserts]
+body contains "Developer UI"
+body not contains "Roundest Pokemon"
 
 GET http://localhost:8080/not-a-real-doc-page
 HTTP 404

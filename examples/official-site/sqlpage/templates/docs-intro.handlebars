@@ -1,0 +1,10 @@
+<header class="docs-intro{{#if photograph}} docs-intro-photo{{/if}}" id="overview">
+    <div class="docs-intro-copy">
+        {{#if version}}<span class="docs-version">SQLPage v{{version}}</span>{{/if}}
+        <h1>{{title}}</h1>
+        <p>{{description}}</p>
+        {{#if link}}<a class="docs-start" href="{{link}}">{{link_text}}</a>{{/if}}
+    </div>
+    {{#if image}}<img class="docs-intro-art" src="{{image}}" alt="" />{{/if}}
+</header>
+{{#each_row}}{{/each_row}}

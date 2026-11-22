@@ -1,0 +1,9 @@
+<div class="docs-catalog">
+    {{#each_row}}
+        {{#if first_in_category}}<h2>{{category}}</h2>{{/if}}
+        <article>
+            <h3><a href="{{link}}">{{icon_img icon 20}}<span>{{name}}</span></a></h3>
+            <div>{{{markdown summary_md}}}</div>
+        </article>
+    {{/each_row}}
+</div>

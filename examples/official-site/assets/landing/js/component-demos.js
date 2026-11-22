@@ -183,8 +183,12 @@ export function initComponentDemos(root, signal) {
         root.querySelector('[data-file="save"]').hidden = next !== "form";
         root.querySelector("#demo-filename").textContent = `${next}.sql`;
         const link = panel.querySelector(".demo-docs");
-        link.href = `/component.sql?component=${next}`;
-        link.firstChild.textContent = `Explore the ${next} component `;
+        link.href = files
+          ? `/component.sql?component=${next}`
+          : "/components.sql";
+        link.firstChild.textContent = files
+          ? `Explore the ${next} component `
+          : "Browse the component reference ";
         if (files) {
           sourceFiles = { main: files.source, save: files.save_source };
           // Avoid an intermediate one-line loading state or a nested resize.

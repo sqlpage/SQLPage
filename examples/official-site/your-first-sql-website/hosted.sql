@@ -1,20 +1,15 @@
-select 'shell' as component,
-    'SQLPage: get started!' as title,
-    'database' as icon,
-    '/' as link,
-    'en-US' as lang,
-    'Hosted SQLPage: set-up a SQLPage website in three clicks.' as description,
-    'documentation' as menu_item,
-    'dark' as theme,
-    '/assets/brand/brand.css' as css;
+select 'dynamic' as component, sqlpage.run_sql('sqlpage/docs-shell.sql', json_object(
+    'title', 'Hosted SQLPage',
+    'description', 'Set up a SQLPage website online with managed hosting.',
+    'section', 'Guides', 'current', 'Managed hosting'
+)) as properties;
 
-SELECT 'hero' as component,
+select 'docs-intro' as component,
     'Hosted SQLPage' as title,
-    'Work In Progress: We are working on a cloud version of SQLPage
-    that will enable you to effortlessly set up your website online without the need to download any software or configure your own server.' as description,
-    'https://upload.wikimedia.org/wikipedia/commons/thumb/9/94/Baustelle_H%C3%B6lzla_6066312.jpg/1024px-Baustelle_H%C3%B6lzla_6066312.jpg' as image,
-    'https://forms.gle/z1qmuCwdNT5Am7gp6' as link,
-    'Get notified when we are ready' as link_text;
+    'Publish a SQLPage website with DataPage without installing software or configuring a server.' as description,
+    '/assets/landing/assets/scene-first-frame.webp' as image,
+    'https://datapage.app' as link,
+    'Host your website' as link_text;
 
 SELECT 'text' as component,
     'Try SQLPage online today' as title,

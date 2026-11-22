@@ -11,12 +11,21 @@ set os = COALESCE($os, case
     else 'any'
 end);
 
--- Fetch the page title and header from the database
-select 'dynamic' as component, json_patch(json_extract(properties, '$[0]'), json_object(
-    'title', 'SQL to Website - Tutorial',
-    'description', 'Convert your SQL database into a website in minutes. In this 5-minute guide, we will create a simple website from scratch, and learn the basics of SQLPage.'
-)) as properties
-FROM example WHERE component = 'shell' LIMIT 1;
+select 'dynamic' as component, sqlpage.run_sql('sqlpage/docs-shell.sql', json_object(
+    'title', 'Your first SQL website | SQLPage',
+    'description', 'Create a SQLPage website from scratch, connect a database and build an interactive form.',
+    'section', 'Guides', 'current', 'Your first website',
+    'outline', '[
+        {"title":"Overview","link":"#overview"},
+        {"title":"Install SQLPage","link":"#download"},
+        {"title":"Build the website","link":"#tutorial"},
+        {"title":"Connect a database","link":"#connect-to-a-custom-database"},
+        {"title":"Handle form input","link":"#forms"},
+        {"title":"Deploy your website","link":"#deploy"},
+        {"title":"Related reference","link":"#reference"},
+        {"title":"Online and video options","link":"#alternatives"}
+    ]'
+)) as properties;
 
 SET req = '{
     "url": "https://api.github.com/repos/sqlpage/SQLPage/releases/latest",
@@ -25,11 +34,10 @@ SET req = '{
 SET api_results = sqlpage.fetch_with_meta($req);
 SET sqlpage_version = COALESCE(json_extract($api_results, '$.json_body.tag_name'), '');
 
-SELECT 'hero' as component,
+SELECT 'docs-intro' as component,
+    true as photograph,
     'Your first SQL Website' as title,
-    '[SQLPage](/) is a free tool for building data-driven apps quickly.
-
-Let''s create a simple website with a database from scratch, to learn SQLPage basics.' as description_md,
+    'Create a website from scratch. Connect a database, display its rows, and let visitors add a record through a form.' as description,
     case $os
         when 'linux' then 'get_started_linux.webp'
         when 'macos' then 'get_started_macos.webp'
@@ -49,24 +57,7 @@ Let''s create a simple website with a database from scratch, to learn SQLPage ba
         ELSE CONCAT('Download SQLPage ', $sqlpage_version)
     END AS link_text;
 
-SELECT 'alert' as component,
-    'Afraid of the setup ? Do it the easy way !' as title,
-    'mood-happy' as icon,
-    'teal' as color,
-    'You don’t want to install anything on your computer ?
-    You can use a preconfigured SQLPage  hosted on our servers, and get your app online in minutes, without **ever having to configure a server** yourself.' as description_md,
-    'https://datapage.app' AS link,
-    'Host your app on our servers' as link_text;
-select 'https://editor.datapage.app' as link, 'Try SQLPage from your browser' as title, 'teal' as color;
-
-SELECT 'alert' as component,
-    'Do you prefer videos ?' as title,
-    'brand-youtube' as icon,
-    'purple' as color,
-    'We made videos to introduce you to SQLPage. You can watch them on YouTube. The videos cover everything from the underlying technology to the philosophy behind SQLPage to the actual steps to create your first website.' as description_md,
-    'https://www.youtube.com/watch?v=9NJgH_-zXjY' AS link,
-    'Watch the introduction video' as link_text;
-select 'https://www.youtube.com/watch?v=6D5D10v18b0&list=PLTue_qIAHxActQnLn_tHWZUNXziZTeraB' as link, 'Tutorial video series' as title;
+select 'text' as component, 'You can also [try SQLPage in your browser](https://editor.datapage.app) or [watch the video tutorial](#alternatives).' as contents_md;
 
 select 'text' as component,
     sqlpage.read_file_as_text(
@@ -81,7 +72,19 @@ select 'text' as component,
     true as article,
     'download' as id;
 
+-- This checked-in article has HTML heading IDs for direct links from the landing page.
 select 'text' as component,
-        sqlpage.read_file_as_text('your-first-sql-website/tutorial.md') as contents_md,
-        true as article,
-        'tutorial' as id;
+    sqlpage.read_file_as_text('your-first-sql-website/tutorial.md') as unsafe_contents_md,
+    true as article,
+    'tutorial' as id;
+
+select 'docs-links' as component, 'Component and function reference' as title, 'reference' as id;
+select 'Form and field options' as title, 'forms' as icon, '/component.sql?component=form' as link,
+    'Add input types, validation and submit buttons to the form you built.' as description;
+select 'Read request variables' as title, 'variable' as icon, '/functions.sql?function=variables' as link,
+    'Read the URL and form values sent to a page with sqlpage.variables().' as description;
+
+select 'title' as component, 'Online and video options' as contents, 2 as level, 'alternatives' as id;
+select 'text' as component, '
+- [Try SQLPage in your browser](https://editor.datapage.app) or [host your app with DataPage](https://datapage.app).
+- [Watch the introduction](https://www.youtube.com/watch?v=9NJgH_-zXjY) or [follow the tutorial video series](https://www.youtube.com/watch?v=6D5D10v18b0&list=PLTue_qIAHxActQnLn_tHWZUNXziZTeraB).' as contents_md;

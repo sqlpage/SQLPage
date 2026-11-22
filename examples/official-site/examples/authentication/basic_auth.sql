@@ -9,7 +9,7 @@ SELECT 'authentication' AS component,
     end AS password_hash, -- this is a hash of the password 'password'
     sqlpage.basic_auth_password() AS password; -- this is the password that the user entered in the browser popup
 
-select 'dynamic' as component, properties FROM example WHERE component = 'shell' LIMIT 1;
+select 'shell-docs' as component, 'HTTP basic authentication | SQLPage' as title, 'Examples' as section;
 
 select 'text' as component, '
 # Authentication

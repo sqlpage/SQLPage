@@ -1,57 +1,42 @@
--- ensure that the component exists and do not render this page if it does not
+-- Preserve links from older guides to individual components.
 select 'redirect' as component, sqlpage.link('component.sql', json_object('component', $component)) as link
 where $component is not null;
 
--- This line, at the top of the page, tells web browsers to keep the page locally in cache once they have it.
 select 'http_header' as component, 'public, max-age=600, stale-while-revalidate=3600, stale-if-error=86400' as "Cache-Control";
 
-select 'dynamic' as component, json_patch(json_extract(properties, '$[0]'), json_object(
-    'title', coalesce($component || ' - ', '') || 'SQLPage Documentation'
-)) as properties
-FROM example WHERE component = 'shell' LIMIT 1;
+select 'dynamic' as component, sqlpage.run_sql('sqlpage/docs-shell.sql', json_object(
+    'title', 'SQLPage Documentation',
+    'section', 'Documentation',
+    'current', 'Documentation',
+    'outline', '[{"title":"Overview","link":"#overview"},{"title":"Reference","link":"#reference"},{"title":"How a page works","link":"#how-it-works"},{"title":"Guides","link":"#guides"}]'
+)) as properties;
 
-select 'text' as component, format('SQLPage v%s documentation', sqlpage.version()) as title;
-select '
-If you are completely new to SQLPage, you should start by reading the [get started tutorial](/your-first-sql-website/),
-which will guide you through the process of creating your first SQLPage application.
+select 'docs-intro' as component,
+    'Documentation' as title,
+    'Build your first website in SQL, or look up a component or function for the page you are writing.' as description,
+    sqlpage.version() as version,
+    '/assets/landing/assets/scene-first-frame.webp' as image,
+    '/your-first-sql-website/' as link, 'Build your first website' as link_text;
 
-Building an application with SQLPage is quite simple.
-To create a new web page, just create a new SQL file.
-For each SELECT statement that you write, the data it returns will be analyzed and rendered to the user.
-The two most important concepts in SQLPage are **components** and **parameters**.
+select 'docs-links' as component, 'Reference' as title, 'reference' as id;
+select 'Components' as title, 'layout-grid' as icon, '/components.sql' as link,
+    format('Browse %d components with their parameters, SQL examples and previews.', (select count(*) from component)) as description,
+    (select json_group_array(json_object('title', name, 'link', '/component.sql?component=' || name))
+        from (select name from component where name in ('form', 'table', 'map', 'chart', 'button') order by name)) as links;
+select 'Functions' as title, 'function' as icon, '/functions.sql' as link,
+    format('Look up the arguments and behavior of %d built-in SQLPage functions.', (select count(*) from sqlpage_functions)) as description,
+    (select json_group_array(json_object('title', name, 'link', '/functions.sql?function=' || name))
+        from (select name from sqlpage_functions where name in ('fetch', 'link', 'run_sql', 'variables') order by name)) as links;
 
- - **components** are small user interface elements that you can use to display your data in a certain way.
- - *top-level* **parameters** are the properties of these components, allowing you to customize their appearance and behavior.
- - *row-level* **parameters** constitute the data that you want to display in the components.
+select 'title' as component, 'How a page works' as contents, 2 as level, 'how-it-works' as id;
+select 'text' as component, 'Each SQL file is a page. Its first SELECT names a component and sets its top-level parameters. The rows returned by the next SELECT supply the row-level parameters. This list uses both.' as contents;
+select 'code' as component;
+select 'index.sql' as title, 'sql' as language, sqlpage.read_file_as_text('sqlpage/docs-intro-example.sql') as contents;
+select 'dynamic' as component, sqlpage.run_sql('sqlpage/docs-intro-example.sql') as properties;
 
-To select a component and set its top-level properties, you write the following SQL statement:
+select 'docs-links' as component, 'Guides' as title, 'guides' as id;
+select title, link, description
+from guide
+order by sort_order;
 
-```sql
-SELECT ''component_name'' AS component, ''my value'' AS top_level_parameter_1;
-```
-
-Then, you can set its row-level parameters by writing a second SELECT statement:
-
-```sql
-SELECT my_column_1 AS row_level_parameter_1, my_column_2 AS row_level_parameter_2 FROM my_table;
-```
-
-This page documents all the components provided by default in SQLPage and their parameters.
-Use this as a reference when building your SQL application.
-For more information about SQLPage variables and [SQLPage functions](/functions),
-read about [the SQLPage data model](/extensions-to-sql).
-
-If at any point you need help, you can ask for it on the [SQLPage forum](https://github.com/sqlpage/SQLPage/discussions).
-
-If you know some [HTML](https://developer.mozilla.org/en-US/docs/Learn/Getting_started_with_the_web/HTML_basics),
-you can also easily [create your own components for your application](./custom_components.sql).
-' as contents_md;
-
-select 'list' as component, 'components' as title;
-select
-    name as title,
-    description,
-    icon,
-    sqlpage.link('component.sql', json_object('component', name)) as link
-from component
-order by name;
+select 'text' as component, 'Have a question? Ask on the [SQLPage forum](https://github.com/sqlpage/SQLPage/discussions).' as contents_md;

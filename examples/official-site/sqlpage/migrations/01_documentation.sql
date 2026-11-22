@@ -29,6 +29,30 @@ CREATE TABLE example(
     FOREIGN KEY (component) REFERENCES component(name) ON DELETE CASCADE
 );
 
+-- The reference shows the SQL and renders the same stored component rows.
+-- Arrays with several items become repeated column aliases, as in handwritten SQLPage files.
+CREATE VIEW example_with_source AS
+SELECT example.rowid AS example_id, example.*,
+    (SELECT group_concat('select' || char(10) || (
+        WITH fields AS (
+            SELECT field.key AS name, coalesce(item.type, field.type) AS type,
+                CASE WHEN item.key IS NULL THEN field.value ELSE item.value END AS value
+            FROM json_each(statement.value) AS field
+            LEFT JOIN json_each(
+                CASE WHEN field.type = 'array' AND json_array_length(field.value) > 1 THEN field.value END
+            ) AS item ON true
+        )
+        SELECT group_concat('    ' || CASE type
+                WHEN 'true' THEN 'TRUE'
+                WHEN 'false' THEN 'FALSE'
+                WHEN 'array' THEN 'JSON(' || quote(value) || ')'
+                WHEN 'object' THEN 'JSON(' || quote(value) || ')'
+                ELSE quote(value)
+            END || format(' as "%w"', name), ',' || char(10))
+        FROM fields
+    ) || ';', char(10) || char(10)) FROM json_each(example.properties) AS statement) AS source
+FROM example;
+
 INSERT INTO component(name, icon, description) VALUES
     ('list', 'list', 'A vertical list of items. Each item can be clickable and link to another page.');
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'list', * FROM (VALUES
@@ -1521,10 +1545,9 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
 
 INSERT INTO example(component, description, properties) VALUES
     ('shell', '
-This example contains the values used for the shell of the page you are currently viewing.
+This example configures a dark shell with menus linking to pages on this site.
 
-The `menu_item` property is used both in its simple string form, to generate a link named "functions" that points to "functions.sql",
-and in its object form, to generate a dropdown menu named "Community" with links to the blog, the github repository, and the issues page.
+Each `menu_item` object defines a link or a dropdown. The "Community" menu links to the blog, issue tracker, discussions, and source code.
 
 The object form can be used directly only on database engines that have a native JSON type.
 On other engines (such as SQLite), you can use the [`dynamic`](?component=dynamic#component) component to generate the same result.
@@ -1575,13 +1598,7 @@ You see the [page layouts demo](./examples/layouts.sql) for a live example of th
             "font_size": 19,
             "image": "/assets/icon.webp",
             "favicon": "/favicon.ico",
-            "javascript": [
-                "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js",
-                "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/languages/sql.min.js",
-                "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/languages/handlebars.min.js",
-                "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/languages/json.min.js",
-                "/assets/highlightjs-launch.js"
-            ],
+            "javascript_module": "/assets/highlightjs-launch.js",
             "css": "/assets/highlightjs-and-tabler-theme.css",
             "footer": "[Built with SQLPage](https://github.com/sqlpage/SQLPage/tree/main/examples/official-site)"
         }]')),

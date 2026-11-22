@@ -1,0 +1,8 @@
+<header id="{{id}}" class="docs-reference-heading">
+    <a class="docs-reference-collection" href="{{link}}">{{icon_img icon 18}} {{section}}</a>
+    <h1>{{title}}</h1>
+    {{#if description}}<p>{{description}}</p>{{/if}}
+    {{#if version}}<span class="docs-reference-meta">Since SQLPage {{version}}</span>{{/if}}
+    {{#if return_type}}<span class="docs-reference-meta">Returns <code>{{return_type}}</code></span>{{/if}}
+    {{#if jump_link}}<a class="docs-reference-jump" href="{{jump_link}}">{{jump_text}}</a>{{/if}}
+</header>
