@@ -10,7 +10,6 @@ on:
       - "docs/**"
       - "README.md"
       - ".github/workflows/release.yml"
-      - ".github/workflows/official-site.yml"
   # Required checks must be reported for every PR, including docs-only changes.
   pull_request:
     branches:
@@ -47,7 +46,6 @@ jobs:
               - '!docs/**'
               - '!README.md'
               - '!.github/workflows/release.yml'
-              - '!.github/workflows/official-site.yml'
 
   compile_and_lint:
     needs: ci_selection
@@ -521,3 +519,11 @@ jobs:
           TAG_SUFFIX: ${{ matrix.variant != 'minimal' && format('-{0}', matrix.variant) || '' }}
         run: |
           docker buildx imagetools inspect "${REGISTRY_IMAGE}:${GITHUB_REF_NAME}${TAG_SUFFIX}"
+
+  deploy_official_site:
+    needs: docker_push
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/official-site.yml
+    secrets: inherit

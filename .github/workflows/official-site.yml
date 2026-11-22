@@ -1,9 +1,7 @@
 name: "deploy website"
 
 on:
-  push:
-    branches:
-      - main
+  workflow_call:
 
 concurrency: site-deploy
 
