@@ -14,7 +14,11 @@
     <link rel="stylesheet" href="{{static_path 'sqlpage.css'}}">
     <link rel="stylesheet" href="/assets/highlightjs-and-tabler-theme.css">
     <link rel="stylesheet" href="/assets/docs/shell.css">
-    {{#if (or (eq section "Components") (eq section "Functions"))}}
+    {{#if catalog}}
+        <link rel="canonical" href="{{catalog_link}}">
+        <link rel="stylesheet" href="/assets/docs/catalog.css">
+        {{#if (eq section "Components")}}<link rel="stylesheet" href="/assets/docs/catalog-preview.css">{{/if}}
+    {{else if (or (eq section "Components") (eq section "Functions"))}}
         <link rel="stylesheet" href="/assets/docs/reference.css">
     {{else if (any (eq section "Guides") (eq section "Documentation") (eq section "Examples"))}}
         <link rel="stylesheet" href="/assets/docs/guides.css">
@@ -53,7 +57,7 @@
         </div>
     </header>
 
-    <div class="page docs-layout{{#if topics}} with-topics{{/if}}{{#if outline}} with-outline{{/if}}">
+    <div class="page docs-layout{{#if catalog}} is-catalog{{/if}}{{#if topics}} with-topics{{/if}}{{#if outline}} with-outline{{/if}}">
         {{#if topics}}
         <details open class="docs-topics docs-disclosure">
             <summary class="docs-rail-title">

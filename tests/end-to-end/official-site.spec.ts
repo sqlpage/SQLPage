@@ -140,6 +140,15 @@ test("browse, filter and copy a component example on a phone", async ({
     .getByRole("navigation", { name: "Main navigation" })
     .getByRole("link", { name: "Components" })
     .click();
+  const search = page.getByRole("searchbox", { name: "Search components" });
+  await search.fill("table");
+  await search.press("Enter");
+  const catalog = page.locator("#catalog");
+  await expect(
+    catalog.getByRole("link", { name: "chart", exact: true }),
+  ).toBeHidden();
+  await catalog.getByRole("link", { name: "table", exact: true }).click();
+
   await page.locator("summary", { hasText: "Components" }).click();
   const topics = page.getByRole("navigation", { name: "Browse components" });
   await topics
@@ -167,6 +176,52 @@ test("browse, filter and copy a component example on a phone", async ({
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
     390,
   );
+});
+
+test.describe("function catalog without JavaScript", () => {
+  test.use({ javaScriptEnabled: false });
+
+  test("search by qualified name, narrow by category and clear an empty result", async ({
+    page,
+  }) => {
+    await page.goto("/functions.sql");
+    const search = page.getByRole("searchbox", { name: "Search functions" });
+    const catalog = page.locator("#catalog");
+    const entry = catalog.getByRole("link", {
+      name: "url_encode",
+      exact: true,
+    });
+    const query = "SQLPage.url_encode()";
+    await search.fill(query);
+    await search.press("Enter");
+    await expect(entry).toBeVisible();
+    await expect(
+      catalog.getByRole("link", { name: "exec", exact: true }),
+    ).toBeHidden();
+
+    const category = page.getByRole("navigation", { name: "Categories" });
+    await category.getByRole("link", { name: /Links and routing/ }).click();
+    const filters = new URL(page.url()).searchParams;
+    expect(filters.get("q")).toBe(query);
+    expect(filters.get("category")).toBeTruthy();
+    await expect(entry).toBeVisible();
+
+    await search.fill("%__%");
+    await search.press("Enter");
+    expect(new URL(page.url()).searchParams.get("category")).toBe(
+      filters.get("category"),
+    );
+    await expect(entry).toBeHidden();
+    await page
+      .getByRole("link", { name: "Clear filters", exact: true })
+      .click();
+    await expect(search).toHaveValue("");
+    expect(new URL(page.url()).searchParams.has("category")).toBe(false);
+    await entry.click();
+    await expect(page.getByRole("heading", { level: 1 })).toContainText(
+      "sqlpage.url_encode(",
+    );
+  });
 });
 
 for (const [width, layout] of [

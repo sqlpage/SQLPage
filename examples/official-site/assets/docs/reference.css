@@ -34,43 +34,6 @@
 .docs-reference-meta {
   color: var(--tblr-secondary-color);
 }
-.docs-catalog {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
-  gap: 0.875rem;
-  margin-bottom: 2.5rem;
-}
-.docs-catalog h2 {
-  grid-column: 1 / -1;
-  margin: 1.25rem 0 0;
-}
-.docs-catalog article {
-  min-width: 0;
-  padding: 1rem;
-  border: 1px solid var(--tblr-border-color);
-  border-radius: 0.6rem;
-  background: var(--tblr-bg-surface);
-}
-.docs-catalog article:focus-within,
-.docs-catalog article:hover {
-  border-color: var(--tblr-primary);
-}
-.docs-catalog h3 {
-  margin: 0 0 0.5rem;
-}
-.docs-catalog h3 a {
-  display: flex;
-  gap: 0.6rem;
-  align-items: center;
-  font: 600 1rem / 1.4 var(--tblr-font-monospace);
-  text-decoration: none;
-  overflow-wrap: anywhere;
-}
-.docs-catalog p {
-  margin: 0;
-  color: var(--tblr-secondary-color);
-  line-height: 1.45;
-}
 .docs-parameters {
   margin-block: 2.5rem;
 }
@@ -116,8 +79,7 @@
 .docs-parameters dd > :last-child {
   margin-bottom: 0;
 }
-.docs-reference-collection:hover,
-.docs-catalog h3 a:hover {
+.docs-reference-collection:hover {
   text-decoration: underline;
 }
 @media (max-width: 40rem) {

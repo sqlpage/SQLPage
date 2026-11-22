@@ -2,7 +2,7 @@
 
 ## unreleased
 
-- The official documentation now connects tutorials, component examples, and the function reference through shared navigation. On wide pages, each example shows its SQL beside the live result.
+- The official documentation now connects tutorials, component examples, and the function reference through shared navigation. Browse components and functions by task or search by name. On wide pages, each example shows its SQL beside the live result.
 - Improved contrast for text and controls across the official SQLPage site.
 - JSON `shell` menu items with a link are now links in the accessibility tree instead of being announced as buttons; only submenu toggles keep `role="button"`.
 - The new [`status_bar` component](https://sql-page.com/component.sql?component=status_bar) displays short status messages and links along the bottom of the screen or inline with page content.

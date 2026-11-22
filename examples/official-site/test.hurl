@@ -22,7 +22,7 @@ body not contains "An error occurred"
 GET http://localhost:8080/components.sql
 HTTP 200
 [Asserts]
-xpath "string(//main//a[normalize-space()='shell']/@href)" == "/component.sql?component=shell"
+xpath "string(//main//a[.//h3/span='shell']/@href)" == "/component.sql?component=shell"
 body not contains "An error occurred"
 
 GET http://localhost:8080/component.sql?component=form
@@ -31,6 +31,11 @@ HTTP 200
 body contains "The form component"
 body contains "Building forms in SQL"
 body not contains "An error occurred"
+
+GET http://localhost:8080/functions.sql?q=variables
+HTTP 200
+[Asserts]
+xpath "normalize-space(//main//a[@href='/functions.sql?function=variables']/h3)" == "variables([method])"
 
 GET http://localhost:8080/functions.sql?function=url_encode
 HTTP 200

@@ -463,3 +463,23 @@
     padding-block: 0.55rem;
   }
 }
+
+@media (max-width: 23rem) {
+  .docs-brand {
+    gap: 0.25rem;
+    font-size: 1.2rem;
+  }
+  .docs-brand img {
+    width: 1.5rem;
+  }
+  .docs-home {
+    margin-left: 0.35rem;
+  }
+  .docs-home,
+  .docs-tools {
+    gap: 0.35rem;
+  }
+  .docs-search input {
+    width: 3.6rem;
+  }
+}

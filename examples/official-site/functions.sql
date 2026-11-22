@@ -6,9 +6,7 @@ select 'http_header' as component,
         iif($function is not null, sqlpage.link('functions', json_object('function', $function)), 'functions.sql')
     ) as "Link";
 
-set outline = case when $function is null then
-    '[{"title":"Overview","link":"#overview"},{"title":"Function catalog","link":"#catalog"},{"title":"Evaluation","link":"#evaluation"}]'
-    when exists (select 1 from sqlpage_function_parameters where "function" = $function) then
+set outline = case when exists (select 1 from sqlpage_function_parameters where "function" = $function) then
     '[{"title":"Overview","link":"#function"},{"title":"Parameters","link":"#parameters"}]'
     when exists (select 1 from sqlpage_functions where name = $function) then
     '[{"title":"Overview","link":"#function"}]'
@@ -16,29 +14,17 @@ end;
 
 select 'dynamic' as component, sqlpage.run_sql('sqlpage/docs-shell.sql', json_object(
     'title', coalesce('sqlpage.' || $function, 'Functions') || ' - SQLPage Documentation',
-    'section', 'Functions', 'current', $function, 'outline', $outline
+    'section', 'Functions', 'current', $function, 'outline', $outline,
+    'description', case when $function is null then 'Find SQLPage functions by purpose and see their arguments at a glance.' end
 )) as properties;
 
 select 'empty_state' as component, 'Function not found' as title, 'function' as icon,
     'Browse functions' as link_text, '/functions.sql' as link
 where $function is not null and not exists (select 1 from sqlpage_functions where name = $function);
 
-select 'docs-reference-heading' as component, 'overview' as id,
-    'Documentation' as section, '/documentation.sql' as link, 'function' as icon,
-    'SQLPage functions' as title,
-    'Use SQLPage functions alongside the functions provided by your database to read requests, work with files, and call other services.' as description
-where $function is null;
-
-select 'title' as component, 'Function catalog' as contents, 2 as level, 'catalog' as id where $function is null;
-
-select 'docs-catalog' as component where $function is null;
-with entries as (
-    select name, icon, ltrim(trim(description_md, char(10) || ' '), '# ') as description
-    from sqlpage_functions where $function is null
-)
-select name, icon, substr(description, 1, instr(description || char(10), char(10)) - 1) as summary_md,
-    sqlpage.link('/functions.sql', json_object('function', name)) as link
-from entries order by name;
+select 'dynamic' as component, sqlpage.run_sql('sqlpage/docs-catalog.sql', json_object(
+    'kind', 'function', 'q', $q, 'category', $category
+)) as properties where $function is null;
 
 select 'title' as component, 'How SQLPage evaluates functions' as contents, 2 as level, 'evaluation' as id where $function is null;
 select 'text' as component, true as article, '
@@ -60,17 +46,15 @@ For more information about how SQLPage functions are evaluated, and data types i
 ' as contents_md where $function IS NULL;
 
 select 'docs-reference-heading' as component, 'function' as id,
-    'Function reference' as section, '/functions.sql' as link, f.icon,
-    'sqlpage.' || f.name || '(' || coalesce((
-        select group_concat(p.name, ', ' order by p."index")
-        from sqlpage_function_parameters as p where p."function" = f.name
-    ), '') || ')' as title, f.introduced_in_version as version, f.return_type
-from sqlpage_functions as f where f.name = $function;
+    'Function reference' as section, '/functions.sql' as link, icon,
+    'sqlpage.' || name || '(' || arguments || ')' as title,
+    introduced_in_version as version, return_type
+from sqlpage_functions_with_arguments where name = $function;
 
 select 'text' as component, true as article, description_md as contents_md
 from sqlpage_functions where name = $function;
 
 select 'docs-parameters' as component, 'Parameters' as title, 'parameters' as id
 where exists (select 1 from sqlpage_function_parameters where "function" = $function);
-select name, type, description_md
+select name, type, not optional as required, description_md
 from sqlpage_function_parameters where "function" = $function order by "index";
