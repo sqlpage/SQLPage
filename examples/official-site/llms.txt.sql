@@ -3,6 +3,30 @@ select
     'text/markdown; charset=utf-8' as "Content-Type",
     'inline; filename="llms.txt"' as "Content-Disposition";
 
+with parameter_sections as (
+    select kind, entry, section_order, '#### ' || title || char(10, 10) || group_concat(
+        format('- `%s` (%s)%s: %s', name, type, case when not optional then ' **REQUIRED**' else '' end,
+            replace(trim(description_md, char(13, 10)), char(10), char(10) || '  ')),
+        char(10) order by position, name
+    ) as contents
+    from reference_parameter
+    group by kind, entry, section_order, title
+), parameters as (
+    select kind, entry, group_concat(contents, char(10, 10) order by section_order) as contents
+    from parameter_sections group by kind, entry
+), entries as (
+    select e.kind, e.name,
+        '### [' || case e.kind when 'function' then 'sqlpage.' || e.name || '()' else e.name end || '](' || e.link || ')' ||
+        coalesce(char(10, 10) || 'Since SQLPage ' || e.introduced_in_version || '.', '') ||
+        coalesce(char(10, 10) || 'Returns `' || e.return_type || '`.', '') ||
+        -- Quote the original Markdown so its headings and code fences stay inside the entry.
+        char(10, 10) || '> ' || replace(trim(e.description_md, char(13, 10)), char(10), char(10) || '> ') ||
+        coalesce(char(10, 10) || p.contents, '') as contents
+    from reference_entry as e left join parameters as p on p.kind = e.kind and p.entry = e.name
+), chapters as (
+    select kind, group_concat(contents, char(10, 10) order by name) as contents
+    from entries group by kind
+)
 select
     'shell-empty' as component,
     '# SQLPage
@@ -24,107 +48,17 @@ Key features:
 
 ## Core Documentation
 
-- [Components reference](/components.sql): List of all ' || (
-        select
-            count(*)
-        from
-            component
-    ) || ' built-in UI components with parameters and examples
+- [Components reference](/components.sql): List of all ' || (select count(*) from component) || ' built-in UI components with parameters and examples
 - [Functions reference](/functions.sql): SQLPage built-in functions for handling requests, encoding data, and more
 - [Configuration guide](https://github.com/sqlpage/SQLPage/blob/main/configuration.md): Complete list of configuration options in sqlpage.json
 
 ## Components
 
-' || (
-        select
-            group_concat (
-                '### [' || c.name || '](/component.sql?component=' || c.name || ')
-
-' || c.description || '
-
-' || (
-                    select
-                        case when exists (
-                                select
-                                    1
-                                from
-                                    parameter
-                                where
-                                    component = c.name
-                                    and top_level
-                            ) then '#### Top-level parameters
-
-' || group_concat (
-                                    '- `' || name || '` (' || type || ')' || case when not optional then ' **REQUIRED**' else '' end || ': ' || description,
-                                    char(10)
-                                )
-                        else
-                            ''
-                        end
-                    from
-                        parameter
-                    where
-                        component = c.name
-                        and top_level
-                ) || '
-
-' || (
-                    select
-                        case when exists (
-                                select
-                                    1
-                                from
-                                    parameter
-                                where
-                                    component = c.name
-                                    and not top_level
-                            ) then '#### Row-level parameters
-
-' || group_concat (
-                                    '- `' || name || '` (' || type || ')' || case when not optional then ' **REQUIRED**' else '' end || ': ' || description,
-                                    char(10)
-                                )
-                        else
-                            ''
-                        end
-                    from
-                        parameter
-                    where
-                        component = c.name
-                        and not top_level
-                ) || '
-
-',
-                ''
-            )
-        from
-            component c
-        order by
-            c.name
-    ) || '
+' || (select contents from chapters where kind = 'component') || '
 
 ## Functions
 
-' || (
-        select
-            group_concat (
-                '### [sqlpage.' || name || '()](/functions.sql?function=' || name || ')
-' || replace (
-                    replace (
-                        description_md,
-                        char(10) || '#',
-                        char(10) || '###'
-                    ),
-                    '  ',
-                    ' '
-                ),
-                char(10)
-            )
-        from
-            sqlpage_functions
-        order by
-            name
-    ) || '
+' || (select contents from chapters where kind = 'function') || '
 
 ## Examples
 

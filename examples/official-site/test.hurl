@@ -44,10 +44,37 @@ body contains "sqlpage.url_encode"
 body contains "Parameters"
 body not contains "An error occurred"
 
+GET http://localhost:8080/llms.txt
+HTTP 200
+[Asserts]
+header "Content-Type" == "text/markdown; charset=utf-8"
+body contains "### [sqlpage.send_mail()](/functions.sql?function=send_mail)"
+body contains "- `message` (JSON) **REQUIRED**: A JSON object containing the email to send."
+body contains "> ## Building forms in SQL"
+body contains "> ##### `reusable.sql`"
+body contains "> ```sql\n> "
+
 GET http://localhost:8080/search.sql?search=form
 HTTP 302
 [Asserts]
 header "Location" == "/component.sql?component=form"
+
+GET http://localhost:8080/search.sql?search=SQLPage.cookie()
+HTTP 302
+[Asserts]
+header "Location" == "/functions.sql?function=cookie"
+
+GET http://localhost:8080/search.sql?search=empty_description
+HTTP 200
+[Asserts]
+xpath "//main//a[@href='/component.sql?component=list#top-level-parameters-empty_description']" count == 1
+
+GET http://localhost:8080/component.sql?component=list
+HTTP 200
+[Asserts]
+xpath "//*[@id='top-level-parameters-empty_description']//dt//a[@href='#top-level-parameters-empty_description']" count == 1
+xpath "//*[@id='row-level-parameters-title']" count == 1
+xpath "//*[@id='top-level-parameters-title']" count == 1
 
 GET http://localhost:8080/search.sql?search=migrations
 HTTP 200
