@@ -30,9 +30,10 @@ select 'Functions' as title, 'function' as icon, '/functions.sql' as link,
 
 select 'title' as component, 'How a page works' as contents, 2 as level, 'how-it-works' as id;
 select 'text' as component, 'Each SQL file is a page. Its first SELECT names a component and sets its top-level parameters. The rows returned by the next SELECT supply the row-level parameters. This list uses both.' as contents;
-select 'code' as component;
-select 'index.sql' as title, 'sql' as language, sqlpage.read_file_as_text('sqlpage/docs-intro-example.sql') as contents;
+select 'docs-example' as component, 1 as number, 'A reading list' as title, true as preview,
+    sqlpage.read_file_as_text('sqlpage/docs-intro-example.sql') as source;
 select 'dynamic' as component, sqlpage.run_sql('sqlpage/docs-intro-example.sql') as properties;
+select 'docs-example' as component, true as end_result;
 
 select 'docs-links' as component, 'Guides' as title, 'guides' as id;
 select title, link, description

@@ -1,6 +1,14 @@
+{{!-- For a live preview, send end_result after the last native component. --}}
+{{#if end_result}}
+            </div>
+        </div>
+    </div>
+</section>
+{{else}}
 <section class="docs-example" id="example-{{number}}">
     <h3><a href="#example-{{number}}">{{#if title}}{{title}}{{else}}Example {{number}}{{/if}}</a></h3>
     {{#if description_md}}<div class="docs-example-notes">{{{markdown description_md}}}</div>{{/if}}
+    {{#if preview}}<div class="docs-example-layout">{{/if}}
     {{#if source}}
         <div class="docs-example-source">
             <div class="docs-example-toolbar">
@@ -10,5 +18,11 @@
             <pre tabindex="0" aria-label="Example {{number}} SQL"><code class="language-sql">{{source}}</code></pre>
         </div>
     {{/if}}
-    {{#if preview}}<h4 class="docs-example-preview">{{icon_img "player-play" 16}} Result</h4>{{/if}}
+    {{#if preview}}
+        <div class="docs-example-result">
+            <h4 class="docs-example-toolbar">{{icon_img "player-play" 16}} Result</h4>
+            <div class="docs-example-output">
+    {{else}}
 </section>
+    {{/if}}
+{{/if}}

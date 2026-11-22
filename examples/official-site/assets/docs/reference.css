@@ -3,14 +3,10 @@
   padding-bottom: 1.5rem;
   border-bottom: 1px solid var(--tblr-border-color);
 }
-.docs-reference-collection,
-.docs-example-toolbar span,
-.docs-example-preview {
+.docs-reference-collection {
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
-}
-.docs-reference-collection {
   color: var(--tblr-primary);
   font-weight: 500;
   text-decoration: none;
@@ -117,76 +113,12 @@
   font: 500 0.8125rem var(--tblr-font-sans-serif);
   color: var(--tblr-primary);
 }
-.docs-example-notes > :last-child,
 .docs-parameters dd > :last-child {
   margin-bottom: 0;
 }
-.docs-example {
-  margin: 2rem 0 0.625rem;
-  border-top: 1px solid var(--tblr-border-color);
-  padding-top: 1.25rem;
-}
-.docs-example h3:first-child {
-  margin-bottom: 0.5rem;
-}
-.docs-example > h3 > a {
-  color: var(--tblr-heading-color);
-  text-decoration: none;
-}
-.docs-example > h3 > a:hover,
 .docs-reference-collection:hover,
 .docs-catalog h3 a:hover {
   text-decoration: underline;
-}
-.docs-example-source {
-  overflow: hidden;
-  margin-top: 1rem;
-  border: 1px solid var(--tblr-border-color);
-  border-radius: 0.6rem;
-  background: #080d16;
-}
-.docs-example-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 2.75rem;
-  padding: 0.25rem 0.9rem;
-  border-bottom: 1px solid var(--tblr-border-color);
-  font: 0.875rem var(--tblr-font-monospace);
-  color: var(--tblr-primary);
-  background: var(--tblr-bg-surface-secondary);
-}
-.docs-example-toolbar button:not([hidden]) {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.35rem 0.55rem;
-  border: 1px solid var(--tblr-border-color);
-  border-radius: 0.3rem;
-  background: var(--tblr-bg-surface);
-  color: var(--tblr-secondary-color);
-  font: 0.875rem var(--tblr-font-sans-serif);
-}
-.docs-example-source pre,
-.docs-example-source pre code {
-  margin: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-}
-.docs-example-source pre {
-  max-height: 24rem;
-  overflow: auto;
-  padding: 1rem;
-}
-.docs-example-source pre code {
-  padding: 0;
-  font: 0.9rem / 1.65 var(--tblr-font-monospace);
-}
-.docs-example-preview {
-  margin: 1rem 0 0;
-  color: var(--tblr-primary);
-  font-size: 0.875rem;
 }
 @media (max-width: 40rem) {
   .docs-parameters dl > div {

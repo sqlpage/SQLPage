@@ -50,9 +50,12 @@ select 'title' as component, 2 as level, 'Examples' as contents, 'examples' as i
 where exists (select 1 from example where component = $component);
 
 with examples as (
-    select *, case when length(trim(description)) <= 120
-        and glob('*[^a-zA-Z0-9 ,.''()-]*', trim(description)) = 0
-        then trim(description) end as short_title
+    -- HTTP headers and shells can only run at the start of a response.
+    select *,
+        case when component not in ('shell', 'http_header') then properties end as result,
+        case when length(trim(description)) <= 120
+            and glob('*[^a-zA-Z0-9 ,.''()-]*', trim(description)) = 0
+            then trim(description) end as short_title
     from example_with_source where component = $component
 )
 select 'dynamic' as component, json_array(
@@ -60,9 +63,11 @@ select 'dynamic' as component, json_array(
         'component', 'docs-example', 'number', row_number() over (order by example_id),
         'title', short_title, 'description_md', case when short_title is null then description end,
         'source', source,
-        'preview', properties is not null and component not in ('shell', 'http_header')
+        'preview', result is not null
     ),
-    -- Shell and header examples describe the entire HTTP response.
-    json(case when component not in ('shell', 'http_header') then coalesce(properties, '[]') else '[]' end)
+    json(coalesce(result, '[]')),
+    -- Keep every native component of the example inside the same result panel.
+    case when result is not null then json_object('component', 'docs-example', 'end_result', true)
+        else json_array() end
 ) as properties
 from examples order by example_id;

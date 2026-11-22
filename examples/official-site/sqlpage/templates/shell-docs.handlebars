@@ -21,8 +21,9 @@
     {{/if}}
     <script defer nonce="{{@csp_nonce}}" src="{{static_path 'sqlpage.js'}}"></script>
     <script defer nonce="{{@csp_nonce}}" src="/assets/docs/navigation.js"></script>
-    {{#if (and (eq section "Components") current_item)}}
-        <script defer nonce="{{@csp_nonce}}" src="/assets/docs/reference.js"></script>
+    {{#if (or (eq section "Documentation") (and (eq section "Components") current_item))}}
+        <link rel="stylesheet" href="/assets/docs/examples.css">
+        <script defer nonce="{{@csp_nonce}}" src="/assets/docs/examples.js"></script>
     {{/if}}
     <script type="module" nonce="{{@csp_nonce}}" src="/assets/highlightjs-launch.js"></script>
 </head>

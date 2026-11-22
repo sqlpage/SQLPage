@@ -18,6 +18,11 @@ test("Open documentation", async ({ page }) => {
       page.getByRole("link", { name: component }).first(),
     ).toBeVisible();
   }
+  const example = page.locator(".docs-example");
+  await expect(example.getByRole("button", { name: "Copy SQL" })).toBeVisible();
+  await expect(
+    example.getByRole("link", { name: "The list component" }),
+  ).toBeVisible();
 });
 
 async function expectContrast(
@@ -157,12 +162,54 @@ test("browse, filter and copy a component example on a phone", async ({
     await example.locator("pre code").textContent(),
   );
   await expect(
-    page.getByRole("button", { name: "Enabled", exact: true }),
+    example.getByRole("button", { name: "Enabled", exact: true }),
   ).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
     390,
   );
 });
+
+for (const [width, layout] of [
+  [1680, "side by side"],
+  [390, "stacked"],
+] as const) {
+  test(`the frozen table scrolls within a ${layout} example at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/component.sql?component=table");
+    const table = page.locator(".table-freeze-columns");
+    const example = page.locator(".docs-example").filter({ has: table });
+    const source = await example.locator(".docs-example-source").boundingBox();
+    const result = await example.locator(".docs-example-result").boundingBox();
+    if (!source || !result) throw new Error("Missing example panels");
+
+    if (layout === "side by side") {
+      expect(source.x + source.width).toBeLessThanOrEqual(result.x + 1);
+      expect(source.y).toBeCloseTo(result.y, 0);
+    } else {
+      expect(source.y + source.height).toBeLessThanOrEqual(result.y + 1);
+      expect(source.x).toBeCloseTo(result.x, 0);
+    }
+
+    const frozen = table.getByRole("columnheader").first();
+    expect(await frozen.evaluate((cell) => cell.clientWidth)).toBeGreaterThan(
+      100,
+    );
+    const frozenLeft = () =>
+      frozen.evaluate((cell) => cell.getBoundingClientRect().left);
+    const start = await frozenLeft();
+    const scrolled = await table.evaluate((element) => {
+      element.scrollLeft = 160;
+      return element.scrollLeft;
+    });
+    expect(scrolled).toBeGreaterThan(0);
+    expect(await frozenLeft()).toBeCloseTo(start, 0);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBe(width);
+  });
+}
 
 test("search a guide and follow its link to the function reference", async ({
   page,
