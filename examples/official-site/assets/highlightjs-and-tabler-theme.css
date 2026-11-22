@@ -4,11 +4,11 @@
 .btn-primary {
   --tblr-btn-border-color: var(--tblr-secondary);
   --tblr-btn-active-border-color: transparent;
-  --tblr-btn-color: var(--tblr-primary-fg, #ffffff);
+  --tblr-btn-color: var(--tblr-white);
   --tblr-btn-bg: transparent;
-  --tblr-btn-hover-color: var(--tblr-primary-fg);
+  --tblr-btn-hover-color: var(--tblr-white);
   --tblr-btn-hover-bg: transparent;
-  --tblr-btn-active-color: var(--tblr-primary-fg);
+  --tblr-btn-active-color: var(--tblr-white);
   --tblr-btn-active-bg: transparent;
   --tblr-btn-disabled-bg: var(--tblr-primary);
   --tblr-btn-disabled-color: var(--tblr-primary-fg);

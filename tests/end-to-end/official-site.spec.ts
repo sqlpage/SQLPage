@@ -1,4 +1,4 @@
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Locator, type Page, test } from "@playwright/test";
 import {
   checkModal,
   checkTableFiltering,
@@ -18,6 +18,110 @@ test("Open documentation", async ({ page }) => {
       page.getByRole("link", { name: component }).first(),
     ).toBeVisible();
   }
+});
+
+async function expectContrast(
+  locator: Locator,
+  minimum: number,
+  marker = false,
+) {
+  await expect(locator).toBeVisible();
+  const ratio = await locator.evaluate((element, marker) => {
+    // Normalize computed CSS colors and composite transparent fills onto their surfaces.
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = 1;
+    const context = canvas.getContext("2d", { willReadFrequently: true });
+    if (!context) throw new Error("Could not read computed colors");
+
+    function luminance(ctx: CanvasRenderingContext2D) {
+      const [red, green, blue] = ctx.getImageData(0, 0, 1, 1).data;
+      const linearize = (channel: number) => {
+        const value = channel / 255;
+        return value <= 0.04045
+          ? value / 12.92
+          : ((value + 0.055) / 1.055) ** 2.4;
+      };
+      return (
+        0.2126 * linearize(red) +
+        0.7152 * linearize(green) +
+        0.0722 * linearize(blue)
+      );
+    }
+
+    const backgrounds = [];
+    for (
+      let parent: Element | null = element;
+      parent;
+      parent = parent.parentElement
+    ) {
+      backgrounds.push(getComputedStyle(parent).backgroundColor);
+    }
+    for (const background of backgrounds.reverse()) {
+      context.fillStyle = background;
+      context.fillRect(0, 0, 1, 1);
+    }
+    const background = luminance(context);
+    context.fillStyle = marker
+      ? getComputedStyle(element, "::before").backgroundColor
+      : getComputedStyle(element).color;
+    context.fillRect(0, 0, 1, 1);
+    const foreground = luminance(context);
+    return (
+      (Math.max(foreground, background) + 0.05) /
+      (Math.min(foreground, background) + 0.05)
+    );
+  }, marker);
+  expect(ratio, `contrast for ${locator}`).toBeGreaterThanOrEqual(minimum);
+}
+
+test("active page numbers have readable contrast in every pagination style", async ({
+  page,
+}) => {
+  await page.goto("/component.sql?component=pagination");
+  const activePages = page.locator(".pagination .active > .page-link");
+  await expect(activePages.first()).toBeVisible();
+  for (const link of await activePages.all()) {
+    await expectContrast(link, 4.5);
+  }
+  await expectContrast(page.locator(".pagination .page-link.disabled"), 4.5);
+});
+
+test("the official theme keeps filled controls and alerts readable", async ({
+  page,
+}) => {
+  await page.goto("/component.sql?component=form");
+  const checkedSwitch = page
+    .locator(".form-switch .form-check-input:checked")
+    .first();
+  await expectContrast(checkedSwitch, 3, true);
+
+  await page.goto("/component.sql?component=button");
+  const info = page
+    .getByText("Info", { exact: true })
+    .and(page.locator(".btn-info"));
+  await expectContrast(info, 4.5);
+  await info.hover();
+  await expectContrast(info, 4.5);
+
+  await page.goto("/component.sql?component=alert");
+  await expectContrast(
+    page.locator(".alert-important .alert-title").first(),
+    4.5,
+  );
+  await expectContrast(page.locator(".alert-important .alert-link"), 4.5);
+});
+
+test("light color swatches and homepage links have readable labels", async ({
+  page,
+}) => {
+  await page.goto("/colors.sql");
+  await expectContrast(
+    page.getByRole("heading", { name: "white", exact: true }),
+    4.5,
+  );
+
+  await page.goto("/");
+  await expectContrast(page.locator(".demo-docs"), 4.5);
 });
 
 test("chart documentation renders its examples without browser errors", async ({

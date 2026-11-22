@@ -9,21 +9,10 @@
   --section-color: var(--tblr-light);
   --comparison-border: var(--tblr-body-color);
   --comparison-copy: var(--tblr-dark);
-  --comparison-muted: color-mix(
-    in srgb,
-    var(--tblr-dark),
-    var(--tblr-white) 40%
-  );
   background: var(--section-color);
   color: var(--tblr-bg-surface);
   color-scheme: light;
   padding-bottom: calc(var(--wave-height) + 64px);
-}
-.comparison-section .eyebrow {
-  color: var(--tblr-blue);
-}
-.comparison-section h2 em {
-  color: var(--tblr-blue);
 }
 .comparison-section .section-heading {
   grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.95fr) minmax(0, 0.27fr);
@@ -72,7 +61,7 @@
 }
 .comparison-card-heading p {
   margin: 5px 0 0;
-  color: var(--comparison-muted);
+  color: var(--landing-light-muted);
   font: 11px / 1.5 var(--tblr-font-monospace);
 }
 .comparison-versus {
@@ -142,7 +131,10 @@
   font: 11px / 1.4 var(--tblr-font-monospace);
 }
 .comparison-window-bar > span:last-child:not(:first-child) {
-  opacity: 0.55;
+  color: var(--landing-light-muted);
+}
+.comparison-code .comparison-window-bar > span:last-child:not(:first-child) {
+  color: var(--tblr-muted-color);
 }
 .comparison-code .comparison-window-bar {
   background: var(--tblr-bg-surface-secondary);
@@ -264,7 +256,7 @@
 }
 .comparison-card .comparison-aside {
   margin: 10px 0 0;
-  color: var(--comparison-muted);
+  color: var(--landing-light-muted);
   font-size: 11px;
 }
 .comparison-sheet .comparison-window-body {
@@ -277,7 +269,7 @@
 .comparison-sheet-labels {
   padding: 12px 0 8px;
   font: 10px var(--tblr-font-monospace);
-  color: var(--comparison-muted);
+  color: var(--landing-light-muted);
 }
 .comparison-sheet-files {
   list-style: none;
@@ -298,12 +290,12 @@
   height: 18px;
   border-radius: 3px;
   background: var(--tblr-success);
-  color: white;
+  color: var(--tblr-success-fg);
   font-size: 11px;
 }
 .comparison-sheet-files small {
   font: 10px var(--tblr-font-monospace);
-  color: var(--comparison-muted);
+  color: var(--landing-light-muted);
   white-space: nowrap;
 }
 .comparison-lock {
@@ -312,7 +304,7 @@
   border: 1px solid var(--hljs-cosmic-punctuation);
   border-radius: 7px;
   background: color-mix(in srgb, var(--tblr-warning) 8%, var(--tblr-white));
-  color: var(--tblr-warning);
+  color: color-mix(in srgb, var(--tblr-warning) 35%, var(--tblr-dark));
   font-size: 12px;
 }
 .comparison-terminal {
@@ -346,7 +338,7 @@
 .comparison-chat small {
   display: block;
   font-size: 13px;
-  color: var(--comparison-muted);
+  color: var(--landing-light-muted);
   margin-top: 4px;
 }
 .comparison-metric .comparison-view-only {
@@ -355,7 +347,7 @@
   border-radius: 5px;
   align-self: start;
   position: relative;
-  color: var(--tblr-muted-color);
+  color: var(--landing-light-muted);
   background: var(--tblr-light);
   font-size: 12px;
 }
@@ -417,7 +409,7 @@
   height: 24px;
   border-radius: 50%;
   background: var(--tblr-link-color);
-  color: white;
+  color: var(--tblr-primary-fg);
   font-size: 12px;
 }
 .comparison-lowcode .comparison-window-body {
@@ -428,7 +420,7 @@
   border-collapse: collapse;
   font-size: 12px;
   width: 100%;
-  color: color-mix(in srgb, var(--tblr-dark), var(--tblr-white) 40%);
+  color: var(--comparison-copy);
 }
 .comparison-lowcode th {
   font: 10px var(--tblr-font-monospace);
@@ -477,13 +469,13 @@
   justify-content: end;
   gap: 12px;
   font-size: 12px;
-  color: var(--comparison-muted);
+  color: var(--landing-light-muted);
 }
 .comparison-upgrade > div span:last-child {
   border-radius: 6px;
   padding: 8px 12px;
   background: var(--tblr-purple);
-  color: white;
+  color: var(--tblr-purple-fg);
 }
 .comparison-footer {
   justify-content: space-between;
@@ -492,7 +484,7 @@
 }
 .comparison-footer > p {
   margin: 0;
-  color: var(--comparison-muted);
+  color: var(--landing-light-muted);
   font-size: 11px;
   max-width: 720px;
 }
@@ -509,7 +501,7 @@
 }
 .comparison-controls p {
   margin: 0 10px 0 0;
-  color: var(--comparison-muted);
+  color: var(--landing-light-muted);
   font: 11px / 1.5 var(--tblr-font-monospace);
 }
 .comparison-controls button {

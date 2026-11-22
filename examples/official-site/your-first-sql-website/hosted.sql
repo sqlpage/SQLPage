@@ -5,6 +5,7 @@ select 'shell' as component,
     'en-US' as lang,
     'Hosted SQLPage: set-up a SQLPage website in three clicks.' as description,
     'documentation' as menu_item,
+    'dark' as theme,
     '/assets/brand/brand.css' as css;
 
 SELECT 'hero' as component,

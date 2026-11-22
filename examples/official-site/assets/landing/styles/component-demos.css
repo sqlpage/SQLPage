@@ -4,6 +4,7 @@
   margin-bottom: 20px;
 }
 .sql-editor {
+  --landing-focus-color: var(--tblr-primary);
   margin-top: 18px;
   border: 1px solid var(--tblr-bg-surface-tertiary);
   border-radius: 12px;
@@ -153,7 +154,7 @@
   top: -86px;
   left: 48%;
   margin: 0;
-  color: color-mix(in srgb, var(--tblr-dark), var(--tblr-white) 40%);
+  color: var(--landing-light-muted);
   font: italic 17px / 1.35 cursive;
   transform: rotate(-6deg);
   pointer-events: none;
@@ -203,7 +204,7 @@
   align-items: center;
   gap: 6px;
   font: 12px var(--tblr-font-monospace);
-  color: var(--tblr-blue);
+  color: var(--landing-light-accent);
 }
 .demo-docs:hover {
   text-decoration: underline;
