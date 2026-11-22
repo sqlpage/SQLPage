@@ -523,5 +523,7 @@ jobs:
   deploy_official_site:
     needs: docker_push
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
     uses: ./.github/workflows/official-site.yml
     secrets: inherit
