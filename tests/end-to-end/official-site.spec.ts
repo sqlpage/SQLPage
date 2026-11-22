@@ -399,6 +399,29 @@ test("File upload", async ({ page }) => {
   ).resolves.toBe(`data:image/svg+xml;base64,${buffer.toString("base64")}`);
 });
 
+test("login labels target the fields in their own example", async ({
+  page,
+}) => {
+  await page.goto("/component.sql?component=login");
+  const forms = page.locator(".docs-example-output form");
+  await expect(forms).toHaveCount(2);
+  await expect(forms.locator("[autofocus], :focus")).toHaveCount(0);
+  for (const form of await forms.all()) {
+    await expect(form.getByLabel("Username", { exact: true })).toHaveAttribute(
+      "name",
+      "username",
+    );
+    await expect(form.getByLabel(/^Password/)).toHaveAttribute(
+      "name",
+      "password",
+    );
+  }
+  await expect(forms.first().getByLabel("Remember me")).toHaveAttribute(
+    "name",
+    "remember",
+  );
+});
+
 test("Authentication example", async ({ page }) => {
   await page.goto("/examples/authentication/login.sql");
   await expect(page.locator("h1", { hasText: "Authentication" })).toBeVisible();
@@ -408,6 +431,7 @@ test("Authentication example", async ({ page }) => {
   const loginButton = page.getByRole("button", { name: "Log in" });
 
   await expect(usernameInput).toBeVisible();
+  await expect(usernameInput).toBeFocused();
   await expect(passwordInput).toBeVisible();
   await expect(loginButton).toBeVisible();
 
