@@ -238,10 +238,19 @@ async fn test_official_website_basic_auth_example() {
 }
 
 async fn make_app_data_for_official_website() -> actix_web::web::Data<AppState> {
+    static SITE: std::sync::LazyLock<std::path::PathBuf> = std::sync::LazyLock::new(|| {
+        if std::env::var_os("SQLPAGE_SITE_PREBUILT").is_none() {
+            let status = std::process::Command::new("node")
+                .arg("scripts/site-build.mjs")
+                .status()
+                .expect("start the official site build");
+            assert!(status.success(), "official site build failed");
+        }
+        std::path::PathBuf::from("target/official-site")
+    });
     crate::common::init_log();
-    let config_path = std::path::Path::new("examples/official-site/sqlpage");
-    let mut app_config = sqlpage::app_config::load_from_directory(config_path).unwrap();
-    app_config.web_root = std::path::PathBuf::from("examples/official-site");
+    let mut app_config = sqlpage::app_config::load_from_directory(&SITE.join("sqlpage")).unwrap();
+    app_config.web_root.clone_from(&SITE);
     app_config.database_url = "sqlite::memory:".to_string();
     let app_state = make_app_data_from_config(app_config.clone()).await.unwrap();
     webserver::database::migrations::apply(&app_config, &app_state.db)

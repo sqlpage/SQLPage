@@ -65,6 +65,13 @@ jobs:
       - run: cargo fmt --all -- --check
       - run: cargo test --locked --features config-schema --test mod configuration_docs
       - run: cargo clippy --all-targets --all-features -- -D warnings
+      - name: Prepare official website
+        run: npm run site:build
+      - name: Upload prepared website
+        uses: actions/upload-artifact@v7
+        with:
+          name: official-site
+          path: target/official-site/
       # The database matrix below runs the same Rust test harnesses against
       # different DATABASE_URL values. Package the Linux test executables once
       # here so those jobs do not recompile SQLPage or its dependencies.
@@ -148,6 +155,11 @@ jobs:
             db_url: "Driver=DuckDB;Database=/tmp/sqlpage-test.duckdb"
     steps:
       - uses: actions/checkout@v7
+      - name: Download prepared website
+        uses: actions/download-artifact@v8
+        with:
+          name: official-site
+          path: target/official-site
       # Reuse the exact Linux test harnesses produced by compile_and_lint.
       # This keeps the DB matrix focused on database behavior instead of
       # compiling the same Rust crate five more times.
@@ -186,6 +198,7 @@ jobs:
         timeout-minutes: 5
         run: scripts/run-test-binaries.sh ${{ matrix.test_args }}
         env:
+          SQLPAGE_SITE_PREBUILT: 1
           DATABASE_URL: ${{ matrix.db_url }}
           MALLOC_CHECK_: 3
           MALLOC_PERTURB_: 10
@@ -245,7 +258,14 @@ jobs:
         with:
           name: sqlpage-linux-debug
           path: ${{ runner.temp }}/sqlpage-bin
+      - name: Download prepared website
+        uses: actions/download-artifact@v8
+        with:
+          name: official-site
+          path: target/official-site
       - name: Run Playwright tests
+        env:
+          SQLPAGE_SITE_PREBUILT: 1
         run: |
           chmod +x "${{ runner.temp }}/sqlpage-bin/sqlpage"
           SQLPAGE_BINARY="${{ runner.temp }}/sqlpage-bin/sqlpage" npx playwright test
@@ -418,6 +438,7 @@ jobs:
     timeout-minutes: 15
     needs:
       - docker_build
+      - compile_and_lint
       - hurl_examples
     strategy:
       fail-fast: false
@@ -444,7 +465,15 @@ jobs:
           if [[ "$SQLPAGE_IMAGE_VARIANT" == minimal ]]; then
             docker tag "${{ env.REGISTRY_IMAGE }}:main" "${{ env.REGISTRY_IMAGE }}:latest"
           fi
+      - name: Download prepared website
+        if: matrix.example == 'examples/official-site'
+        uses: actions/download-artifact@v8
+        with:
+          name: official-site
+          path: target/official-site
       - name: Run example Hurl test
+        env:
+          SQLPAGE_SITE_PREBUILT: 1
         run: scripts/test-examples-hurl.sh "${{ matrix.example }}"
 
   # Require this single check in branch protection instead of individual jobs.

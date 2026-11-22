@@ -48,6 +48,9 @@ function announcedAddress(variable: string) {
 
 const officialSite = announcedAddress("SQLPAGE_OFFICIAL_SITE_ADDRESS");
 const fixtures = announcedAddress("SQLPAGE_FIXTURES_ADDRESS");
+const prepareSite = process.env.SQLPAGE_SITE_PREBUILT
+  ? ""
+  : "node scripts/site-build.mjs && ";
 
 export default defineConfig({
   testDir: ".",
@@ -75,8 +78,8 @@ export default defineConfig({
   webServer: [
     {
       name: "official site",
-      command: sqlpage,
-      cwd: "../../examples/official-site",
+      command: `${prepareSite}cd target/official-site && ${sqlpage}`,
+      cwd: repository,
       env: { SQLPAGE_LISTEN_ON: listenOn(18080) },
       wait: { stderr: officialSite.announcement },
       timeout: compileAndStart,

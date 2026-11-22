@@ -38,6 +38,9 @@ while IFS= read -r -d "" test_file; do
   current_project="sqlpage_example_${run_index}"
   current_compose="$dir/docker-compose.yml"
 
+  if [[ "$rel_dir" == "examples/official-site" && -z "${SQLPAGE_SITE_PREBUILT:-}" ]]; then
+    node "$ROOT_DIR/scripts/site-build.mjs"
+  fi
   echo "::group::Testing $rel_dir"
   if ! docker compose -p "$current_project" -f "$current_compose" up -d --quiet-pull --build --remove-orphans; then
     echo "::error file=$rel_dir/docker-compose.yml,title=Example compose startup failed::$rel_dir failed to start"

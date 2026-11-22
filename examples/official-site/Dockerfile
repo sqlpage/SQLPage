@@ -1,4 +1,4 @@
 FROM lovasoa/sqlpage:main
 
-COPY ./sqlpage /etc/sqlpage
-COPY . /var/www
+COPY --chown=sqlpage:sqlpage ./sqlpage /etc/sqlpage
+COPY --chown=sqlpage:sqlpage . /var/www

@@ -100,8 +100,8 @@ behavior and validation in the pull request. Keep changes and formatting focused
 Architectural constraints and documentation maintenance rules are in
 [AGENTS.md](./AGENTS.md).
 
-User documentation lives in [the official-site SQL pages and migrations](./examples/official-site/).
-Edit existing documentation in place: deployment recreates the site database.
-Use nearby entries as examples rather than copying schemas into this guide. Update
-[configuration.md](./configuration.md) for configuration changes and
-[CHANGELOG.md](./CHANGELOG.md) for user-visible changes in an unreleased version.
+Edit the [official site content](./examples/official-site/content/) to document components,
+functions, and examples. Document configuration options on the Rust fields of
+[`AppConfig`](./src/app_config.rs). Use [configuration.md](./configuration.md) for
+setup guides. Run `npm run site` to preview edits. See the [site README](./examples/official-site/README.md)
+for the authoring format. Update [CHANGELOG.md](./CHANGELOG.md) for user-visible changes.

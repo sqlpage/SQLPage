@@ -250,6 +250,7 @@ export function buildDocumentationSeed(schema, content = defaultContent) {
 
   try {
     sqlFile("schema.sql");
+    sqlFile("install-options.sql");
     collection("categories", "reference_category", [
       "id",
       "title",

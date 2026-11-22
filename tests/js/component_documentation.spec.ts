@@ -4,29 +4,16 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
+import { buildDocumentationSeed } from "../../scripts/site-content.mjs";
 
-// Every built-in component is a Handlebars template in sqlpage/templates/, and
-// its properties are documented as rows of the `parameter` table of the
-// official site, built by the SQL migrations in examples/official-site/.
-// Nothing links the two, so they drift: properties get added to a template and
-// never documented, and documented properties outlive the code that read them.
-//
-// This test builds the official site's documentation database, reads the
-// property names out of the templates, and asserts that the two agree.
+// Check both directions: every property a template reads has documentation,
+// and each documented property is used at the advertised level.
 
 const require = createRequire(import.meta.url);
 const REPO_ROOT = path.resolve(
   path.dirname(require.resolve("../../package.json")),
 );
 const TEMPLATES_DIR = path.join(REPO_ROOT, "sqlpage", "templates");
-const MIGRATIONS_DIR = path.join(
-  REPO_ROOT,
-  "examples",
-  "official-site",
-  "sqlpage",
-  "migrations",
-);
-
 /** Components rendered by src/render.rs rather than by a Handlebars template. */
 const COMPONENTS_WITHOUT_A_TEMPLATE = new Set([
   "authentication",
@@ -233,32 +220,22 @@ function read_templates(): Map<string, TemplateProperties> {
 }
 
 function read_documentation(): Map<string, TemplateProperties> {
-  const migrations = fs
-    .readdirSync(MIGRATIONS_DIR)
-    .filter((file) => file.endsWith(".sql"))
-    // SQLPage applies migrations in the order of their numeric prefix.
-    .sort(
-      (a, b) =>
-        Number.parseInt(a, 10) - Number.parseInt(b, 10) || a.localeCompare(b),
-    );
-
   const db = new DatabaseSync(":memory:");
-  for (const file of migrations) {
-    db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, file), "utf8"));
-  }
+  db.exec(buildDocumentationSeed({ properties: {} }));
 
   const documented = new Map<string, TemplateProperties>();
+  for (const row of db.prepare("select name from component").all()) {
+    assert.ok(typeof row.name === "string");
+    documented.set(row.name, { top: new Set(), row: new Set() });
+  }
   const rows = db
     .prepare("select component, name, top_level from parameter")
     .all();
   for (const { component, name, top_level } of rows) {
     assert.ok(typeof component === "string" && typeof name === "string");
     assert.equal(typeof top_level, "number");
-    let entry = documented.get(component);
-    if (!entry) {
-      entry = { top: new Set(), row: new Set() };
-      documented.set(component, entry);
-    }
+    const entry = documented.get(component);
+    assert.ok(entry, component);
     (top_level ? entry.top : entry.row).add(name);
   }
   db.close();
@@ -268,18 +245,12 @@ function read_documentation(): Map<string, TemplateProperties> {
 const templates = read_templates();
 const documented = read_documentation();
 
-test("every component documented by the official site has a template", () => {
-  const missing = [...documented.keys()].filter(
-    (component) =>
-      !templates.has(component) &&
-      !COMPONENTS_WITHOUT_A_TEMPLATE.has(component),
-  );
-  assert.deepEqual(
-    missing,
-    [],
-    `These components are documented but have no sqlpage/templates/*.handlebars file. ` +
-      `If they are rendered by src/render.rs, add them to COMPONENTS_WITHOUT_A_TEMPLATE.`,
-  );
+test("the official site documents every public component", () => {
+  const publicComponents = [
+    ...templates.keys(),
+    ...COMPONENTS_WITHOUT_A_TEMPLATE,
+  ];
+  assert.deepEqual([...documented.keys()].sort(), publicComponents.sort());
 });
 
 test("every property read by a template is documented", () => {
@@ -299,8 +270,7 @@ test("every property read by a template is documented", () => {
   assert.deepEqual(
     undocumented.sort(),
     [],
-    `These properties are read by a template but not documented. Add a row to ` +
-      `the component's migration in examples/official-site/sqlpage/migrations/.`,
+    "These properties are read by a template but not documented. Update the component page in examples/official-site/content/components/.",
   );
 });
 
@@ -326,7 +296,7 @@ test("every documented property is read by its template", () => {
   assert.deepEqual(
     unimplemented.sort(),
     [],
-    `Remove the documentation, or fix its top_level, in ` +
-      `examples/official-site/sqlpage/migrations/.`,
+    `Remove the documentation, or correct its parameter group, in ` +
+      `examples/official-site/content/components/.`,
   );
 });

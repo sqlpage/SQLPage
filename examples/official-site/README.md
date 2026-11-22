@@ -4,12 +4,30 @@ The SQLPage website is of course built with SQLPage !
 
 Things that you may be interested to look at:
  - The [custom component we use for our stylish home page](./sqlpage/templates/landing-page.handlebars)
- - The [migrations](./sqlpage/migrations) that populate the database with the documentation for all components
+ - The [component reference](./content/components/) and its live examples
  - The [advanced multistep form example](./examples/multistep-form/)
 
 It is hosted as a simple Docker container on [sql-page.com](https://sql-page.com).
 
 Feel free to [open a pull request](https://github.com/lovasoa/sqlpage/pulls) if you would like to add or change anything !
+
+## Editing documentation
+
+Run `npm ci --ignore-scripts` from the repository root, then `npm run site`. The preview
+rebuilds when you save a content file. It uses the same build as deployment.
+
+- Edit a [component](./content/components/form.md) or [function](./content/functions/link.md) in Markdown. Its filename is its public name. Put its category, summary, and parameters in the YAML header and write its description below.
+- Add component examples beside the component page, in its [examples directory](./content/components/form/examples/). Follow the numbered filenames to set display order. The Markdown body explains the example. The optional `rows` in the YAML header supply both the rendered component and the copyable SQL.
+- Add a [blog post](./content/blog/) as Markdown. The [guide directory](./content/guides.yaml) and [example project cards](./content/projects.yaml) use YAML.
+- Document server settings on [the Rust configuration fields](../../src/app_config.rs). The website builds its configuration reference from their public names, input types, comments, and defaults.
+
+Run `npm run site:build` to create a runnable site in `target/official-site/`.
+From there, run a SQLPage binary directly. For Docker, run the same build and
+then `docker compose -f examples/official-site/docker-compose.yml up --build`
+from the repository root. The prepared directory includes the generated database
+seed and runs without Node.js or the Rust toolchain.
+
+## Landing page
 
 The home page is rendered by `index.sql` and the `landing-page` custom template.
 Its styles, ES modules, model, lighting map, and static preview are under
@@ -29,7 +47,7 @@ behavior through `tabs.js` and delegates iframe/source switching to
 components in `landing-demos/`, with `demo.css` sizing the rendered content.
 
 Demo customer, ticket, feedback and profile defaults come from
-`78_landing_demos.sql`. The source endpoint reads the same SQL files from a fixed
+[the demo database fixtures](../../scripts/site/schema.sql). The source endpoint reads the same SQL files from a fixed
 allowlist, never an arbitrary request path. Profile submissions are validated on
 the server and rendered in that POST response only. They do not change the shared
 database, create visitor storage, or put submitted values in URLs. A new GET of

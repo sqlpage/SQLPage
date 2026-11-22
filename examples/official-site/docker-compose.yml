@@ -1,5 +1,5 @@
 services:
   web:
-    build: .
+    build: ../../target/official-site
     ports:
       - "8080:8080"

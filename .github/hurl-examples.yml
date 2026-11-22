@@ -45,6 +45,13 @@ all_examples:
   - 'src/webserver/database/sqlpage_functions/functions/user_info*.rs'
   - 'src/webserver/database/sqlpage_functions/functions/oidc_logout_url.rs'
 
+# The configuration reference is built from Rust field metadata.
+'examples/official-site':
+  - 'src/app_config.rs'
+  - 'src/app_config/**'
+  - 'package*.json'
+  - 'configuration.md'
+
 # A real proxy connects to SQLPage's Unix socket and rewrites pretty URLs.
 'examples/nginx':
   - 'src/app_config.rs'
