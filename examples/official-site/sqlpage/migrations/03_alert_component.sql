@@ -56,7 +56,7 @@ VALUES (
     (
         'alert',
         'dismissible',
-        'Whether the user can close the alert message.',
+        'Whether to show a Close button. Users can Tab to it and press Enter or Space to dismiss the alert.',
         'BOOLEAN',
         TRUE,
         TRUE
