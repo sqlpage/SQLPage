@@ -129,26 +129,22 @@ mod tests {
     use std::collections::BTreeSet;
 
     #[test]
-    fn functions_directory_matches_registered_functions() {
-        let directory = concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/src/webserver/database/sqlpage_functions/functions"
-        );
-        let files: BTreeSet<String> = std::fs::read_dir(directory)
-            .expect("functions directory")
-            .map(|entry| entry.expect("directory entry").path())
-            .filter(|path| path.extension().is_some_and(|extension| extension == "rs"))
-            .map(|path| {
-                path.file_stem()
-                    .expect("file stem")
-                    .to_string_lossy()
-                    .into_owned()
-            })
-            .collect();
+    fn registered_functions_have_a_module_and_documentation() {
         let registered: BTreeSet<String> = SqlPageFunctionName::ALL
             .iter()
             .map(|function| function.name().to_owned())
             .collect();
-        assert_eq!(files, registered);
+        for (directory, extension) in [
+            ("src/webserver/database/sqlpage_functions/functions", "rs"),
+            ("examples/official-site/content/functions", "md"),
+        ] {
+            let files: BTreeSet<_> = std::fs::read_dir(directory)
+                .unwrap_or_else(|error| panic!("{directory}: {error}"))
+                .map(|entry| entry.expect("directory entry").path())
+                .filter(|path| path.extension().is_some_and(|ext| ext == extension))
+                .map(|path| path.file_stem().unwrap().to_string_lossy().into_owned())
+                .collect();
+            assert_eq!(files, registered, "{directory}");
+        }
     }
 }
