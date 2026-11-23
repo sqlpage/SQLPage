@@ -158,7 +158,7 @@
     </ul>
     {{#if search_target}}
         <form class="d-flex" role="search" action="{{search_target}}">
-            <input class="form-control me-2" type="search" placeholder="{{default search_placeholder 'Search'}}" aria-label="Search" name="search" value="{{search_value}}">
+            <input class="form-control me-2" type="search" placeholder="{{default search_placeholder 'Search'}}" aria-label="{{default search_placeholder 'Search'}}" name="search" value="{{search_value}}">
             <button class="btn btn-outline-success" type="submit">{{default search_button 'Search'}}</button>
         </form>
     {{/if}}
