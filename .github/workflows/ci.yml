@@ -64,6 +64,13 @@ jobs:
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - run: cargo fmt --all -- --check
       - run: cargo clippy --all-targets --all-features -- -D warnings
+      - name: Prepare official website
+        run: npm run site:build
+      - name: Upload prepared website
+        uses: actions/upload-artifact@v7
+        with:
+          name: official-site
+          path: target/official-site/
       # The database matrix below runs the same Rust test harnesses against
       # different DATABASE_URL values. Package the Linux test executables once
       # here so those jobs do not recompile SQLPage or its dependencies.
@@ -244,6 +251,11 @@ jobs:
         with:
           name: sqlpage-linux-debug
           path: ${{ runner.temp }}/sqlpage-bin
+      - name: Download prepared website
+        uses: actions/download-artifact@v8
+        with:
+          name: official-site
+          path: target/official-site
       - name: Run Playwright tests
         run: |
           chmod +x "${{ runner.temp }}/sqlpage-bin/sqlpage"
@@ -417,6 +429,7 @@ jobs:
     timeout-minutes: 15
     needs:
       - docker_build
+      - compile_and_lint
       - hurl_examples
     strategy:
       fail-fast: false
@@ -443,6 +456,12 @@ jobs:
           if [[ "$SQLPAGE_IMAGE_VARIANT" == minimal ]]; then
             docker tag "${{ env.REGISTRY_IMAGE }}:main" "${{ env.REGISTRY_IMAGE }}:latest"
           fi
+      - name: Download prepared website
+        if: matrix.example == 'examples/official-site'
+        uses: actions/download-artifact@v8
+        with:
+          name: official-site
+          path: target/official-site
       - name: Run example Hurl test
         run: scripts/test-examples-hurl.sh "${{ matrix.example }}"
 
@@ -521,7 +540,7 @@ jobs:
           docker buildx imagetools inspect "${REGISTRY_IMAGE}:${GITHUB_REF_NAME}${TAG_SUFFIX}"
 
   deploy_official_site:
-    needs: docker_push
+    needs: [compile_and_lint, docker_push]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
       contents: read

@@ -76,7 +76,7 @@ export default defineConfig({
     {
       name: "official site",
       command: sqlpage,
-      cwd: "../../examples/official-site",
+      cwd: path.join(repository, "target", "official-site"),
       env: { SQLPAGE_LISTEN_ON: listenOn(18080) },
       wait: { stderr: officialSite.announcement },
       timeout: compileAndStart,

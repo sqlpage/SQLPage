@@ -11,6 +11,19 @@ It is hosted as a simple Docker container on [sql-page.com](https://sql-page.com
 
 Feel free to [open a pull request](https://github.com/lovasoa/sqlpage/pulls) if you would like to add or change anything !
 
+## Preview and deployment
+
+Run `npm ci --ignore-scripts` from the repository root, then `npm run site`.
+The preview uses the same build as CI and deployment. Rerun the command after editing the site.
+
+After `npm run build`, run `npm run site:build` to prepare the site under
+`target/official-site/`.
+Run SQLPage from that directory, or run
+`docker compose -f examples/official-site/docker-compose.yml up --build` from
+the repository root.
+
+## Landing page
+
 The home page is rendered by `index.sql` and the `landing-page` custom template.
 Its styles, ES modules, model, lighting map, and static preview are under
 `assets/landing/`; no separate HTML entry point or frontend build is required.

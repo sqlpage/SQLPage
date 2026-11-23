@@ -23,6 +23,14 @@ test("Open documentation", async ({ page }) => {
   await expect(
     example.getByRole("link", { name: "The list component" }),
   ).toBeVisible();
+
+  const response = await page.goto("/component.sql?component=button");
+  expect(response?.status()).toBe(200);
+  await expect(
+    page
+      .locator('button[type="submit"][form="poem"][formaction^="?action"]')
+      .first(),
+  ).toBeVisible();
 });
 
 async function expectContrast(
@@ -674,7 +682,13 @@ test("login labels target the fields in their own example", async ({
   );
 });
 
-test("Authentication example", async ({ page }) => {
+test("Authentication example", async ({ page, request }) => {
+  const unauthorized = await request.get(
+    "/examples/authentication/basic_auth.sql",
+  );
+  expect(unauthorized.status()).toBe(401);
+  expect(await unauthorized.text()).toContain("Unauthorized");
+
   await page.goto("/examples/authentication/login.sql");
   await expect(page.locator("h1", { hasText: "Authentication" })).toBeVisible();
 

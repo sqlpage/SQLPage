@@ -56,6 +56,7 @@ Keep formatting scoped to changed files. `npm test` checks formatting, lint,
 types, and frontend unit tests. Dynamic frontend changes also need Playwright:
 
 ```bash
+npm run site:build
 cd tests/end-to-end
 npx playwright install --with-deps --only-shell chromium
 npm test
@@ -74,6 +75,7 @@ The fixtures run on in-memory SQLite. To reproduce an issue with another databas
 
 For examples with `test.hurl`, run
 `scripts/test-examples-hurl.sh '<example-path>'` from the repository root.
+For the official site, run `npm run site:build` first.
 
 Integration tests use the shared request helpers in [tests/common](./tests/common/mod.rs)
 to exercise production routes and middleware and drain request pools.
@@ -100,8 +102,10 @@ behavior and validation in the pull request. Keep changes and formatting focused
 Architectural constraints and documentation maintenance rules are in
 [AGENTS.md](./AGENTS.md).
 
-User documentation lives in [the official-site SQL pages and migrations](./examples/official-site/).
-Edit existing documentation in place: deployment recreates the site database.
-Use nearby entries as examples rather than copying schemas into this guide. Update
-[configuration.md](./configuration.md) for configuration changes and
+Edit existing documentation in the [official site](./examples/official-site/) in place.
+Deployment recreates the website's database from the site's SQL migrations.
+
+Run `npm run site` to preview changes using the same site build as deployment.
+
+Update [configuration.md](./configuration.md) for configuration changes and
 [CHANGELOG.md](./CHANGELOG.md) for user-visible changes in an unreleased version.

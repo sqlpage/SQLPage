@@ -38,8 +38,11 @@ relevant tests and the formatting/lint checks in CONTRIBUTING.md before stopping
 Report unavailable checks and failures accurately; a test summary followed by a
 hung process is a failure.
 
-The official site in `examples/official-site/` is rebuilt from its SQL migrations
-on deployment. Update the existing page or documentation migration for changed
-behavior; add a migration only for new documentation content. Document user-visible
-changes there and in configuration.md when applicable. Add a concise CHANGELOG.md
-entry only for user-visible changes, and never edit an already tagged release.
+Update the existing page or documentation migration for changed behavior. Add a
+migration only for new documentation content.
+
+Build and preview the official site with the commands in its [README](./examples/official-site/README.md).
+Update `configuration.md` for configuration changes.
+
+Add a concise CHANGELOG.md entry only for user-visible changes, and never edit
+an already tagged release.
