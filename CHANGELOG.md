@@ -16,6 +16,7 @@
 - Set `wrap` on a `big_number` component to show long titles and descriptions across multiple lines.
 - Inline icons now align with their labels in components such as tabs and steps.
 - Keyboard users can now Tab to a dismissible alert’s Close button and press Enter or Space to dismiss it. ([#1612](https://github.com/sqlpage/SQLPage/issues/1612))
+- The search field of the `shell` now uses `search_placeholder` as its accessible name, so screen readers announce the customized text instead of the fixed English "Search". ([#1628](https://github.com/sqlpage/SQLPage/issues/1628))
 
 ## v0.48.0 (2026-11-12)
 
