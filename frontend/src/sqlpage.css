@@ -130,6 +130,27 @@ li p {
   background: var(--tblr-active-bg) !important;
 }
 
+.leaflet-container :is(.leaflet-popup-content-wrapper, .leaflet-popup-tip) {
+  background: var(--tblr-bg-surface);
+  color: var(--tblr-body-color);
+}
+
+.leaflet-container .leaflet-popup-content a {
+  color: var(--tblr-link-color);
+}
+
+.leaflet-container .leaflet-popup-content a:hover {
+  color: var(--tblr-link-hover-color);
+}
+
+.leaflet-container .leaflet-popup a.leaflet-popup-close-button {
+  color: var(--tblr-secondary-color);
+}
+
+.leaflet-container .leaflet-popup a.leaflet-popup-close-button:hover {
+  color: var(--tblr-body-color);
+}
+
 /*
 See https://github.com/tabler/tabler/issues/2404
 */

@@ -392,7 +392,7 @@ test("switch installation target and copy its command on a phone", async ({
   ).toBeVisible();
 
   await installer
-    .getByRole("navigation", { name: "Operating system" })
+    .getByRole("navigation", { name: "Installation target" })
     .getByRole("link", { name: "Windows", exact: true })
     .press("Enter");
   const download = installer.getByRole("link", {
@@ -400,8 +400,8 @@ test("switch installation target and copy its command on a phone", async ({
   });
   await expect(download).toHaveAttribute("href", /\/sqlpage-windows\.zip$/);
   await expect(
-    installer.getByText("sqlpage-windows.zip", { exact: true }),
-  ).toBeVisible();
+    installer.getByRole("link", { name: "sqlpage-windows.zip", exact: true }),
+  ).toHaveAttribute("href", /\/sqlpage-windows\.zip$/);
   await installer
     .getByRole("navigation", { name: "Installation method" })
     .getByRole("link", { name: "Scoop", exact: true })
@@ -420,6 +420,30 @@ test("switch installation target and copy its command on a phone", async ({
   await expect(download).toBeVisible();
 });
 
+test("download the AWS Lambda archive from the installation widget", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 700 });
+  await page.goto("/your-first-sql-website/?os=windows#download");
+  const installer = page.locator("#download");
+  const lambda = installer
+    .getByRole("navigation", { name: "Installation target" })
+    .getByRole("link", { name: "AWS Lambda" });
+  await lambda.click();
+  await expect(lambda).toHaveAttribute("aria-current", "true");
+  const archive = installer.getByRole("link", {
+    name: "sqlpage-aws-lambda.zip",
+    exact: true,
+  });
+  await expect(archive).toHaveAttribute("href", /\/sqlpage-aws-lambda\.zip$/);
+  await expect(
+    installer.getByText("provided.al2023", { exact: true }),
+  ).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
+    320,
+  );
+});
+
 test.describe("installation without JavaScript", () => {
   test.use({ javaScriptEnabled: false });
 
@@ -429,12 +453,12 @@ test.describe("installation without JavaScript", () => {
     await page.goto("/your-first-sql-website/?os=windows#download");
     const installer = page.locator("#download");
     await installer
-      .getByRole("navigation", { name: "Operating system" })
+      .getByRole("navigation", { name: "Installation target" })
       .getByRole("link", { name: "Linux", exact: true })
       .click();
     await expect(
-      installer.locator('a[href$="/sqlpage-linux.tgz"]'),
-    ).toBeVisible();
+      installer.getByRole("link", { name: "sqlpage-linux.tgz", exact: true }),
+    ).toHaveAttribute("href", /\/sqlpage-linux\.tgz$/);
     await installer
       .getByRole("navigation", { name: "Installation method" })
       .getByRole("link", { name: "Docker", exact: true })
@@ -559,10 +583,16 @@ for (const width of [320, 390]) {
   });
 }
 
-test("map", async ({ page }) => {
+test("map marker titles are readable when opened in the dark theme", async ({
+  page,
+}) => {
   await page.goto("/documentation.sql?component=map#component");
   await expect(page.getByText("Loading...")).not.toBeVisible();
-  await expect(page.locator(".leaflet-marker-icon").first()).toBeVisible();
+  const marker = page.locator('.leaflet-marker-icon[title="New Delhi"]');
+  await marker.click();
+  const popup = page.locator(".leaflet-popup");
+  await expectContrast(popup.getByRole("heading", { name: "New Delhi" }), 4.5);
+  await expectContrast(popup.getByRole("button", { name: "Close popup" }), 4.5);
 });
 
 test("toast notifications initialize, stack, dismiss, and render safely (page)", async ({

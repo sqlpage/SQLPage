@@ -44,7 +44,7 @@ Key features:
 
 ## Getting Started
 
-- [Install SQLPage](/your-first-sql-website/#download): Choose a download or package manager for macOS, Windows, or Linux
+- [Install SQLPage](/your-first-sql-website/#download): Choose a download or package manager for macOS, Windows, Linux, or AWS Lambda
 - [Your first SQL website](/your-first-sql-website/tutorial.md): Build a website, connect a database, handle forms, and deploy
 
 ## Core Documentation

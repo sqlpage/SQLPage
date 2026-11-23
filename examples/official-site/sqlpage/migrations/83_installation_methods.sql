@@ -7,7 +7,9 @@ with downloads(os, position, archive, target, notes) as (
         ('windows', 1, 'sqlpage-windows.zip', 'Windows x64',
          'Extract the ZIP into your website folder. Keep the `sqlpage` folder alongside `sqlpage.exe`, then double-click the executable to start your site.'),
         ('linux', 1, 'sqlpage-linux.tgz', 'Linux x86-64',
-         'Extract the archive in your website folder, then run `./sqlpage.bin` there. For an ARM device such as a Raspberry Pi, [use Docker](?os=linux&method=docker#download).')
+         'Extract the archive in your website folder, then run `./sqlpage.bin` there. For an ARM device such as a Raspberry Pi, [use Docker](?os=linux&method=docker#download).'),
+        ('aws-lambda', 1, 'sqlpage-aws-lambda.zip', 'AWS Lambda',
+         'Add your SQL files to the ZIP and keep the `sqlpage` folder. [Upload the package to Lambda](https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-package.html#gettingstarted-package-zip) and choose the `provided.al2023` runtime.')
 ),
 packages(method, label, command, notes) as (
     values

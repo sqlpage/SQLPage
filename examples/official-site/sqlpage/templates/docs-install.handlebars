@@ -5,8 +5,8 @@
     </div>
     <div class="card">
         <div class="install-controls">
-            <nav aria-label="Operating system" class="install-options">
-                <span class="install-label" aria-hidden="true">OS</span>
+            <nav aria-label="Installation target" class="install-options">
+                <span class="install-label" aria-hidden="true">Target</span>
                 <div class="nav">
                     {{#each (to_array platforms)}}
                         <a class="nav-link" href="{{link}}" {{#if active}}aria-current="true"{{/if}}>
@@ -15,7 +15,7 @@
                     {{/each}}
                 </div>
             </nav>
-            {{#if (or command download_url)}}
+            {{#if methods}}
             <nav aria-label="Installation method" class="install-options">
                 <span class="install-label" aria-hidden="true">Method</span>
                 <div class="nav">
@@ -30,7 +30,7 @@
             {{#if download_url}}
                 <div class="d-flex flex-wrap align-items-baseline gap-2">
                     <strong>{{target}}</strong>
-                    <span class="font-monospace small text-secondary">{{archive}}</span>
+                    <a class="font-monospace small text-break text-decoration-underline" href="{{download_url}}">{{archive}}</a>
                 </div>
                 <a class="btn btn-blue gap-2" href="{{download_url}}">{{icon_img "download" 18}} Download<span class="visually-hidden"> {{archive}} for {{target}}</span></a>
             {{else if command}}
@@ -42,7 +42,7 @@
                     <code tabindex="-1">{{command}}</code>
                 </div>
             {{else}}
-                <p class="text-secondary mb-0">Choose the operating system you want to install SQLPage on.</p>
+                <p class="text-secondary mb-0">Choose where you want to run SQLPage.</p>
             {{/if}}
             {{#if notes}}<div class="install-notes">{{{markdown notes}}}</div>{{/if}}
         </div>

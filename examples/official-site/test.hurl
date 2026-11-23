@@ -116,20 +116,20 @@ GET http://localhost:8080/your-first-sql-website/?os=windows&method=homebrew
 User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)
 HTTP 200
 [Asserts]
-xpath "//*[@id='download']//a[contains(@href,'/releases/latest/download/sqlpage-windows.zip')]" count == 1
+xpath "//*[@id='download']//a[normalize-space()='sqlpage-windows.zip' and contains(@href,'/releases/latest/download/sqlpage-windows.zip')]" count == 1
 
 GET http://localhost:8080/your-first-sql-website/
 User-Agent: Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Mobile Safari/537.36
 HTTP 200
 [Asserts]
-xpath "//*[@id='download']//nav[@aria-label='Operating system']//a[not(@aria-current)]" count == 3
+xpath "//*[@id='download']//nav[@aria-label='Installation target']//a[not(@aria-current)]" count == 4
 xpath "//*[@id='download']//a[contains(@href,'/releases/latest/download/')]" count == 0
 
 GET http://localhost:8080/your-first-sql-website/?os=any
 User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)
 HTTP 200
 [Asserts]
-xpath "//*[@id='download']//nav[@aria-label='Operating system']//a[not(@aria-current)]" count == 3
+xpath "//*[@id='download']//nav[@aria-label='Installation target']//a[not(@aria-current)]" count == 4
 
 GET http://localhost:8080/examples/tabs/?db=postgres
 HTTP 302

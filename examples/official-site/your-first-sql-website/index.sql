@@ -35,7 +35,10 @@ set selected_os = coalesce(
 select 'docs-intro' as component, true as compact, true as photograph,
     'Your first SQL website' as title,
     'Connect a database, display its rows, and let visitors add a record through a form.' as description,
-    coalesce('get_started_' || $selected_os || '.webp', 'get_started.webp') as image;
+    case when $selected_os in ('macos', 'windows', 'linux')
+        then 'get_started_' || $selected_os || '.webp'
+        else 'get_started.webp'
+    end as image;
 
 set selected_method = select method from install_option
     where os = $selected_os
@@ -45,7 +48,8 @@ set selected_method = select method from install_option
 with platforms(os, label, icon, position) as (values
     ('macos', 'macOS', 'brand-apple', 1),
     ('windows', 'Windows', 'brand-windows', 2),
-    ('linux', 'Linux', 'terminal-2', 3)
+    ('linux', 'Linux', 'terminal-2', 3),
+    ('aws-lambda', 'AWS Lambda', 'cloud', 4)
 ), selection(os, method) as (values ($selected_os, $selected_method))
 select 'docs-install' as component, command, download_url, archive, target, notes,
     (select json_group_array(json_object(
@@ -60,6 +64,7 @@ select 'docs-install' as component, command, download_url, archive, target, note
         'link', '?os=' || os || '&method=' || method || '#download'
     ) order by position)
     from install_option where os = $selected_os
+    having count(*) > 1
     ) as methods
 from selection left join install_option using (os, method);
 
