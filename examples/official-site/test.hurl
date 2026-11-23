@@ -32,6 +32,20 @@ body contains "The form component"
 body contains "Building forms in SQL"
 body not contains "An error occurred"
 
+GET http://localhost:8080/component.sql?component=unknowncomponent
+HTTP 302
+[Asserts]
+header "Location" == "component_not_found.sql?component=unknowncomponent"
+
+GET http://localhost:8080/component_not_found.sql?component=unknowncomponent
+HTTP 404
+[Asserts]
+header "X-Robots-Tag" == "noindex"
+xpath "normalize-space(//main//h1)" == "Component not found"
+xpath "//main//a[@href='/components.sql']" count == 1
+xpath "//main//img[starts-with(@src,'http') or starts-with(@src,'//')]" count == 0
+xpath "//main//*[normalize-space(@role)='alert']" count == 0
+
 GET http://localhost:8080/functions.sql?q=variables
 HTTP 200
 [Asserts]

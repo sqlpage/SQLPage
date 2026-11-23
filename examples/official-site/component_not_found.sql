@@ -1,34 +1,17 @@
+select 'status_code' as component, 404 as status;
 select 'http_header' as component, 'noindex' as "X-Robots-Tag";
-
 select 'shell-docs' as component, 'Component not found - SQLPage' as title;
 
-select 
-    'hero'                 as component,
-    'Not found'              as title,
-    'Sorry, the component you were looking for does not exist.' as description_md,
-    'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Sad_clown.jpg/640px-Sad_clown.jpg' as image,
-    '/documentation.sql'   as link,
-    'Back to the documentation' as link_text;
+select 'text' as component, 'Component not found' as title,
+    'Browse the [component catalog](/components.sql) to find available components and examples.' as contents_md;
 
--- Friendly message after an XSS or SQL injection attempt
-set attack = CASE WHEN
-    $component LIKE '%<%' or $component LIKE '%>%' or $component LIKE '%/%' or $component LIKE '%;%'
-    or $component LIKE '%--%' or $component LIKE '%''%' or $component LIKE '%(%'
-THEN 'attacked' END;
+set show_security_note = $component like '%<%' or $component like '%>%' or $component like '%/%'
+    or $component like '%;%' or $component like '%--%' or $component like '%''%' or $component like '%(%';
 
-select 
-    'alert'                    as component,
-    'A note about security'    as title,
-    'alert-triangle'           as icon,
-    'teal'                     as color,
-    TRUE              as important,
-    'SQLPage takes secutity very seriously.
-Fiddling with the URL to try to access data you are not supposed to see, or to
-trigger a SQL or javacript injection, should never work.
+select 'alert' as component, 'A note about security' as title,
+    'alert-triangle' as icon, 'teal' as color, true as important,
+    'SQLPage treats component names as data. If you think you have found a vulnerability, please report it privately to the maintainers.' as description
+where $show_security_note;
 
-However, if you think you have found a security issue, please
-report it and we will fix it as soon as possible.
-' as description
-where $attack = 'attacked';
-select 'safety.sql' as link, 'More about SQLPage security' as title where $attack='attacked';
-select 'https://github.com/sqlpage/SQLPage/security' as link, 'Report a vulnerability' as title where $attack='attacked';
+select '/safety.sql' as link, 'More about SQLPage security' as title where $show_security_note;
+select 'https://github.com/sqlpage/SQLPage/security' as link, 'Report a vulnerability' as title where $show_security_note;

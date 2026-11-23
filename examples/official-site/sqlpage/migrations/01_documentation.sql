@@ -1540,7 +1540,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('theme', 'Set to "dark" to use a dark theme.', 'TEXT', TRUE, TRUE),
     ('footer', 'Muted text to display in the footer of the page. This can be used to display a link to the terms and conditions of your application, for instance. By default, shows "Built with SQLPage". Supports links with markdown.', 'TEXT', TRUE, TRUE),
     ('preview_image', 'The URL of an image to display as a link preview when the page is shared on social media', 'URL', TRUE, TRUE),
-    ('navbar_title', 'The title to display in the top navigation bar. Used to display a different title in the top menu than the one that appears in the tab of the browser.', 'TEXT', TRUE, TRUE),
+    ('navbar_title', 'The title shown in the navigation bar or sidebar. Defaults to the page title. Set an empty string to show just the logo.', 'TEXT', TRUE, TRUE),
     ('target', 'Where the menu items should open: "_blank" for a new tab, "_self" for the same tab, "_parent" for the parent frame, or "_top" for the full body of the window. Set it inside a "menu_item" json object; it has no effect when set directly on the shell.', 'TEXT', TRUE, TRUE),
     ('class', 'class attribute added to the page''s html element. It can be used to apply custom styling to the whole page through css.', 'TEXT', TRUE, TRUE)
 ) x;
@@ -1560,6 +1560,7 @@ You see the [page layouts demo](./examples/layouts.sql) for a live example of th
      json('[{
             "component": "shell",
             "title": "SQLPage: SQL websites",
+            "navbar_title": "SQLPage",
             "link": "/",
             "menu_item": [
                 {"title": "About", "submenu": [

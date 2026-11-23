@@ -28,10 +28,10 @@ test("Open documentation", async ({ page }) => {
 async function expectContrast(
   locator: Locator,
   minimum: number,
-  marker = false,
+  property: "color" | "outlineColor" | "marker" = "color",
 ) {
   await expect(locator).toBeVisible();
-  const ratio = await locator.evaluate((element, marker) => {
+  const ratio = await locator.evaluate((element, property) => {
     // Normalize computed CSS colors and composite transparent fills onto their surfaces.
     const canvas = document.createElement("canvas");
     canvas.width = canvas.height = 1;
@@ -66,16 +66,17 @@ async function expectContrast(
       context.fillRect(0, 0, 1, 1);
     }
     const background = luminance(context);
-    context.fillStyle = marker
-      ? getComputedStyle(element, "::before").backgroundColor
-      : getComputedStyle(element).color;
+    context.fillStyle =
+      property === "marker"
+        ? getComputedStyle(element, "::before").backgroundColor
+        : getComputedStyle(element)[property];
     context.fillRect(0, 0, 1, 1);
     const foreground = luminance(context);
     return (
       (Math.max(foreground, background) + 0.05) /
       (Math.min(foreground, background) + 0.05)
     );
-  }, marker);
+  }, property);
   expect(ratio, `contrast for ${locator}`).toBeGreaterThanOrEqual(minimum);
 }
 
@@ -94,11 +95,12 @@ test("active page numbers have readable contrast in every pagination style", asy
 test("the official theme keeps filled controls and alerts readable", async ({
   page,
 }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/component.sql?component=form");
   const checkedSwitch = page
     .locator(".form-switch .form-check-input:checked")
     .first();
-  await expectContrast(checkedSwitch, 3, true);
+  await expectContrast(checkedSwitch, 3, "marker");
 
   await page.goto("/component.sql?component=button");
   const info = page
@@ -114,6 +116,21 @@ test("the official theme keeps filled controls and alerts readable", async ({
     4.5,
   );
   await expectContrast(page.locator(".alert-important .alert-link"), 4.5);
+
+  await page.goto("/component_not_found.sql?component=%27form");
+  const actions = page.getByRole("alert").getByRole("link");
+  await expect(actions).toHaveCount(2);
+  for (const action of await actions.all()) {
+    await expectContrast(action, 4.5);
+    await action.hover();
+    await expectContrast(action, 4.5);
+  }
+  await page.mouse.move(0, 0);
+  await actions.first().focus();
+  await page.keyboard.press("Tab");
+  await expect(actions.last()).toBeFocused();
+  await expectContrast(actions.last(), 4.5);
+  await expectContrast(actions.last(), 3, "outlineColor");
 });
 
 test("light color swatches and homepage links have readable labels", async ({
@@ -459,6 +476,24 @@ test("toast notifications initialize, stack, dismiss, and render safely (page)",
 }) => {
   await page.goto("/documentation.sql?component=toast#component");
   await checkToastNotifications(page);
+});
+
+test("the layout demo keeps its brand when switching to a sidebar", async ({
+  page,
+}) => {
+  await page.goto("/examples/layouts.sql?layout=fluid");
+  const header = page.locator("#sqlpage_header");
+  const brand = header.getByRole("link", { name: "SQLPage", exact: true });
+  await expect(brand).toBeVisible();
+
+  await page.getByRole("link", { name: /Sidebar Display menu/ }).click();
+  await expect(page).toHaveTitle("Shell layouts | SQLPage");
+  await expect(brand).toBeVisible();
+  await expect(brand.locator("img")).toHaveCSS("filter", "none");
+  await expect(brand).toHaveAttribute("href", "/");
+  expect(await brand.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(
+    true,
+  );
 });
 
 test("form example", async ({ page }) => {

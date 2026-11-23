@@ -166,7 +166,7 @@
 
 <body class="layout-{{#if sidebar}}fluid{{else}}{{default layout 'boxed'}}{{/if}}" {{#if theme}}data-bs-theme="{{theme}}" {{/if}}>
     <div class="page">
-        {{#if (or (or title (or icon image)) (or menu_item search_target))}}
+        {{#if (any title navbar_title icon image menu_item search_target)}}
         <header id="sqlpage_header">
         {{#if sidebar}}
         <aside class="navbar navbar-vertical navbar-expand-lg" {{#if sidebar_theme}}data-bs-theme="{{sidebar_theme}}" {{/if}}>
@@ -174,17 +174,15 @@
                 <button class="navbar-toggler collapsed" type="button" data-bs-target="#sidebar-menu" aria-controls="sidebar-menu" data-bs-toggle="collapse" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
-                <span class="navbar-brand navbar-brand-autodark d-inline ps-2 text-truncate">
-                    <a class="text-decoration-none text-body" href="{{#if link}}{{link}}{{else}}/{{/if}}">
-                        {{#if image}}
-                            <img src="{{image}}" alt="{{title}}" height="32" class="navbar-brand-image">
-                        {{/if}}
-                        {{#if icon}}
-                            {{~icon_img icon~}}
-                        {{/if}}
-                        <span class="pe-2 pe-lg-0 align-middle">{{title}}</span>
-                    </a>
-                </span>
+                <a class="navbar-brand d-inline ps-2 text-truncate" href="{{#if link}}{{link}}{{else}}/{{/if}}">
+                    {{#if image}}
+                        <img src="{{image}}" alt="{{#unless (default navbar_title title)}}{{default title 'Home'}}{{/unless}}" height="32" class="navbar-brand-image">
+                    {{/if}}
+                    {{#if icon}}
+                        {{~icon_img icon~}}
+                    {{/if}}
+                    <span class="pe-2 pe-lg-0 align-middle">{{default navbar_title title}}</span>
+                </a>
                 <div class="navbar-collapse collapse" id="sidebar-menu">
                     {{> menu-items menu_item=menu_item}}
                 </div>
