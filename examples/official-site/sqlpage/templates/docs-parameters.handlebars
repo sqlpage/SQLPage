@@ -14,7 +14,7 @@
                         {{#if required}}<strong class="ms-2 text-primary">Required</strong>{{/if}}
                     </small>
                 </dt>
-                <dd class="col-sm mb-0 text-break remove-bottom-margin">{{{markdown description_md}}}</dd>
+                <dd class="col-sm mb-0 text-break remove-bottom-margin">{{{markdown description_md}}}{{#if default_md}}<p><strong>Default</strong></p>{{{markdown default_md}}}{{/if}}</dd>
             </div>
         {{/each}}
     </dl>

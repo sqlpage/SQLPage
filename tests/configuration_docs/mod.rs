@@ -1,32 +1,71 @@
+#![cfg(feature = "config-schema")]
+
+use schemars::schema_for;
 use serde::Deserialize;
 use serde::de::value::Error as DeError;
 use serde::de::{Deserializer, Visitor};
+use serde_json::json;
 use sqlpage::app_config::AppConfig;
 use std::collections::BTreeSet;
 
 #[test]
-fn configuration_md_documents_every_option() {
-    let documented = documented_option_names();
-    let implemented = app_config_option_names();
-
-    let undocumented: Vec<_> = implemented.difference(&documented).collect();
-    let unimplemented: Vec<_> = documented.difference(&implemented).collect();
-
-    assert!(
-        undocumented.is_empty() && unimplemented.is_empty(),
-        "configuration.md and AppConfig disagree.\n\
-         Missing from configuration.md: {undocumented:?}\n\
-         Documented but not in AppConfig: {unimplemented:?}"
+fn every_public_setting_has_a_description() {
+    let schema = schema_for!(AppConfig);
+    let properties = schema.get("properties").unwrap().as_object().unwrap();
+    assert_eq!(
+        properties.keys().cloned().collect::<BTreeSet<_>>(),
+        app_config_option_names()
     );
+    for (name, property) in properties {
+        assert!(
+            property["description"]
+                .as_str()
+                .is_some_and(|text| !text.trim().is_empty()),
+            "{name} needs a Rust doc comment"
+        );
+    }
 }
 
-fn documented_option_names() -> BTreeSet<String> {
-    let table = std::fs::read_to_string("configuration.md").unwrap();
-    table
-        .lines()
-        .filter_map(|line| line.strip_prefix("| `")?.split('`').next())
-        .map(str::to_owned)
-        .collect()
+#[test]
+fn schema_documents_input_types_and_effective_defaults() {
+    let schema = schema_for!(AppConfig);
+    let properties = schema.get("properties").unwrap();
+    let timeout = &properties["database_connection_idle_timeout_seconds"];
+    assert_eq!(timeout["type"], json!(["number", "null"]));
+    assert!(
+        timeout["x-default-description"]
+            .as_str()
+            .unwrap()
+            .contains("SQLite")
+    );
+    assert!(timeout.get("default").is_none());
+    assert_eq!(properties["site_prefix"]["default"], "/");
+    assert_eq!(properties["smtp_tls_mode"]["default"], "starttls");
+    assert_eq!(properties["web_root"]["default"], ".");
+    assert_eq!(
+        properties["configuration_directory"]["default"],
+        "./sqlpage"
+    );
+    assert_eq!(properties["content_security_policy"]["type"], "string");
+    assert!(
+        properties["content_security_policy"]["default"]
+            .as_str()
+            .unwrap()
+            .contains("{NONCE}")
+    );
+    assert!(
+        properties["system_root_ca_certificates"]
+            .get("default")
+            .is_none()
+    );
+    assert!(properties["database_url"].get("default").is_none());
+    assert_eq!(properties["oidc_public_paths"]["default"], json!([]));
+    assert!(
+        properties["oidc_additional_trusted_audiences"]
+            .get("default")
+            .is_none()
+    );
+    assert!(schema.get("required").is_none());
 }
 
 fn app_config_option_names() -> BTreeSet<String> {

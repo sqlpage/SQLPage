@@ -42,7 +42,8 @@ Update the existing page or documentation migration for changed behavior. Add a
 migration only for new documentation content.
 
 Build and preview the official site with the commands in its [README](./examples/official-site/README.md).
-Update `configuration.md` for configuration changes.
+Document server options on `AppConfig` where the site build reads them. Keep
+setup examples in `configuration.md`.
 
 Add a concise CHANGELOG.md entry only for user-visible changes, and never edit
 an already tagged release.
