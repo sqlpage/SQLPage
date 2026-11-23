@@ -65,6 +65,10 @@ code {
   text-decoration: underline;
 }
 
+.apexcharts-theme-dark .apexcharts-menu-item:focus-visible {
+  background-color: var(--apx-menu-hover);
+}
+
 .apexcharts-canvas:has(.apexcharts-tooltip.apexcharts-active a)
   .apexcharts-svg {
   cursor: pointer;

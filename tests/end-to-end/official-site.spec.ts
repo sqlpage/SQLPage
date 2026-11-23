@@ -351,8 +351,39 @@ test("chart documentation renders its examples without browser errors", async ({
     for (const example of await examples.all()) {
       await expect(example.locator(".apexcharts-canvas")).toBeVisible();
     }
-    expect(errors).toEqual([]);
   });
+
+  await test.step("Read the Expenses export menu with the keyboard", async () => {
+    const expenses = page.locator(".card").filter({
+      has: page.getByRole("heading", { name: "Expenses", exact: true }),
+    });
+    await expect(expenses.locator(".apexcharts-canvas")).toHaveClass(
+      /\bapexcharts-theme-dark\b/,
+    );
+    const toggle = expenses.getByRole("button", { name: "Menu", exact: true });
+    const menu = expenses.getByRole("menu");
+    await toggle.press("ArrowDown");
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await expect(
+      menu.getByRole("menuitem", { name: "Download SVG" }),
+    ).toBeFocused();
+    await page.keyboard.press("ArrowDown");
+    const option = menu.getByRole("menuitem", { name: "Download PNG" });
+    await expect(option).toBeFocused();
+
+    // Pointer and keyboard navigation should use the same dark item highlight.
+    const otherOption = menu.getByRole("menuitem", { name: "Download CSV" });
+    await otherOption.hover();
+    const hoverColor = await otherOption.evaluate(
+      (el) => getComputedStyle(el).backgroundColor,
+    );
+    await expect(option).toHaveCSS("background-color", hoverColor);
+
+    await page.keyboard.press("Escape");
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await expect(toggle).toBeFocused();
+  });
+  expect(errors).toEqual([]);
 });
 
 test("map", async ({ page }) => {

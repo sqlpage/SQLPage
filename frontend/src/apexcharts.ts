@@ -147,7 +147,6 @@ const colorNames = new Map(
     [`${name}-lt`, light],
   ]),
 );
-const isDarkTheme = document.body?.dataset?.bsTheme === "dark";
 
 const STACKABLE_CHART_TYPES = ["line", "area", "bar"];
 const STROKE_WIDTHS = new Map([
@@ -156,20 +155,17 @@ const STROKE_WIDTHS = new Map([
 ]);
 const APEXCHARTS_TYPE_ALIASES = new Map([["column", "bar"]]);
 
-const referenceColor = colorNames.get(isDarkTheme ? "gray-lt" : "gray");
-
 const named_color = (name: unknown): string | undefined =>
   typeof name === "string" ? colorNames.get(name) : undefined;
-
-const reference_color = (name: PlotValue) =>
-  named_color(name) || referenceColor;
 
 function reference_lines(
   rows: ReferenceLine[],
   column: "x" | "y",
   axis: "x" | "y",
   to_axis_value: (value: PlotValue) => unknown,
+  isDarkTheme: boolean,
 ): object[] {
+  const defaultColor = colorNames.get(isDarkTheme ? "gray-lt" : "gray");
   const on_axis = (value: PlotValue) => {
     if (value == null) return null;
     const placed = to_axis_value(value);
@@ -178,7 +174,7 @@ function reference_lines(
   return rows.flatMap((row) => {
     const from = on_axis(row[`${column}line`]);
     if (from == null) return [];
-    const color = reference_color(row.color);
+    const color = named_color(row.color) ?? defaultColor;
     return [
       {
         [axis]: from,
@@ -198,6 +194,8 @@ function reference_lines(
 }
 
 function build_sqlpage_chart(c: HTMLElement) {
+  const isDarkTheme =
+    c.closest<HTMLElement>("[data-bs-theme]")?.dataset.bsTheme === "dark";
   const [data_element] = c.getElementsByTagName("data");
   const chartContainer = c.querySelector<HTMLElement>(".chart");
   if (!data_element || !chartContainer)
@@ -307,12 +305,14 @@ function build_sqlpage_chart(c: HTMLElement) {
         "y",
         value_axis,
         to_value,
+        isDarkTheme,
       ),
       [`${category_axis}axis`]: reference_lines(
         data.reference_lines,
         "x",
         category_axis,
         to_category,
+        isDarkTheme,
       ),
     },
     chart: {

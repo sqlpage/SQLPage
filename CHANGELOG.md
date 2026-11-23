@@ -2,6 +2,7 @@
 
 ## unreleased
 
+- Chart export menus, tooltips, and series colors now follow the theme surrounding each chart, including in custom shells.
 - Each `login` component’s labels target its own fields. Set `false AS autofocus` to keep the username field from taking focus when the page opens.
 - The official documentation now connects tutorials, component examples, and the function reference through shared navigation. Browse by task, open search with Ctrl+K or ⌘K, and share a link to a specific parameter. Code blocks have copy controls. Wide examples show SQL beside the live result.
 - Improved contrast for text and controls across the official SQLPage site.
