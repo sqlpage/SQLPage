@@ -290,8 +290,10 @@ test("search a guide and follow its link to the function reference", async ({
   await expect(search).toBeFocused();
   await search.fill("first website");
   await search.press("Enter");
+  await expect(page.getByRole("searchbox")).toHaveCount(1);
+  await expect(search).toHaveValue("first website");
   await page
-    .getByRole("main")
+    .getByRole("list", { name: "Search results" })
     .getByRole("link", { name: /Your first website/ })
     .click();
   await page.getByRole("link", { name: "Read request variables" }).click();

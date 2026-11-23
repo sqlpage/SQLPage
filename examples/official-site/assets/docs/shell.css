@@ -190,7 +190,7 @@
   padding: 0.55rem;
 }
 
-:is(.docs-search, .docs-filter, .catalog-search):has(input:focus-visible) {
+:is(.docs-search, .docs-filter, .docs-query):has(input:focus-visible) {
   outline: 2px solid var(--docs-blue);
   outline-offset: -2px;
 
@@ -228,6 +228,49 @@
 .docs-search input::placeholder,
 .docs-filter input::placeholder {
   color: var(--docs-muted);
+}
+
+.docs-query > svg {
+  flex-shrink: 0;
+}
+
+.docs-query {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.3rem 0.3rem 0.3rem 0.9rem;
+  border: 1px solid #3b4d63;
+  border-radius: 0.5rem;
+  background: var(--docs-surface);
+  color: var(--docs-muted);
+}
+.docs-query:focus-within {
+  border-color: var(--docs-blue);
+}
+.docs-query input[type="search"] {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  min-height: 2.25rem;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  font: inherit;
+  color: var(--tblr-heading-color);
+}
+.docs-query input::placeholder {
+  color: #a4b2c4;
+}
+.docs-query button {
+  border: 1px solid #435b75;
+  border-radius: 0.3rem;
+  padding: 0.4rem 0.8rem;
+  background: #20314a;
+  color: #cee4ff;
+  font: 500 0.9rem / 1.4 var(--tblr-font-sans-serif);
+}
+.docs-query button:hover {
+  background: #2a4262;
 }
 
 .docs-github {

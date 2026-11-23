@@ -7,20 +7,13 @@ where name = lower($search) or (kind = 'function' and lower($search) in (
 ))
 order by kind limit 1;
 
-select 'shell-docs' as component, coalesce($search || ' | ', '') || 'SQLPage documentation search' as title;
+select 'shell-docs' as component, 'Search' as section,
+    coalesce($search || ' | ', '') || 'SQLPage documentation search' as title;
 
-select 'title' as component, 'Search documentation' as contents, 1 as level;
-
-select 'form' as component, 'GET' as method, 'Search' as validate;
-select 'search' as type, 'search' as name, 'Search the documentation' as label,
-    'Tutorials, components, functions…' as placeholder, true as autofocus, $search as value;
+select 'docs-search-results' as component, $search as query;
 
 -- Treat the input as a literal phrase in SQLite's full-text query syntax.
 set escaped_search = '"' || replace(coalesce($search, ''), '"', '""') || '"';
-
-select 'list' as component, 'Search results' as title, 'No results' as empty_title,
-    'No documentation matched “' || $search || '”.' as empty_description
-where $search is not null;
 
 with matches as (
     select title, trim(description, char(13) || char(10) || ' ') as summary, page, parameters, fragment, rank,
@@ -28,7 +21,7 @@ with matches as (
     from documentation_fts
     where documentation_fts match $escaped_search
 )
-select title,
+select title, count(*) over () as result_count,
     ltrim(substr(summary, 1, instr(summary || char(10), char(10)) - 1), '# ') as description,
     sqlpage.link(page, parameters, fragment) as link
 from matches

@@ -1,0 +1,29 @@
+<section class="docs-search-results" aria-labelledby="search-heading">
+    <header>
+        <h1 id="search-heading">Search documentation</h1>
+        <form class="docs-query" action="/search.sql" method="get" role="search" aria-label="Documentation">
+            {{icon_img "search" 19}}
+            <input id="docs-search-input" type="search" name="search" value="{{query}}" aria-labelledby="search-heading"
+                   placeholder="Name or topic" {{#unless query}}autofocus{{/unless}}>
+            <button type="submit">Search</button>
+        </form>
+    </header>
+    {{#each_row}}
+        {{#if (eq @row_index 0)}}
+            <p class="search-count">{{result_count}} {{#if (eq result_count 1)}}result{{else}}results{{/if}}</p>
+            <ol aria-label="Search results">
+        {{/if}}
+        <li>
+            <a href="{{link}}" aria-labelledby="result-{{@row_index}}">
+                <strong id="result-{{@row_index}}">{{title}}</strong>
+                {{#if description}}<span>{{description}}</span>{{/if}}
+                {{icon_img "arrow-right" 16}}
+            </a>
+        </li>
+    {{/each_row}}
+    {{#if @row_index}}
+        </ol>
+    {{else if query}}
+        <p>No results for <strong>“{{query}}”</strong>. Try a different term.</p>
+    {{/if}}
+</section>

@@ -69,6 +69,13 @@ HTTP 200
 [Asserts]
 xpath "//main//a[@href='/component.sql?component=list#top-level-parameters-empty_description']" count == 1
 
+GET http://localhost:8080/search.sql?search=no-such-doc-4283
+HTTP 200
+[Asserts]
+xpath "//form[@role='search']" count == 1
+xpath "string(//main//input[@name='search']/@value)" == "no-such-doc-4283"
+body contains "No results for"
+
 GET http://localhost:8080/component.sql?component=list
 HTTP 200
 [Asserts]

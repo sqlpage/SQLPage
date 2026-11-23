@@ -18,6 +18,8 @@
         <link rel="canonical" href="{{catalog_link}}">
         <link rel="stylesheet" href="/assets/docs/catalog.css">
         {{#if (eq section "Components")}}<link rel="stylesheet" href="/assets/docs/catalog-preview.css">{{/if}}
+    {{else if (eq section "Search")}}
+        <link rel="stylesheet" href="/assets/docs/search.css">
     {{else if (or (eq section "Components") (eq section "Functions"))}}
         <link rel="stylesheet" href="/assets/docs/reference.css">
     {{else if (any (eq section "Guides") (eq section "Documentation") (eq section "Examples"))}}
@@ -48,11 +50,13 @@
                 <a href="/examples/" {{#if (eq section "Examples")}}aria-current="location"{{/if}}>Examples</a>
             </nav>
             <div class="docs-tools">
+                {{#unless (eq section "Search")}}
                 <form class="docs-search" action="/search.sql" role="search" aria-label="Documentation">
                     <button aria-label="Search documentation">{{icon_img "search" 17}}</button>
-                    <input aria-label="Search documentation" type="search" name="search" placeholder="Search">
+                    <input id="docs-search-input" aria-label="Search documentation" type="search" name="search" placeholder="Search">
                     <kbd hidden aria-hidden="true">Ctrl K</kbd>
                 </form>
+                {{/unless}}
                 <a class="docs-github" href="https://github.com/sqlpage/SQLPage" aria-label="SQLPage on GitHub">{{icon_img "brand-github" 20}}</a>
             </div>
         </div>

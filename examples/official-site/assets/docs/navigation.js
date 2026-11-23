@@ -1,9 +1,11 @@
-const search = document.querySelector(".docs-search input");
+const search = document.getElementById("docs-search-input");
 const shortcut = document.querySelector(".docs-search kbd");
-shortcut.textContent = /Mac|iPhone|iPad/.test(navigator.platform)
-  ? "⌘ K"
-  : "Ctrl K";
-shortcut.hidden = false;
+if (shortcut) {
+  shortcut.textContent = /Mac|iPhone|iPad/.test(navigator.platform)
+    ? "⌘ K"
+    : "Ctrl K";
+  shortcut.hidden = false;
+}
 search.setAttribute("aria-keyshortcuts", "Control+k Meta+k");
 let shortcutOrigin;
 
