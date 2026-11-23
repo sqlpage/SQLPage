@@ -10,5 +10,7 @@ test("the search field is announced with its placeholder", async ({ page }) => {
 });
 
 test("the search button keeps its own label", async ({ page }) => {
-  await expect(page.getByRole("button", { name: "Los", exact: true })).toHaveCount(1);
+  await expect(
+    page.getByRole("button", { name: "Los", exact: true }),
+  ).toHaveCount(1);
 });
