@@ -155,5 +155,7 @@ tokio = { version = "1", features = ["rt", "time", "test-util"] }
 
 [[example]]
 name = "export_config_schema"
+# The Docker build omits this source, so Cargo cannot infer the path.
+path = "examples/export_config_schema.rs"
 required-features = ["config-schema"]
 
