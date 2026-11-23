@@ -291,7 +291,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('empty_option', 'Only for inputs of type `select`. Adds an empty option with the given label before the ones defined in `options`. Useful when generating other options from a database table.', 'TEXT', FALSE, TRUE),
     ('searchable', 'For select and multiple-select elements, displays them with a nice dropdown that allows searching for options.', 'BOOLEAN', FALSE, TRUE),
     ('dropdown', 'An alias for "searchable".', 'BOOLEAN', FALSE, TRUE),
-    ('create_new', 'In a multiselect with a dropdown, this option allows the user to enter new values, that are not in the list of options.', 'BOOLEAN', FALSE, TRUE),
+    ('create_new', 'In a select with a dropdown (`searchable`, `dropdown` or `options_source`), this option allows the user to enter new values, that are not in the list of options. Works for single selects and for multiselects.', 'BOOLEAN', FALSE, TRUE),
     ('step', 'The increment of values in an input of type number. Set to 1 to allow only integers.', 'REAL', FALSE, TRUE),
     ('description', 'A helper text to display near the input field.', 'TEXT', FALSE, TRUE),
     ('description_md', 'A helper text to display near the input field - formatted using markdown.', 'TEXT', FALSE, TRUE),
