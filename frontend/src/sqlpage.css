@@ -228,15 +228,32 @@ See https://github.com/tabler/tabler/issues/2404
   text-decoration: underline;
 }
 
-/* Keep text legible while retaining the component's accent hue. */
+/* Adjust lightness in OKLCH. Scale chroma with lightness in light mode
+   so saturated accents stay in gamut and keep their hue. */
+.sqlpage-accent,
+.nav-bordered .nav-link.active,
+.status,
+.sqlpage-button-outline,
+.sqlpage-big-number-colored,
+.sqlpage-tinted-card {
+  --sqlpage-accent-base: var(
+    --sqlpage-accent,
+    var(--tblr-status-color, var(--tblr-primary))
+  );
+  --sqlpage-accent-max-lightness: 0.52;
+  --sqlpage-readable-accent: light-dark(
+    oklch(
+      from var(--sqlpage-accent-base)
+        min(l, var(--sqlpage-accent-max-lightness))
+        calc(c * min(1, var(--sqlpage-accent-max-lightness) / max(l, 0.01))) h
+    ),
+    oklch(from var(--sqlpage-accent-base) max(l, 0.75) c h)
+  );
+}
+
 .sqlpage-accent,
 .nav-bordered .nav-link.active,
 .status {
-  --sqlpage-readable-accent: color-mix(
-    in srgb,
-    var(--sqlpage-accent, var(--tblr-status-color, var(--tblr-primary))),
-    light-dark(black, white) 48%
-  );
   color: var(--sqlpage-readable-accent);
 }
 
@@ -255,11 +272,9 @@ See https://github.com/tabler/tabler/issues/2404
 }
 
 .sqlpage-button-outline {
-  --tblr-btn-color: color-mix(
-    in srgb,
-    var(--tblr-btn-variant),
-    light-dark(black, white) 48%
-  );
+  --sqlpage-accent-base: var(--tblr-btn-variant);
+  --sqlpage-accent-max-lightness: 0.55;
+  --tblr-btn-color: var(--sqlpage-readable-accent);
   --tblr-btn-border-color: var(--tblr-btn-color);
   --tblr-btn-hover-bg: var(--tblr-btn-color);
   --tblr-btn-hover-color: light-dark(white, black);
@@ -282,7 +297,7 @@ See https://github.com/tabler/tabler/issues/2404
 
 /* Tabler tints are translucent and sit on top of the theme surface. */
 .sqlpage-tinted-card {
-  --sqlpage-card-fg: var(--tblr-body-color);
+  --sqlpage-card-fg: var(--sqlpage-readable-accent);
 }
 
 .sqlpage-colored-card :is(.card-title, .card-content, .card-footer) {
@@ -296,11 +311,7 @@ See https://github.com/tabler/tabler/issues/2404
 
 .sqlpage-big-number-colored {
   /* biome-ignore lint/complexity/noImportantStyles: override Tabler's tinted background utility */
-  color: color-mix(
-    in srgb,
-    var(--sqlpage-accent, currentColor),
-    light-dark(black, white) 48%
-  ) !important;
+  color: var(--sqlpage-readable-accent) !important;
 }
 
 .sqlpage-big-number-colored .h1 {
