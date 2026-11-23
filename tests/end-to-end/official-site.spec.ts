@@ -18,15 +18,20 @@ test("Open documentation", async ({ page }) => {
       page.getByRole("link", { name: component }).first(),
     ).toBeVisible();
   }
+  const example = page.locator(".docs-example");
+  await expect(example.getByRole("button", { name: "Copy SQL" })).toBeVisible();
+  await expect(
+    example.getByRole("link", { name: "The list component" }),
+  ).toBeVisible();
 });
 
 async function expectContrast(
   locator: Locator,
   minimum: number,
-  marker = false,
+  property: "color" | "outlineColor" | "marker" = "color",
 ) {
   await expect(locator).toBeVisible();
-  const ratio = await locator.evaluate((element, marker) => {
+  const ratio = await locator.evaluate((element, property) => {
     // Normalize computed CSS colors and composite transparent fills onto their surfaces.
     const canvas = document.createElement("canvas");
     canvas.width = canvas.height = 1;
@@ -61,18 +66,40 @@ async function expectContrast(
       context.fillRect(0, 0, 1, 1);
     }
     const background = luminance(context);
-    context.fillStyle = marker
-      ? getComputedStyle(element, "::before").backgroundColor
-      : getComputedStyle(element).color;
+    context.fillStyle =
+      property === "marker"
+        ? getComputedStyle(element, "::before").backgroundColor
+        : getComputedStyle(element)[property];
     context.fillRect(0, 0, 1, 1);
     const foreground = luminance(context);
     return (
       (Math.max(foreground, background) + 0.05) /
       (Math.min(foreground, background) + 0.05)
     );
-  }, marker);
+  }, property);
   expect(ratio, `contrast for ${locator}`).toBeGreaterThanOrEqual(minimum);
 }
+
+test("documentation header links stay readable on hover and focus", async ({
+  page,
+}) => {
+  await page.goto("/components.sql");
+  const header = page.getByRole("banner");
+  const docs = header.getByRole("link", { name: "Docs", exact: true });
+  const github = header.getByRole("link", { name: "SQLPage on GitHub" });
+  for (const [link, minimum] of [
+    [docs, 4.5],
+    [github, 3],
+  ] as const) {
+    await expectContrast(link, minimum);
+    await link.hover();
+    await expectContrast(link, minimum);
+    await page.mouse.move(0, 0);
+    await link.focus();
+    await expectContrast(link, minimum);
+    await link.blur();
+  }
+});
 
 test("active page numbers have readable contrast in every pagination style", async ({
   page,
@@ -89,11 +116,12 @@ test("active page numbers have readable contrast in every pagination style", asy
 test("the official theme keeps filled controls and alerts readable", async ({
   page,
 }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/component.sql?component=form");
   const checkedSwitch = page
     .locator(".form-switch .form-check-input:checked")
     .first();
-  await expectContrast(checkedSwitch, 3, true);
+  await expectContrast(checkedSwitch, 3, "marker");
 
   await page.goto("/component.sql?component=button");
   const info = page
@@ -109,6 +137,21 @@ test("the official theme keeps filled controls and alerts readable", async ({
     4.5,
   );
   await expectContrast(page.locator(".alert-important .alert-link"), 4.5);
+
+  await page.goto("/component_not_found.sql?component=%27form");
+  const actions = page.getByRole("alert").getByRole("link");
+  await expect(actions).toHaveCount(2);
+  for (const action of await actions.all()) {
+    await expectContrast(action, 4.5);
+    await action.hover();
+    await expectContrast(action, 4.5);
+  }
+  await page.mouse.move(0, 0);
+  await actions.first().focus();
+  await page.keyboard.press("Tab");
+  await expect(actions.last()).toBeFocused();
+  await expectContrast(actions.last(), 4.5);
+  await expectContrast(actions.last(), 3, "outlineColor");
 });
 
 test("light color swatches and homepage links have readable labels", async ({
@@ -122,6 +165,315 @@ test("light color swatches and homepage links have readable labels", async ({
 
   await page.goto("/");
   await expectContrast(page.locator(".demo-docs"), 4.5);
+});
+
+test("browse, filter and copy a component example on a phone", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/your-first-sql-website/");
+  await page
+    .getByRole("navigation", { name: "Main navigation" })
+    .getByRole("link", { name: "Components" })
+    .click();
+  const search = page.getByRole("searchbox", { name: "Search components" });
+  await search.focus();
+  await page.keyboard.press("Control+k");
+  await expect(search).toBeFocused();
+  await search.fill("table");
+  await search.press("Enter");
+  const catalog = page.locator("#catalog");
+  await expect(
+    catalog.getByRole("link", { name: "chart", exact: true }),
+  ).toBeHidden();
+  await catalog.getByRole("link", { name: "table", exact: true }).click();
+
+  await page.locator("summary", { hasText: "Components" }).click();
+  const topics = page.getByRole("navigation", { name: "Browse components" });
+  await topics
+    .getByRole("searchbox", { name: "Filter components" })
+    .fill("butt");
+  await expect(topics.getByRole("status")).toHaveText(/\d+ of \d+ shown/);
+  await expect(
+    topics.getByRole("link", { name: "chart", exact: true }),
+  ).toBeHidden();
+  await topics.getByRole("link", { name: "button", exact: true }).click();
+
+  await page.locator("summary", { hasText: "On this page" }).click();
+  await page
+    .getByRole("navigation", { name: "On this page" })
+    .getByRole("link", { name: "Examples" })
+    .click();
+  await expect(page).toHaveURL(/#examples$/);
+  const example = page.locator("#example-1");
+  await example.getByRole("button", { name: "Copy SQL" }).click();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+    await example.locator("pre code").textContent(),
+  );
+  await expect(
+    example.getByRole("button", { name: "Enabled", exact: true }),
+  ).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
+    390,
+  );
+});
+
+test("the page outline follows fragment links and scrolling", async ({
+  page,
+}) => {
+  await page.goto("/documentation.sql#reference");
+  const outline = page.getByRole("navigation", { name: "On this page" });
+  const current = outline.locator('[aria-current="location"]');
+  await expect(current).toHaveText("Reference");
+
+  await outline.getByRole("link", { name: "Anatomy of a SQL page" }).click();
+  await expect(current).toHaveText("Anatomy of a SQL page");
+  await page.evaluate(() =>
+    window.scrollTo(0, document.documentElement.scrollHeight),
+  );
+  await expect(current).toHaveText("Guides");
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect(current).toHaveText("Overview");
+});
+
+test.describe("function catalog without JavaScript", () => {
+  test.use({ javaScriptEnabled: false });
+
+  test("search by qualified name, narrow by category and clear an empty result", async ({
+    page,
+  }) => {
+    await page.goto("/functions.sql");
+    const search = page.getByRole("searchbox", { name: "Search functions" });
+    const catalog = page.locator("#catalog");
+    const entry = catalog.getByRole("link", {
+      name: "url_encode",
+      exact: true,
+    });
+    const query = "SQLPage.url_encode()";
+    await search.fill(query);
+    await search.press("Enter");
+    await expect(entry).toBeVisible();
+    await expect(
+      catalog.getByRole("link", { name: "exec", exact: true }),
+    ).toBeHidden();
+
+    const category = page.getByRole("navigation", { name: "Categories" });
+    await category.getByRole("link", { name: /Links and routing/ }).click();
+    const filters = new URL(page.url()).searchParams;
+    expect(filters.get("q")).toBe(query);
+    expect(filters.get("category")).toBeTruthy();
+    await expect(entry).toBeVisible();
+
+    await search.fill("%__%");
+    await search.press("Enter");
+    expect(new URL(page.url()).searchParams.get("category")).toBe(
+      filters.get("category"),
+    );
+    await expect(entry).toBeHidden();
+    await page
+      .getByRole("link", { name: "Clear filters", exact: true })
+      .click();
+    await expect(search).toHaveValue("");
+    expect(new URL(page.url()).searchParams.has("category")).toBe(false);
+    await entry.click();
+    await expect(page.getByRole("heading", { level: 1 })).toContainText(
+      "sqlpage.url_encode(",
+    );
+  });
+});
+
+for (const [width, layout] of [
+  [1680, "side by side"],
+  [390, "stacked"],
+] as const) {
+  test(`the frozen table scrolls within a ${layout} example at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/component.sql?component=table");
+    const table = page.locator(".table-freeze-columns");
+    const example = page.locator(".docs-example").filter({ has: table });
+    const source = await example.locator(".docs-example-source").boundingBox();
+    const result = await example.locator(".docs-example-result").boundingBox();
+    if (!source || !result) throw new Error("Missing example panels");
+
+    if (layout === "side by side") {
+      expect(source.x + source.width).toBeLessThanOrEqual(result.x + 1);
+      expect(source.y).toBeCloseTo(result.y, 0);
+    } else {
+      expect(source.y + source.height).toBeLessThanOrEqual(result.y + 1);
+      expect(source.x).toBeCloseTo(result.x, 0);
+    }
+
+    const frozen = table.getByRole("columnheader").first();
+    expect(await frozen.evaluate((cell) => cell.clientWidth)).toBeGreaterThan(
+      100,
+    );
+    const frozenLeft = () =>
+      frozen.evaluate((cell) => cell.getBoundingClientRect().left);
+    const start = await frozenLeft();
+    const scrolled = await table.evaluate((element) => {
+      element.scrollLeft = 160;
+      return element.scrollLeft;
+    });
+    expect(scrolled).toBeGreaterThan(0);
+    expect(await frozenLeft()).toBeCloseTo(start, 0);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBe(width);
+  });
+}
+
+test("search a guide and follow its link to the function reference", async ({
+  page,
+}) => {
+  await page.goto("/documentation.sql");
+  const search = page.getByRole("searchbox", {
+    name: "Search documentation",
+    exact: true,
+  });
+  const guides = page
+    .getByRole("navigation", { name: "Main navigation" })
+    .getByRole("link", { name: "Guides" });
+  await guides.focus();
+  await page.keyboard.press("Control+k");
+  await expect(search).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(guides).toBeFocused();
+  await page.keyboard.press("Meta+k");
+  await expect(search).toBeFocused();
+  await search.fill("first website");
+  await search.press("Enter");
+  await expect(page.getByRole("searchbox")).toHaveCount(1);
+  await expect(search).toHaveValue("first website");
+  await page
+    .getByRole("list", { name: "Search results" })
+    .getByRole("link", { name: /Your first website/ })
+    .click();
+  await page.getByRole("link", { name: "Read request variables" }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    /sqlpage\.variables\(/,
+  );
+});
+
+test("tutorial code can be selected when clipboard writes are blocked", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "clipboard", { value: undefined });
+  });
+  await page.goto("/your-first-sql-website/");
+  const copy = page
+    .getByRole("button", { name: "Copy code", exact: true })
+    .first();
+  await copy.click();
+  const block = page.locator("pre").first();
+  await expect(block).toBeFocused();
+  expect(
+    await page.evaluate(() => window.getSelection()?.getRangeAt(0).toString()),
+  ).toBe(await block.locator("code").textContent());
+  await expect(
+    page.getByRole("button", { name: "Code selected. Use Copy." }),
+  ).toBeVisible();
+});
+
+test("switch installation target and copy its command on a phone", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.setViewportSize({ width: 320, height: 700 });
+  await page.goto("/your-first-sql-website/?os=macos#download");
+  const installer = page.locator("#download");
+  await expect(
+    installer.getByText("brew install sqlpage", { exact: true }),
+  ).toBeVisible();
+
+  await installer
+    .getByRole("navigation", { name: "Installation target" })
+    .getByRole("link", { name: "Windows", exact: true })
+    .press("Enter");
+  const download = installer.getByRole("link", {
+    name: "Download sqlpage-windows.zip for Windows x64",
+  });
+  await expect(download).toHaveAttribute("href", /\/sqlpage-windows\.zip$/);
+  await expect(
+    installer.getByRole("link", { name: "sqlpage-windows.zip", exact: true }),
+  ).toHaveAttribute("href", /\/sqlpage-windows\.zip$/);
+  await installer
+    .getByRole("navigation", { name: "Installation method" })
+    .getByRole("link", { name: "Scoop", exact: true })
+    .click();
+  await expect(page).toHaveURL(/method=scoop/);
+  expect(new URL(page.url()).hash).toBe("#download");
+  await installer.getByRole("button", { name: /copy/i }).press("Enter");
+  await expect
+    .poll(() => page.evaluate(() => navigator.clipboard.readText()))
+    .toBe("scoop install sqlpage");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
+    320,
+  );
+
+  await page.goBack();
+  await expect(download).toBeVisible();
+});
+
+test("download the AWS Lambda archive from the installation widget", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 700 });
+  await page.goto("/your-first-sql-website/?os=windows#download");
+  const installer = page.locator("#download");
+  const lambda = installer
+    .getByRole("navigation", { name: "Installation target" })
+    .getByRole("link", { name: "AWS Lambda" });
+  await lambda.click();
+  await expect(lambda).toHaveAttribute("aria-current", "true");
+  const archive = installer.getByRole("link", {
+    name: "sqlpage-aws-lambda.zip",
+    exact: true,
+  });
+  await expect(archive).toHaveAttribute("href", /\/sqlpage-aws-lambda\.zip$/);
+  await expect(
+    installer.getByText("provided.al2023", { exact: true }),
+  ).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
+    320,
+  );
+});
+
+test.describe("installation without JavaScript", () => {
+  test.use({ javaScriptEnabled: false });
+
+  test("follow a platform link and reopen a bookmarked method", async ({
+    page,
+  }) => {
+    await page.goto("/your-first-sql-website/?os=windows#download");
+    const installer = page.locator("#download");
+    await installer
+      .getByRole("navigation", { name: "Installation target" })
+      .getByRole("link", { name: "Linux", exact: true })
+      .click();
+    await expect(
+      installer.getByRole("link", { name: "sqlpage-linux.tgz", exact: true }),
+    ).toHaveAttribute("href", /\/sqlpage-linux\.tgz$/);
+    await installer
+      .getByRole("navigation", { name: "Installation method" })
+      .getByRole("link", { name: "Docker", exact: true })
+      .click();
+    await page.reload();
+    await expect(
+      installer.locator("code").filter({ hasText: "docker run" }),
+    ).toBeVisible();
+    await expect(
+      installer.getByRole("link", { name: "macOS", exact: true }),
+    ).toHaveAttribute("href", "?os=macos&method=docker#download");
+    await expect(installer.getByRole("button", { name: /copy/i })).toHaveCount(
+      0,
+    );
+  });
 });
 
 test("chart documentation renders its examples without browser errors", async ({
@@ -154,14 +506,93 @@ test("chart documentation renders its examples without browser errors", async ({
     for (const example of await examples.all()) {
       await expect(example.locator(".apexcharts-canvas")).toBeVisible();
     }
-    expect(errors).toEqual([]);
   });
+
+  await test.step("Read the Expenses export menu with the keyboard", async () => {
+    const expenses = page.locator(".card").filter({
+      has: page.getByRole("heading", { name: "Expenses", exact: true }),
+    });
+    await expect(expenses.locator(".apexcharts-canvas")).toHaveClass(
+      /\bapexcharts-theme-dark\b/,
+    );
+    const toggle = expenses.getByRole("button", { name: "Menu", exact: true });
+    const menu = expenses.getByRole("menu");
+    await toggle.press("ArrowDown");
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await expect(
+      menu.getByRole("menuitem", { name: "Download SVG" }),
+    ).toBeFocused();
+    await page.keyboard.press("ArrowDown");
+    const option = menu.getByRole("menuitem", { name: "Download PNG" });
+    await expect(option).toBeFocused();
+
+    // Pointer and keyboard navigation should use the same dark item highlight.
+    const otherOption = menu.getByRole("menuitem", { name: "Download CSV" });
+    await otherOption.hover();
+    const hoverColor = await otherOption.evaluate(
+      (el) => getComputedStyle(el).backgroundColor,
+    );
+    await expect(option).toHaveCSS("background-color", hoverColor);
+
+    await page.keyboard.press("Escape");
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await expect(toggle).toBeFocused();
+  });
+  expect(errors).toEqual([]);
 });
 
-test("map", async ({ page }) => {
+for (const width of [320, 390]) {
+  test(`treemap country and region labels fit the ${width}px preview`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto("/component.sql?component=chart");
+    const plot = page.locator(".card").filter({
+      has: page.getByRole("heading", {
+        name: "Quarterly Results By Region (in k$)",
+        exact: true,
+      }),
+    });
+    await expect(plot.getByText("Japan", { exact: true })).toBeVisible();
+    const clipped = await plot
+      .locator(".apexcharts-series")
+      .evaluateAll((groups) => {
+        const clipped: string[] = [];
+        for (const group of groups) {
+          const tiles = [...group.querySelectorAll(".apexcharts-treemap-rect")];
+          const right = Math.max(
+            ...tiles.map((tile) => tile.getBoundingClientRect().right),
+          );
+          const title = group.querySelector(":scope > text");
+          const badge = title?.previousElementSibling;
+          if (title && badge && badge.getBoundingClientRect().right > right + 1)
+            clipped.push(title.textContent ?? "");
+          for (const label of group.querySelectorAll(
+            ".apexcharts-data-labels > text",
+          )) {
+            const tile =
+              label.parentElement?.previousElementSibling?.getBoundingClientRect();
+            const text = label.getBoundingClientRect();
+            if (!tile || text.left < tile.left || text.right > tile.right)
+              clipped.push(label.textContent ?? "");
+          }
+        }
+        return clipped;
+      });
+    expect(clipped).toEqual([]);
+  });
+}
+
+test("map marker titles are readable when opened in the dark theme", async ({
+  page,
+}) => {
   await page.goto("/documentation.sql?component=map#component");
   await expect(page.getByText("Loading...")).not.toBeVisible();
-  await expect(page.locator(".leaflet-marker-icon").first()).toBeVisible();
+  const marker = page.locator('.leaflet-marker-icon[title="New Delhi"]');
+  await marker.click();
+  const popup = page.locator(".leaflet-popup");
+  await expectContrast(popup.getByRole("heading", { name: "New Delhi" }), 4.5);
+  await expectContrast(popup.getByRole("button", { name: "Close popup" }), 4.5);
 });
 
 test("toast notifications initialize, stack, dismiss, and render safely (page)", async ({
@@ -169,6 +600,24 @@ test("toast notifications initialize, stack, dismiss, and render safely (page)",
 }) => {
   await page.goto("/documentation.sql?component=toast#component");
   await checkToastNotifications(page);
+});
+
+test("the layout demo keeps its brand when switching to a sidebar", async ({
+  page,
+}) => {
+  await page.goto("/examples/layouts.sql?layout=fluid");
+  const header = page.locator("#sqlpage_header");
+  const brand = header.getByRole("link", { name: "SQLPage", exact: true });
+  await expect(brand).toBeVisible();
+
+  await page.getByRole("link", { name: /Sidebar Display menu/ }).click();
+  await expect(page).toHaveTitle("Shell layouts | SQLPage");
+  await expect(brand).toBeVisible();
+  await expect(brand.locator("img")).toHaveCSS("filter", "none");
+  await expect(brand).toHaveAttribute("href", "/");
+  expect(await brand.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(
+    true,
+  );
 });
 
 test("form example", async ({ page }) => {
@@ -187,7 +636,7 @@ test("form example", async ({ page }) => {
 
 test("File upload", async ({ page }) => {
   await page.goto("/your-first-sql-website");
-  await page.getByRole("button", { name: "Examples", exact: true }).click();
+  await page.getByRole("link", { name: "Examples", exact: true }).click();
   await page.getByText("File uploads").click();
   const my_svg = '<svg><text y="20">Hello World</text></svg>';
   const buffer = Buffer.from(my_svg);
@@ -202,6 +651,29 @@ test("File upload", async ({ page }) => {
   ).resolves.toBe(`data:image/svg+xml;base64,${buffer.toString("base64")}`);
 });
 
+test("login labels target the fields in their own example", async ({
+  page,
+}) => {
+  await page.goto("/component.sql?component=login");
+  const forms = page.locator(".docs-example-output form");
+  await expect(forms).toHaveCount(2);
+  await expect(forms.locator("[autofocus], :focus")).toHaveCount(0);
+  for (const form of await forms.all()) {
+    await expect(form.getByLabel("Username", { exact: true })).toHaveAttribute(
+      "name",
+      "username",
+    );
+    await expect(form.getByLabel(/^Password/)).toHaveAttribute(
+      "name",
+      "password",
+    );
+  }
+  await expect(forms.first().getByLabel("Remember me")).toHaveAttribute(
+    "name",
+    "remember",
+  );
+});
+
 test("Authentication example", async ({ page }) => {
   await page.goto("/examples/authentication/login.sql");
   await expect(page.locator("h1", { hasText: "Authentication" })).toBeVisible();
@@ -211,6 +683,7 @@ test("Authentication example", async ({ page }) => {
   const loginButton = page.getByRole("button", { name: "Log in" });
 
   await expect(usernameInput).toBeVisible();
+  await expect(usernameInput).toBeFocused();
   await expect(passwordInput).toBeVisible();
   await expect(loginButton).toBeVisible();
 

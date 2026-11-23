@@ -1,32 +1,25 @@
 CREATE VIRTUAL TABLE documentation_fts USING fts5(
-    component_name,
-    component_description,
-    parameter_name,
-    parameter_description,
-    blog_title,
-    blog_description,
-    function_name,
-    function_description,
-    function_parameter_name,
-    function_parameter_description,
-    component_example_description,
-    component_example_json
+    title, description, example_source,
+    page UNINDEXED, parameters UNINDEXED, fragment UNINDEXED
 );
 
-INSERT INTO documentation_fts(component_name, component_description)
-SELECT name, description FROM component;
+INSERT INTO documentation_fts(title, description, page)
+SELECT title, description, link FROM guide
+UNION ALL
+SELECT CASE kind WHEN 'component' THEN name || ' component' ELSE 'sqlpage.' || name || '()' END,
+    description_md, link FROM reference_entry;
 
-INSERT INTO documentation_fts(component_name, parameter_name, parameter_description)
-SELECT component, name, description FROM parameter;
+INSERT INTO documentation_fts(title, description, page, fragment)
+SELECT CASE p.kind WHEN 'component' THEN p.entry || ' component: ' || p.name
+        ELSE 'sqlpage.' || p.entry || '(' || p.name || ')' END,
+    p.description_md, e.link, p.anchor
+FROM reference_parameter AS p
+JOIN reference_entry AS e ON e.kind = p.kind AND e.name = p.entry;
 
-INSERT INTO documentation_fts(blog_title, blog_description)
-SELECT title, description FROM blog_posts;
+INSERT INTO documentation_fts(title, description, example_source, page, fragment)
+SELECT component || ' component example', description, properties, e.link, 'example-' || example_number
+FROM example_with_source AS x
+JOIN reference_entry AS e ON e.kind = 'component' AND e.name = x.component;
 
-INSERT INTO documentation_fts(function_name, function_description)
-SELECT name, description_md FROM sqlpage_functions;
-
-INSERT INTO documentation_fts(function_name, function_parameter_name, function_parameter_description)
-SELECT function, name, description_md FROM sqlpage_function_parameters;
-
-INSERT INTO documentation_fts(component_name, component_example_description, component_example_json)
-SELECT component, description, properties FROM example;
+INSERT INTO documentation_fts(title, description, page, parameters)
+SELECT title, description, '/blog.sql', json_object('post', title) FROM blog_posts;

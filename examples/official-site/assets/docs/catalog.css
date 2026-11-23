@@ -1,0 +1,70 @@
+.docs-main {
+  max-width: 80rem;
+}
+
+.catalog-selection {
+  margin-inline-start: auto;
+  color: var(--tblr-link-color);
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+details[open] .catalog-selection {
+  display: none;
+}
+
+.catalog-results {
+  min-width: 0;
+  container-type: inline-size;
+}
+
+.catalog-results form[role="search"] {
+  flex: 1 1 18rem;
+}
+
+.catalog-entry {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--tblr-spacer-2);
+  align-items: center;
+  overflow-wrap: anywhere;
+}
+
+.catalog-entry > :last-child {
+  grid-area: 1 / 3;
+}
+
+.card.catalog-entry {
+  grid-template-rows: auto 1fr auto;
+}
+
+.card.catalog-entry > :is(p, small) {
+  grid-column: 1 / -1;
+  align-self: start;
+}
+
+.list-group-item.catalog-entry p {
+  grid-column: 2;
+}
+
+@container (min-width: 44rem) {
+  .list-group-item.catalog-entry {
+    grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr) auto;
+    gap: var(--tblr-spacer-3);
+  }
+
+  .list-group-item.catalog-entry p,
+  .list-group-item.catalog-entry > :last-child {
+    grid-area: auto;
+  }
+}
+
+#evaluation,
+#evaluation + .article-text {
+  max-width: 51rem;
+  margin-inline: auto;
+}
+
+#evaluation {
+  padding-top: var(--tblr-spacer-6);
+}

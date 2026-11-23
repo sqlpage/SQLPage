@@ -183,9 +183,9 @@ So, if you have to execute a slow query, put it as far down in the page as possi
 
 #### No heavy computation before the shell
 
-Every user-facing page in a SQLPage site has a [shell](/components?component=shell).
+Every user-facing page in a SQLPage site has a [shell](/component.sql?component=shell).
 
-The first queries in any sql file (all the ones that come before the [shell](/components?component=shell))
+The first queries in any sql file (all the ones that come before the [shell](/component.sql?component=shell))
 are executed before any data has been sent to the user''s browser.
 During that time, the user will see a blank screen.
 So, ensure your shell comes as early as possible, and does not require any heavy computation.

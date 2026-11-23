@@ -160,6 +160,12 @@ body[data-bs-theme="dark"] {
   --tblr-alert-color: var(--tblr-primary-fg);
 }
 
+/* Keep keyboard focus inside the alert's scrollable content. */
+.alert .btn {
+  --tblr-focus-ring-color: currentColor;
+  --tblr-focus-ring-offset: calc(-1 * var(--tblr-focus-ring-width) - 1px);
+}
+
 /* The alert action is a separate, dark button within the filled alert. */
 .alert-important .alert-link {
   --tblr-alert-link-color: var(--tblr-body-color);

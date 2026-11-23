@@ -1,0 +1,85 @@
+.docs-example {
+  container: example / inline-size;
+}
+
+.docs-example-source,
+.docs-example-result {
+  min-width: 0;
+}
+
+.docs-example-result {
+  border-top: var(--tblr-border-width) solid var(--tblr-border-color);
+  border-radius: 0 0 var(--tblr-border-radius) var(--tblr-border-radius);
+}
+
+.docs-example-output {
+  display: flow-root;
+  container-type: inline-size;
+  padding: var(--tblr-spacer-3);
+  --tblr-carousel-control-icon-filter: none;
+  --tblr-carousel-indicator-active-bg: var(--tblr-heading-color);
+}
+/* Tabler sizes columns against the viewport. A card in a preview can have much less room. */
+.docs-example-output > .row > * {
+  flex-grow: 1;
+  min-width: min(100%, 17rem);
+}
+.docs-example-output form .row > label {
+  min-width: min(100%, 12rem);
+}
+.docs-example-output .card {
+  max-width: 100%;
+}
+.docs-example-output .table-freeze-columns tr > :first-child {
+  width: clamp(7rem, 32cqi, 11rem);
+  min-width: min(9rem, 40cqi);
+  white-space: normal;
+}
+.docs-example-output .pagination {
+  flex-wrap: wrap;
+}
+.docs-example-output .markdown table {
+  display: block;
+  overflow-x: auto;
+}
+@media (max-width: 27rem) {
+  .docs-example > .docs-example-source,
+  .docs-example-layout {
+    margin-inline: calc(var(--tblr-spacer-1) - var(--docs-gutter));
+  }
+  /* A chart card fills the preview. Keep its title inset and give the plot the full width. */
+  .docs-example-output:has(> .card > .card-body > .chart) {
+    padding-inline: 0;
+  }
+  .docs-example-output > .card > .card-body > .chart {
+    margin-inline: calc(-1 * var(--tblr-card-spacer-x));
+  }
+}
+@container example (min-width: 52rem) {
+  .docs-example-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  }
+  .docs-example-layout > .docs-example-source {
+    position: sticky;
+    top: var(--docs-header-height);
+    align-self: start;
+  }
+  .docs-example-result {
+    display: grid;
+    grid-template-rows: auto 1fr;
+    border-top: 0;
+    border-inline-start: var(--tblr-border-width) solid var(--tblr-border-color);
+    border-radius: 0 var(--tblr-border-radius) var(--tblr-border-radius) 0;
+  }
+  .docs-example-output {
+    align-self: center;
+  }
+}
+
+.docs-example-source pre {
+  max-height: min(24rem, 60svh);
+  line-height: var(--tblr-line-height-base);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

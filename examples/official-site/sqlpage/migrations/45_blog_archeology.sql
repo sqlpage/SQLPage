@@ -15,7 +15,7 @@ VALUES
 Archaeology has, since its beginnings, focused on cataloging, structuring and archiving data from excavations. In the field, it has long relied on creating forms, manually collecting information on paper, and hand drawing, transcribed during study phases onto digital media. It is only recently that some archaeologists have launched the movement of "all-digital" excavation. I propose to tell here the story of the digitization of archaeology, which, as you will see, relies in part on free software.
 
 
-# What is an excavation site?
+## Archaeological excavation in France
 
 French archaeology is divided into two main branches: preventive archaeology, which intervenes during construction projects, and programmed archaeology, conducted on sites chosen to address research issues. Supervised by the Regional Archaeological Services of the Ministry of Culture, these activities are carried out by different organizations: public and private operators for preventive archaeology, and associations, CNRS or universities for programmed archaeology. The latter often mobilizes volunteers, especially students, offering them complementary practical training.
 

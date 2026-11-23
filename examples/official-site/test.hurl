@@ -15,8 +15,14 @@ GET http://localhost:8080/documentation.sql
 HTTP 200
 [Asserts]
 body contains "SQLPage v"
-body contains "components"
-body contains "shell"
+xpath "string(//main//a[normalize-space()='Components']/@href)" == "/components.sql"
+xpath "string(//main//a[normalize-space()='Functions']/@href)" == "/functions.sql"
+body not contains "An error occurred"
+
+GET http://localhost:8080/components.sql
+HTTP 200
+[Asserts]
+xpath "string(//main//h3/a[span='shell']/@href)" == "/component.sql?component=shell"
 body not contains "An error occurred"
 
 GET http://localhost:8080/component.sql?component=form
@@ -26,6 +32,25 @@ body contains "The form component"
 body contains "Building forms in SQL"
 body not contains "An error occurred"
 
+GET http://localhost:8080/component.sql?component=unknowncomponent
+HTTP 302
+[Asserts]
+header "Location" == "component_not_found.sql?component=unknowncomponent"
+
+GET http://localhost:8080/component_not_found.sql?component=unknowncomponent
+HTTP 404
+[Asserts]
+header "X-Robots-Tag" == "noindex"
+xpath "normalize-space(//main//h1)" == "Component not found"
+xpath "//main//a[@href='/components.sql']" count == 1
+xpath "//main//img[starts-with(@src,'http') or starts-with(@src,'//')]" count == 0
+xpath "//main//*[normalize-space(@role)='alert']" count == 0
+
+GET http://localhost:8080/functions.sql?q=variables
+HTTP 200
+[Asserts]
+xpath "normalize-space(//main//h3/a[@href='/functions.sql?function=variables'])" == "variables([method])"
+
 GET http://localhost:8080/functions.sql?function=url_encode
 HTTP 200
 [Asserts]
@@ -33,10 +58,89 @@ body contains "sqlpage.url_encode"
 body contains "Parameters"
 body not contains "An error occurred"
 
+GET http://localhost:8080/llms.txt
+HTTP 200
+[Asserts]
+header "Content-Type" == "text/markdown; charset=utf-8"
+body contains "### [sqlpage.send_mail()](/functions.sql?function=send_mail)"
+body contains "- `message` (JSON) **REQUIRED**: A JSON object containing the email to send."
+body contains "> ## Building forms in SQL"
+body contains "> ##### `reusable.sql`"
+body contains "> ```sql\n> "
+
 GET http://localhost:8080/search.sql?search=form
 HTTP 302
 [Asserts]
 header "Location" == "/component.sql?component=form"
+
+GET http://localhost:8080/search.sql?search=SQLPage.cookie()
+HTTP 302
+[Asserts]
+header "Location" == "/functions.sql?function=cookie"
+
+GET http://localhost:8080/search.sql?search=empty_description
+HTTP 200
+[Asserts]
+xpath "//main//a[@href='/component.sql?component=list#top-level-parameters-empty_description']" count == 1
+
+GET http://localhost:8080/search.sql?search=no-such-doc-4283
+HTTP 200
+[Asserts]
+xpath "//form[@role='search']" count == 1
+xpath "string(//main//input[@name='search']/@value)" == "no-such-doc-4283"
+body contains "No results for"
+
+GET http://localhost:8080/component.sql?component=list
+HTTP 200
+[Asserts]
+xpath "//*[@id='top-level-parameters-empty_description']//dt//a[@href='#top-level-parameters-empty_description']" count == 1
+xpath "//*[@id='row-level-parameters-title']" count == 1
+xpath "//*[@id='top-level-parameters-title']" count == 1
+
+GET http://localhost:8080/search.sql?search=migrations
+HTTP 200
+[Asserts]
+xpath "//main//a[@href='/your-first-sql-website/migrations.sql']" count == 1
+body not contains "An error occurred"
+
+GET http://localhost:8080/your-first-sql-website/
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)
+HTTP 200
+[Asserts]
+header "Vary" contains "User-Agent"
+xpath "//main//h1" count == 1
+xpath "//*[@id='connect-to-a-custom-database']" count == 1
+xpath "//*[@id='download']//code[normalize-space()='brew install sqlpage']" count == 1
+
+GET http://localhost:8080/your-first-sql-website/?os=windows&method=homebrew
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)
+HTTP 200
+[Asserts]
+xpath "//*[@id='download']//a[normalize-space()='sqlpage-windows.zip' and contains(@href,'/releases/latest/download/sqlpage-windows.zip')]" count == 1
+
+GET http://localhost:8080/your-first-sql-website/
+User-Agent: Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Mobile Safari/537.36
+HTTP 200
+[Asserts]
+xpath "//*[@id='download']//nav[@aria-label='Installation target']//a[not(@aria-current)]" count == 4
+xpath "//*[@id='download']//a[contains(@href,'/releases/latest/download/')]" count == 0
+
+GET http://localhost:8080/your-first-sql-website/?os=any
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)
+HTTP 200
+[Asserts]
+xpath "//*[@id='download']//nav[@aria-label='Installation target']//a[not(@aria-current)]" count == 4
+
+GET http://localhost:8080/examples/tabs/?db=postgres
+HTTP 302
+[Asserts]
+header "Location" == "/examples/?db=postgres#projects"
+
+GET http://localhost:8080/examples/?db=postgres
+HTTP 200
+[Asserts]
+body contains "Developer UI"
+body not contains "Roundest Pokemon"
 
 GET http://localhost:8080/not-a-real-doc-page
 HTTP 404

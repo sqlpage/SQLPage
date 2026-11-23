@@ -11,14 +11,16 @@ Instead of showing a web page, it sends the file''s bytes as the whole response,
 so it should be used **at the very top of your SQL page** (before the shell or any other page contents).
 It is an error to use this component after another component that would display content.
 
-How it works in simple terms:
+## Sending a file
+
 - You provide the file content using a [data URL](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URIs).
 A data URL is just a text string that contains both the file type and the actual data.
 - Optionally, you provide a "filename" so the browser shows a proper Save As name.
 If you do not provide a filename, many browsers will try to display the file inline (for example images or JSON), depending on the content type.
-- You link to the page that uses the download component from another page, using the [button](/components?component=button) component for example.
+- You link to the page that uses the download component from another page, using the [button](/component.sql?component=button) component for example.
 
-What is a data URL?
+## Data URL format
+
 - It looks like this: `data:[content-type][;base64],DATA`
 - Examples:
   - Plain text (URL-encoded): `data:text/plain,Hello%20world`

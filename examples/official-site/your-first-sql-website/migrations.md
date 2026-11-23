@@ -2,17 +2,17 @@
 
 Maintaining a structured and evolving database is crucial for web app development. Rarely do we get a schema 100% correct on day one. New insights about the shape of the application are discovered over time, or business needs themselves evolve. In the world of databases, we can evolve schemas using migration files. These files are just more SQL that append or amend layers of development. Think of this process like sedimentary rock layers. Each migration adds a layer, and together, these layers create a complete, functional structure along with a visible trail of historical changes.
 
-## What Makes up a SQL Migration File?
+## Migration files
 
 SQL migrations are incremental changes to a database. These changes can include creating tables, adding columns, modifying data types, or even inserting or updating records. Each migration is a distinct script that applies a specific change.
 
-### Use Caution!
+### Back up your database
 
 Since migration files change the database, they can have unintended consequences if not thought through carefully. For instance, you may accidentally delete a column that is still being used by your application or remove records that are still needed.
 
 > ⚠️ Be thoughtful, double-check your work, and **always back up your data before running a migration**.
 
-### Order Matters
+### Migration order
 
 **It's important that migrations are distinct ordered files** as SQLPage uses the sequence of migration files to build the database over time: `0001_initial_setup.sql`, `0002_my_first_change.sql`, `0003_my_next_change`, etc.
 

@@ -14,7 +14,7 @@ VALUES
         'Creates a unique "signature" for some data using a secret key.
 This signature proves that the data hasn''t been tampered with and comes from someone who knows the secret.
 
-### What is HMAC used for?
+## HMAC use cases
 
 [**HMAC**](https://en.wikipedia.org/wiki/HMAC) (Hash-based Message Authentication Code) is commonly used to:
  - **Verify webhooks**: Use HMAC to ensure only a given external service can call a given endpoint in your application.
@@ -24,7 +24,7 @@ Used for instance by [Stripe](https://docs.stripe.com/webhooks?verify=verify-man
  - **Generate secure tokens**: Create temporary access codes for downloads or password resets
  - **Protect data**: Ensure data hasn''t been modified during transmission
 
-### How to use it
+## Signing data
 
 The `sqlpage.hmac` function takes three inputs:
 1. **Your data** - The text you want to sign (like a message or request body)

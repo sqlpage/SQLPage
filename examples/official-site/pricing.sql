@@ -73,7 +73,5 @@ SELECT 'ENTREPRISE PLAN' as title,
     'bubble-plus' as icon,
     'red' as color;
 
-SELECT 'text' as component,
-'' as title,
-'## **Ready to Get Started?**
-[Sign Up Now](https://datapage.app) and start building your SQLPage app with Datapage.app today!' as contents_md;
+select 'text' as component,
+    '[Create a DataPage account](https://datapage.app)' as contents_md;

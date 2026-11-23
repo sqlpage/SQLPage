@@ -4,9 +4,7 @@ Hosting SQLPage behind a reverse proxy can help with security, scalability, and 
 In this guide, we will guide you step-by-step on how to host SQLPage behind a reverse proxy using
 [NGINX](https://www.nginx.com/).
 
-## Why host SQLPage behind a Reverse Proxy ?
-
-Here are some reasons why you might want to host SQLPage behind a reverse proxy:
+## Reverse proxy features
 
  - **customize your application's URLs**, removing `.sql` extensions and changing URL parameters
  - **protect against attacks** such as denial-of-service (DoS)  by rate limiting incoming requests
@@ -119,7 +117,7 @@ server {
 This configuration uses the `rewrite` directive to rewrite URLs of the form `/products/$id` to `/products.sql?id=$id`. The `^/products/([^/]+)$` pattern matches URLs that start with `/products/` and captures the dynamic parameter `$id` using parentheses. The `last` flag indicates that this rewrite rule should be the last one to be applied; if the pattern matches, the rewritten URL is passed to the next location block,
 in this case, the proxy_pass directive.
 
-**How it Works**
+**Request routing**
 
 When a request is made to `/products/123`, the rewrite rule is triggered, and the URL is rewritten to `/products.sql?id=123`. The `proxy_pass` directive then forwards the rewritten URL to the SQLPage instance, which processes the request and returns the response.
 
@@ -344,7 +342,7 @@ server {
 }
 ```
 
-# Example NGINX configuration for SQLPage
+## Complete NGINX configuration
 
 You can find a fully working example of an NGINX configuration for SQLPage 
 illustrating all the features described in this guide

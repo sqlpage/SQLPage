@@ -2,7 +2,7 @@
 
 -- Component Definition
 INSERT INTO component(name, icon, description, introduced_in_version) VALUES
-    ('button', 'hand-click', 'A versatile button component do display one or multiple button links of different styles.', '0.14.0');
+    ('button', 'hand-click', 'Displays one or more buttons that follow links, download files, or submit a form.', '0.14.0');
 
 -- Inserting parameter information for the button component
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'button', * FROM (VALUES

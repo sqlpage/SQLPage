@@ -3,7 +3,7 @@ INSERT INTO component(name, icon, introduced_in_version, description) VALUES
 When a page runs, it prints your message to the terminal/console (standard error).
 Use it to track what happens and troubleshoot issues.
 
-### Where do the messages appear?
+## Reading log messages
 
 - Running from a terminal (Linux, macOS, or Windows PowerShell/Command Prompt): they show up in the window.
 - Docker: run `docker logs <container_name>`.

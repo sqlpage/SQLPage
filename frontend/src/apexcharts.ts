@@ -147,7 +147,6 @@ const colorNames = new Map(
     [`${name}-lt`, light],
   ]),
 );
-const isDarkTheme = document.body?.dataset?.bsTheme === "dark";
 
 const STACKABLE_CHART_TYPES = ["line", "area", "bar"];
 const STROKE_WIDTHS = new Map([
@@ -156,20 +155,17 @@ const STROKE_WIDTHS = new Map([
 ]);
 const APEXCHARTS_TYPE_ALIASES = new Map([["column", "bar"]]);
 
-const referenceColor = colorNames.get(isDarkTheme ? "gray-lt" : "gray");
-
 const named_color = (name: unknown): string | undefined =>
   typeof name === "string" ? colorNames.get(name) : undefined;
-
-const reference_color = (name: PlotValue) =>
-  named_color(name) || referenceColor;
 
 function reference_lines(
   rows: ReferenceLine[],
   column: "x" | "y",
   axis: "x" | "y",
   to_axis_value: (value: PlotValue) => unknown,
+  isDarkTheme: boolean,
 ): object[] {
+  const defaultColor = colorNames.get(isDarkTheme ? "gray-lt" : "gray");
   const on_axis = (value: PlotValue) => {
     if (value == null) return null;
     const placed = to_axis_value(value);
@@ -178,7 +174,7 @@ function reference_lines(
   return rows.flatMap((row) => {
     const from = on_axis(row[`${column}line`]);
     if (from == null) return [];
-    const color = reference_color(row.color);
+    const color = named_color(row.color) ?? defaultColor;
     return [
       {
         [axis]: from,
@@ -198,6 +194,8 @@ function reference_lines(
 }
 
 function build_sqlpage_chart(c: HTMLElement) {
+  const isDarkTheme =
+    c.closest<HTMLElement>("[data-bs-theme]")?.dataset.bsTheme === "dark";
   const [data_element] = c.getElementsByTagName("data");
   const chartContainer = c.querySelector<HTMLElement>(".chart");
   if (!data_element || !chartContainer)
@@ -300,6 +298,20 @@ function build_sqlpage_chart(c: HTMLElement) {
     ? ({ seriesIndex }: PointIndex) => points[seriesIndex]?.link
     : ({ seriesIndex, dataPointIndex }: PointIndex) =>
         aligned_series[seriesIndex]?.data[dataPointIndex]?.link;
+  const outlineDataLabels = () => {
+    // These labels sit directly on a mark, whose colour can vary by row or
+    // value. SVG presentation attributes travel with downloaded charts.
+    for (const label of chartContainer.querySelectorAll(
+      ".apexcharts-datalabel, .apexcharts-pie-label",
+    )) {
+      if (label.previousElementSibling?.localName === "rect") continue;
+      label.setAttribute("fill", "var(--tblr-white)");
+      label.setAttribute("stroke", "var(--tblr-dark)");
+      label.setAttribute("stroke-width", "0.16em");
+      label.setAttribute("stroke-linejoin", "round");
+      label.setAttribute("paint-order", "stroke fill");
+    }
+  };
   const options: ApexOptions = {
     annotations: {
       [`${value_axis}axis`]: reference_lines(
@@ -307,12 +319,14 @@ function build_sqlpage_chart(c: HTMLElement) {
         "y",
         value_axis,
         to_value,
+        isDarkTheme,
       ),
       [`${category_axis}axis`]: reference_lines(
         data.reference_lines,
         "x",
         category_axis,
         to_category,
+        isDarkTheme,
       ),
     },
     chart: {
@@ -320,6 +334,7 @@ function build_sqlpage_chart(c: HTMLElement) {
       // the component documents.
       type: chart_type as ApexChart["type"],
       fontFamily: "inherit",
+      foreColor: "var(--tblr-body-color)",
       background: "transparent",
       parentHeightOffset: 0,
       height: chartContainer.style.height,
@@ -334,6 +349,8 @@ function build_sqlpage_chart(c: HTMLElement) {
         enabled: false,
       },
       events: {
+        mounted: data.labels ? outlineDataLabels : undefined,
+        updated: data.labels ? outlineDataLabels : undefined,
         dataPointSelection: (_event, _chart, args) => {
           const link = args && pointLink(args);
           if (link) window.location.assign(link);
@@ -350,8 +367,7 @@ function build_sqlpage_chart(c: HTMLElement) {
     dataLabels: {
       enabled: data.labels,
       dropShadow: {
-        enabled: true,
-        color: "var(--tblr-primary-bg-subtle)",
+        enabled: false,
       },
       formatter: is_pie
         ? pieLabel(pie_labels)
@@ -423,6 +439,7 @@ function build_sqlpage_chart(c: HTMLElement) {
       },
     },
     plotOptions: {
+      treemap: { dataLabels: { format: "truncate" } },
       bar: {
         horizontal: data.horizontal || chart_type === "rangeBar",
         borderRadius: 5,

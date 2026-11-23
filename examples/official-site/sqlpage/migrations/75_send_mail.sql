@@ -62,7 +62,7 @@ select ''alert'' as component,
     json_extract($result, ''$.error'') as description;
 ```
 
-### Where to find the SMTP settings
+### SMTP provider settings
 
 Search the help pages or administration panel of the service that sends email for you. Look for **SMTP**, **outgoing mail server**, **SMTP submission**, **SMTP relay**, or **send from an app or device**.
 
