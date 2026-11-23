@@ -62,6 +62,7 @@ jobs:
         with:
           shared-key: rust-sqlpage-proj-test
           save-if: ${{ github.ref == 'refs/heads/main' }}
+      - run: sudo apt-get update && sudo apt-get install -y unixodbc-dev
       - run: cargo fmt --all -- --check
       - run: cargo test --locked --features config-schema --test mod configuration_docs
       - run: cargo clippy --all-targets --all-features -- -D warnings
