@@ -26,9 +26,13 @@
             </nav>
             {{/if}}
         </div>
-        <div class="install-instructions">
+        <div class="install-instructions{{#if download_url}} install-download{{/if}}">
             {{#if download_url}}
-                <a class="btn btn-blue gap-2" href="{{download_url}}">{{icon_img "download" 18}} {{download_label}}</a>
+                <div class="d-flex flex-wrap align-items-baseline gap-2">
+                    <strong>{{target}}</strong>
+                    <span class="font-monospace small text-secondary">{{archive}}</span>
+                </div>
+                <a class="btn btn-blue gap-2" href="{{download_url}}">{{icon_img "download" 18}} Download<span class="visually-hidden"> {{archive}} for {{target}}</span></a>
             {{else if command}}
                 <div class="install-command">
                     <button class="btn btn-sm gap-1 px-2" type="button" aria-label="Copy command" hidden>

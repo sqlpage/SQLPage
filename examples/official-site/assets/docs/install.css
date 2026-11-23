@@ -55,6 +55,28 @@
   padding: var(--tblr-spacer-3);
 }
 
+.install-download {
+  display: grid;
+  gap: var(--tblr-spacer-2);
+}
+
+.install-download .install-notes {
+  margin: 0;
+}
+
+@container (min-width: 32rem) {
+  .install-download {
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: var(--tblr-spacer-4);
+  }
+
+  .install-download .btn {
+    grid-column: 2;
+    grid-row: 1 / 3;
+    align-self: center;
+  }
+}
+
 .install-command {
   display: flow-root;
   padding: var(--tblr-spacer-2) var(--tblr-spacer-3);

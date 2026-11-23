@@ -47,7 +47,7 @@ with platforms(os, label, icon, position) as (values
     ('windows', 'Windows', 'brand-windows', 2),
     ('linux', 'Linux', 'terminal-2', 3)
 ), selection(os, method) as (values ($selected_os, $selected_method))
-select 'docs-install' as component, command, download_url, download_label, notes,
+select 'docs-install' as component, command, download_url, archive, target, notes,
     (select json_group_array(json_object(
         'label', p.label, 'icon', p.icon, 'active', p.os = $selected_os,
         'link', '?os=' || p.os || coalesce('&method=' || shared.method, '') || '#download'

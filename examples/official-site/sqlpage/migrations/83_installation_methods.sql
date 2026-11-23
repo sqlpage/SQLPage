@@ -1,12 +1,12 @@
 -- Positions are local to each operating system. The first method is its default.
 create view install_option as
-with downloads(os, position, archive, download_label, notes) as (
+with downloads(os, position, archive, target, notes) as (
     values
-        ('macos', 2, 'sqlpage-macos.tgz', 'Download for Apple silicon',
+        ('macos', 2, 'sqlpage-macos.tgz', 'macOS on Apple silicon',
          'Extract the archive in your website folder, then run `./sqlpage.bin` in Terminal. On an Intel Mac, [use Homebrew](?os=macos&method=homebrew#download).'),
-        ('windows', 1, 'sqlpage-windows.zip', 'Download for Windows x64',
+        ('windows', 1, 'sqlpage-windows.zip', 'Windows x64',
          'Extract the ZIP into your website folder. Keep the `sqlpage` folder alongside `sqlpage.exe`, then double-click the executable to start your site.'),
-        ('linux', 1, 'sqlpage-linux.tgz', 'Download for Linux x86-64',
+        ('linux', 1, 'sqlpage-linux.tgz', 'Linux x86-64',
          'Extract the archive in your website folder, then run `./sqlpage.bin` there. For an ARM device such as a Raspberry Pi, [use Docker](?os=linux&method=docker#download).')
 ),
 packages(method, label, command, notes) as (
@@ -39,9 +39,9 @@ package_order(os, method, position, caveat) as (
 )
 select os, 'download' as method, 'Direct download' as label, position, null as command,
     'https://github.com/sqlpage/SQLPage/releases/latest/download/' || archive as download_url,
-    download_label, notes
+    archive, target, notes
 from downloads
 union all
-select os, method, label, position, command, null, null,
+select os, method, label, position, command, null, null, null,
     notes || coalesce(' ' || caveat, '')
 from package_order join packages using (method);

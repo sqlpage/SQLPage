@@ -374,8 +374,13 @@ test("switch installation target and copy its command on a phone", async ({
     .getByRole("navigation", { name: "Operating system" })
     .getByRole("link", { name: "Windows", exact: true })
     .press("Enter");
-  const download = installer.locator('a[href$="/sqlpage-windows.zip"]');
-  await expect(download).toBeVisible();
+  const download = installer.getByRole("link", {
+    name: "Download sqlpage-windows.zip for Windows x64",
+  });
+  await expect(download).toHaveAttribute("href", /\/sqlpage-windows\.zip$/);
+  await expect(
+    installer.getByText("sqlpage-windows.zip", { exact: true }),
+  ).toBeVisible();
   await installer
     .getByRole("navigation", { name: "Installation method" })
     .getByRole("link", { name: "Scoop", exact: true })
