@@ -68,8 +68,9 @@ import the shared `fixture.ts` harness; root-level `*.spec.ts` files cover the
 official site.
 
 Run `npx playwright test --grep @accessibility` from `tests/end-to-end` to audit
-the official site's component documentation with axe-core. CI includes this test
-when component templates, frontend code, the official site, or audit inputs change.
+the official site's component documentation and its live examples in SQLPage's
+stock light and dark themes with axe-core. CI includes this test when component
+templates, frontend code, the official site, or audit inputs change.
 
 To show that an issue exists before you fix it, put the reproduction in a fixture and run it against releases with one command, such as `nix run .#reproduce -- repro_721 postgres v0.35.0 v0.36.1 tree`. The second argument is `sqlite` or `postgres`, and `tree` is your working tree. It prints Playwright's output for each version, then a table you can paste into the issue or pull request. Releases run from their Docker images, from v0.29.0 onwards, and Postgres from `docker compose`. Without Nix, run `npm run reproduce --` in `tests/end-to-end` instead.
 

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-bs-theme="dark">
+<html lang="en" data-bs-theme="{{default stock_theme 'dark'}}"{{#unless stock_theme}} data-site-theme="custom-docsite"{{/unless}}>
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -12,7 +12,9 @@
     <meta name="generator" content="SQLPage v{{buildinfo 'CARGO_PKG_VERSION'}}">
     <link rel="icon" href="/favicon.ico">
     <link rel="stylesheet" href="{{static_path 'sqlpage.css'}}">
-    <link rel="stylesheet" href="/assets/highlightjs-and-tabler-theme.css">
+    {{#unless stock_theme}}
+        <link rel="stylesheet" href="/assets/highlightjs-and-tabler-theme.css">
+    {{/unless}}
     <link rel="stylesheet" href="/assets/docs/shell.css">
     {{#if catalog}}
         <link rel="canonical" href="{{catalog_link}}">
