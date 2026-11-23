@@ -464,11 +464,41 @@ test("leaves a rangeBar chart on a category axis alone", async ({ page }) => {
   expect(chart.shapes).toHaveLength(2);
 });
 
-test("leaves a treemap chart alone", async ({ page }) => {
+test("keeps treemap labels legible on a phone and in an SVG download", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
   const chart = await renderChart(page, "treemap");
 
   expect(chart.failures).toEqual([]);
   expect(chart.shapes).toHaveLength(4);
+  const labels = page.locator("#test-chart .apexcharts-datalabel");
+  await expect(labels).toHaveText([
+    "United States",
+    "Canada",
+    "France",
+    "Germany",
+  ]);
+  for (const label of await labels.all()) {
+    await expect(label).toHaveCSS("paint-order", /^stroke/);
+    await expect(label).not.toHaveCSS("stroke", "none");
+    const fontSize = await label.evaluate((el) =>
+      parseFloat(getComputedStyle(el).fontSize),
+    );
+    expect(fontSize).toBeGreaterThanOrEqual(12);
+  }
+  const exported = await page.evaluate(async () => {
+    const chart = window.charts?.[0];
+    if (!chart) throw new Error("Chart fixture did not initialize");
+    const svg = new DOMParser().parseFromString(
+      await chart.getSvgString(),
+      "image/svg+xml",
+    );
+    return svg.querySelectorAll(
+      'text.apexcharts-datalabel[stroke][paint-order^="stroke"]',
+    ).length;
+  });
+  expect(exported).toBe(chart.shapes.length);
 });
 
 test("draws a rangeBar chart that asks to be stacked", async ({ page }) => {

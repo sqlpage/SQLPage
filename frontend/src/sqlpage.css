@@ -50,12 +50,6 @@ code {
   font-size: 100%;
 }
 
-.apexcharts-text,
-.apexcharts-datalabel {
-  fill: var(--tblr-body-color);
-  font-weight: var(--tblr-body-font-weight);
-}
-
 .apexcharts-tooltip .apexcharts-tooltip-title {
   color: inherit;
 }
