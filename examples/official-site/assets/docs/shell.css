@@ -167,7 +167,6 @@
 
 .docs-search,
 .docs-filter {
-  gap: 0.35rem;
   border: 1px solid var(--docs-line);
   border-radius: 0.45rem;
   background: var(--docs-surface);
@@ -188,19 +187,32 @@
 .docs-search button {
   display: grid;
   place-items: center;
-  padding: 0.55rem 0 0.55rem 0.7rem;
+  padding: 0.55rem;
+}
+
+:is(.docs-search, .docs-filter, .catalog-search):has(input:focus-visible) {
+  outline: 2px solid var(--docs-blue);
+  outline-offset: -2px;
+
+  input:focus-visible {
+    outline: none;
+  }
+}
+
+.docs-search button:focus-visible {
+  border-radius: inherit;
+  outline-offset: -2px;
 }
 
 .docs-search input {
   width: 8rem;
-  padding-right: 0.55rem;
+  padding-inline: 0.15rem 0.55rem;
+  color: var(--tblr-body-color);
 }
 
 .docs-search kbd {
-  margin-right: 0.45rem;
-  padding: 0.1rem 0.3rem;
-  border: 1px solid var(--docs-line);
-  border-radius: 0.25rem;
+  margin-right: 0.7rem;
+  padding: 0;
   background: transparent;
   color: var(--docs-muted);
   font: 0.75rem / 1.4 var(--tblr-font-monospace);
@@ -373,6 +385,7 @@
 }
 
 .docs-filter {
+  gap: 0.35rem;
   padding-inline: 0.6rem;
   margin-bottom: 0.8rem;
   font-size: 0.9rem;
@@ -553,6 +566,9 @@
 }
 
 @media (max-width: 23rem) {
+  .docs-bar {
+    padding-inline: 0.5rem;
+  }
   .docs-brand {
     gap: 0.25rem;
     font-size: 1.2rem;
@@ -566,8 +582,5 @@
   .docs-home,
   .docs-tools {
     gap: 0.35rem;
-  }
-  .docs-search input {
-    width: 3.6rem;
   }
 }
