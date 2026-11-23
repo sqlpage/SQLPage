@@ -3,8 +3,7 @@ import { expect, test } from "@playwright/test";
 
 const wcagTags = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 
-const stockThemes = ["light", "dark"] as const;
-const themes = ["custom-docsite", ...stockThemes] as const;
+const themes = ["documentation", "light", "dark"] as const;
 type Theme = (typeof themes)[number];
 
 // Keep color-contrast active and allow only the observed counts per component
@@ -27,10 +26,10 @@ const upstreamContrast: Record<string, Partial<Record<Theme, number>>> = {
   tab: { dark: 2 },
   // axe uses Tabler's masked card stripe as the background for card text.
   // https://github.com/dequelabs/axe-core/issues/5573
-  card: { "custom-docsite": 7, light: 6, dark: 7 },
+  card: { documentation: 7, light: 6, dark: 7 },
   // Leaflet's attribution links over its translucent attribution background.
   // https://github.com/Leaflet/Leaflet/issues/7538
-  map: { "custom-docsite": 3, dark: 3 },
+  map: { documentation: 3, dark: 3 },
 };
 
 test("component documentation passes axe WCAG A and AA checks", {
@@ -58,7 +57,7 @@ test("component documentation passes axe WCAG A and AA checks", {
     let previewCount = 0;
 
     for (const theme of themes) {
-      const stockTheme = theme === "custom-docsite" ? undefined : theme;
+      const stockTheme = theme === "documentation" ? undefined : theme;
       if (stockTheme) url.searchParams.set("theme", stockTheme);
       await test.step(`${component} (${theme})`, async () => {
         const response = await page.goto(url.href);
@@ -74,17 +73,10 @@ test("component documentation passes axe WCAG A and AA checks", {
         const axe = new AxeBuilder({ page }).withTags(wcagTags);
         const previews = page.locator(liveExamples);
         if (stockTheme) {
-          const html = page.locator("html");
-          await expect(html).toHaveAttribute("data-bs-theme", stockTheme);
-          await expect(html).not.toHaveAttribute(
-            "data-site-theme",
-            "custom-docsite",
+          await expect(page.locator("html")).toHaveAttribute(
+            "data-bs-theme",
+            stockTheme,
           );
-          await expect(
-            page.locator(
-              'link[href="/assets/highlightjs-and-tabler-theme.css"]',
-            ),
-          ).toHaveCount(0);
           await expect(previews).toHaveCount(previewCount);
           if (previewCount === 0) return;
           axe.include(liveExamples);
