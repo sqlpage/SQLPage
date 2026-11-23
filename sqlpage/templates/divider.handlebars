@@ -12,7 +12,7 @@
         {{#if link}}
             <a
                 href="{{link}}"
-                class="{{#if color}} text-{{color}} {{/if}}"
+                {{#if color}}class="sqlpage-accent" style="--sqlpage-accent: var(--tblr-{{color}}, currentColor);"{{/if}}
             >
                 {{contents}}
             </a>

@@ -26,19 +26,20 @@
             <div class="card h-100
                 {{~#if active}} card-active {{/if~}}
                 {{~#if background_color}}
-                    bg-{{background_color}} text-{{background_color}}-fg
+                    bg-{{background_color}} text-{{background_color}}-fg sqlpage-colored-card{{#if (ne (replace background_color "-lt" "") background_color)}} sqlpage-tinted-card{{/if}}
                 {{~else}}
                     {{#if (all embed (not title) (not icon))}}
                         bg-transparent border-0
                     {{/if}}
                 {{/if}}
                 "
+                {{#if background_color}}style="--sqlpage-card-bg: var(--tblr-{{background_color}});"{{/if}}
                 {{#if (and embed (ne embed_mode "iframe"))}}data-pre-init="card" data-embed="{{embed}}"{{/if}}>
                 {{#if link}}
                     <a href="{{link}}"{{#if target}} target="{{target}}"{{/if}} style="text-decoration: inherit; color: inherit">
                 {{/if}}
                 {{#if top_image}}
-                    <img src="{{top_image}}" class="card-img-top"{{#if top_image_width}} width="{{top_image_width}}"{{/if}}{{#if top_image_height}} height="{{top_image_height}}"{{/if}}{{#if top_image_lazy}} loading="lazy"{{/if}}/>
+                    <img src="{{top_image}}" alt="{{top_image_alt}}" class="card-img-top"{{#if top_image_width}} width="{{top_image_width}}"{{/if}}{{#if top_image_height}} height="{{top_image_height}}"{{/if}}{{#if top_image_lazy}} loading="lazy"{{/if}}/>
                 {{/if}}
                 {{#if color}}
                     {{#if (not embed)}}
@@ -55,7 +56,7 @@
                     </div>
                     {{~#if embed ~}}
                     {{~#if (eq embed_mode "iframe")}}
-                        <iframe src="{{embed}}" 
+                        <iframe src="{{embed}}" title="{{default embed_title (default title 'Embedded content')}}"
                             width="{{#if width}}{{width}}{{else}}100%{{/if}}"
                             {{~#if height}} height="{{height}}"{{/if~}}
                             {{~#if allow}} allow="{{allow}}"{{/if~}}

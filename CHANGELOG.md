@@ -4,7 +4,11 @@
 
 - Big number title links have a larger target for touch and pointer users.
 
-- Carousel slide indicators and pagination controls now have accessible names. Enabled pagination controls are reachable by keyboard and no longer announced as disabled.
+- Carousel slide indicators and pagination arrows now have accessible names. Keyboard users can activate carousel arrows and enabled pagination links. Screen readers announce the current page.
+- Button, card, carousel, and login images accept alternative text. Embedded card frames use their own title or the card title.
+- Keyboard users can focus and scroll code blocks and responsive tables.
+- Inline links are underlined so they stand out without relying on color. The documentation search button has a clear accessible name separate from its shortcut hint.
+- Improved text contrast for alert descriptions, big numbers, outlined buttons, colored cards, status badges, dividers, lists, map credits, status bars, upcoming steps, tabs, and tables. Disabled buttons expose their state and cannot be activated.
 - Tracking blocks without links now expose their titles to screen readers.
 
 - Component reference pages accept `theme=light` and `theme=dark` to preview examples with SQLPage's stock themes.

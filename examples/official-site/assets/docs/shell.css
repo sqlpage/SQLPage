@@ -40,6 +40,11 @@
 }
 
 .docs-search kbd {
+  position: absolute;
+  z-index: 5;
+  inset-inline-end: 2.25rem;
+  align-self: center;
+  pointer-events: none;
   font: var(--tblr-font-size-h5) var(--tblr-font-monospace);
 }
 
@@ -47,6 +52,10 @@
   .docs-search kbd {
     display: none;
   }
+}
+
+.docs-search:has(kbd:not([hidden])) input {
+  padding-inline-end: 3rem;
 }
 
 .docs-columns {
@@ -111,6 +120,10 @@
 }
 
 @media (min-width: 62rem) {
+  .docs-search:has(kbd:not([hidden])) input {
+    padding-inline-end: 3rem;
+  }
+
   .docs-columns {
     flex-direction: row;
     align-items: flex-start;

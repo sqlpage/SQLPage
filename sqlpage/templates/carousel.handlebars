@@ -12,7 +12,7 @@
                     {{#delay}}
                         {{flush_delayed}}
                         <div class="carousel-item {{#if (eq @row_index 0)}}active{{/if}}">
-                            <img class="d-block w-100 object-fit-cover" alt="{{image}}" src="{{image}}" {{#if width}}width="{{width}}"{{/if}} {{#if height}}height="{{height}}"{{/if}} />
+                            <img class="d-block w-100 object-fit-cover" alt="{{image_alt}}" src="{{image}}" {{#if width}}width="{{width}}"{{/if}} {{#if height}}height="{{height}}"{{/if}} />
                             {{#if title}}
                             <div class="carousel-caption-background d-none d-md-block"></div>
                             <div class="carousel-caption d-none d-md-block">
@@ -28,13 +28,13 @@
         </div>
     </div>
     {{#if controls}}
-        <a class="carousel-control-prev" data-bs-target="#_sqlpage_carousel_{{@component_index}}" role="button" data-bs-slide="prev">
+        <button type="button" class="carousel-control-prev" data-bs-target="#_sqlpage_carousel_{{@component_index}}" data-bs-slide="prev">
             <span class="carousel-control-prev-icon" aria-hidden="true"></span>
             <span class="visually-hidden">Previous</span>
-        </a>
-        <a class="carousel-control-next" data-bs-target="#_sqlpage_carousel_{{@component_index}}" role="button" data-bs-slide="next">
+        </button>
+        <button type="button" class="carousel-control-next" data-bs-target="#_sqlpage_carousel_{{@component_index}}" data-bs-slide="next">
             <span class="carousel-control-next-icon" aria-hidden="true"></span>
             <span class="visually-hidden">Next</span>
-        </a>
+        </button>
     {{/if}}
 </div>

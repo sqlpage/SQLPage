@@ -3,60 +3,7 @@ import { expect, test } from "@playwright/test";
 
 const wcagTags = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 
-// Existing failures in the documentation search shortcut and inline prose links.
-const sharedRulesToFix = ["label-content-name-mismatch", "link-in-text-block"];
-
-// Re-enable each rule for the affected component once its examples pass.
-const componentRulesToFix: Partial<Record<string, string[]>> = {
-  button: ["color-contrast", "image-alt"],
-  card: ["color-contrast", "frame-title", "image-alt"],
-  code: ["scrollable-region-focusable"],
-  login: ["image-alt"],
-  map: ["color-contrast"],
-  table: ["scrollable-region-focusable"],
-};
-
 const stockThemes = ["light", "dark"] as const;
-type StockTheme = (typeof stockThemes)[number];
-
-// Keep the rules active so additional failing elements exceed the baseline.
-const stockBaseline: Partial<
-  Record<string, Record<string, Partial<Record<StockTheme, number>>>>
-> = {
-  alert: {
-    "color-contrast": { light: 7 },
-    "link-in-text-block": { light: 1, dark: 1 },
-  },
-  big_number: { "color-contrast": { light: 6, dark: 4 } },
-  button: {
-    "color-contrast": { light: 4, dark: 5 },
-    "image-alt": { light: 1, dark: 1 },
-  },
-  card: {
-    "color-contrast": { light: 6, dark: 7 },
-    "frame-title": { light: 1, dark: 1 },
-    "image-alt": { light: 3, dark: 3 },
-  },
-  datagrid: { "color-contrast": { light: 3, dark: 2 } },
-  divider: { "color-contrast": { dark: 1 } },
-  foldable: { "link-in-text-block": { light: 1, dark: 1 } },
-  list: { "color-contrast": { light: 1 } },
-  login: {
-    "image-alt": { light: 1, dark: 1 },
-    "link-in-text-block": { dark: 1 },
-  },
-  map: { "color-contrast": { dark: 3 } },
-  modal: { "color-contrast": { light: 2, dark: 1 } },
-  status_bar: { "color-contrast": { light: 1 } },
-  steps: { "color-contrast": { light: 2, dark: 2 } },
-  tab: { "color-contrast": { dark: 2 } },
-  table: {
-    "color-contrast": { light: 13, dark: 1 },
-    "scrollable-region-focusable": { light: 1, dark: 1 },
-  },
-  text: { "link-in-text-block": { light: 4, dark: 4 } },
-  timeline: { "link-in-text-block": { light: 1, dark: 1 } },
-};
 
 test("component documentation passes axe WCAG A and AA checks", {
   tag: "@accessibility",
@@ -115,28 +62,19 @@ test("component documentation passes axe WCAG A and AA checks", {
           axe.include(liveExamples);
         } else {
           previewCount = await previews.count();
-          axe.disableRules([
-            ...sharedRulesToFix,
-            ...(componentRulesToFix[component] ?? []),
-          ]);
         }
 
         const { violations } = await axe.analyze();
-        const regressions = violations
-          .map(({ id, helpUrl, nodes }) => ({
-            id,
-            helpUrl,
-            baseline: stockTheme
-              ? (stockBaseline[component]?.[id]?.[stockTheme] ?? 0)
-              : 0,
-            nodes: nodes.map(({ target, failureSummary }) => ({
-              target,
-              failureSummary,
-            })),
-          }))
-          .filter(({ nodes, baseline }) => nodes.length > baseline);
+        const failures = violations.map(({ id, helpUrl, nodes }) => ({
+          id,
+          helpUrl,
+          nodes: nodes.map(({ target, failureSummary }) => ({
+            target,
+            failureSummary,
+          })),
+        }));
         expect
-          .soft(regressions, `${component} (${theme}) accessibility violations`)
+          .soft(failures, `${component} (${theme}) accessibility violations`)
           .toEqual([]);
       });
     }

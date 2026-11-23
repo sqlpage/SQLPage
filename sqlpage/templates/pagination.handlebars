@@ -24,7 +24,7 @@
                 {{#if offset}}
                     <span class="page-link disabled">&hellip;</span>
                 {{else}}
-                    <a class="page-link" href="{{default link '#'}}">{{contents}}</a>
+                    <a class="page-link" href="{{default link '#'}}"{{#if active}} aria-current="page"{{/if}}>{{contents}}</a>
                 {{/if}}
             </li>
             {{~/each_row~}}

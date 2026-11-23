@@ -227,3 +227,108 @@ See https://github.com/tabler/tabler/issues/2404
   color: inherit;
   text-decoration: underline;
 }
+
+/* Keep text legible while retaining the component's accent hue. */
+.sqlpage-accent,
+.nav-bordered .nav-link.active,
+.status {
+  --sqlpage-readable-accent: color-mix(
+    in srgb,
+    var(--sqlpage-accent, var(--tblr-status-color, var(--tblr-primary))),
+    light-dark(black, white) 48%
+  );
+  color: var(--sqlpage-readable-accent);
+}
+
+.nav-bordered .nav-link.sqlpage-accent {
+  color: var(--sqlpage-readable-accent);
+}
+
+.nav-bordered .nav-link.active.sqlpage-accent {
+  /* biome-ignore lint/complexity/noImportantStyles: override the border color utility */
+  border-bottom-color: currentColor !important;
+}
+
+.status-bar .sqlpage-accent {
+  /* biome-ignore lint/complexity/noImportantStyles: override the text color utility */
+  color: var(--sqlpage-readable-accent) !important;
+}
+
+.sqlpage-button-outline {
+  --tblr-btn-color: color-mix(
+    in srgb,
+    var(--tblr-btn-variant),
+    light-dark(black, white) 48%
+  );
+  --tblr-btn-border-color: var(--tblr-btn-color);
+  --tblr-btn-hover-bg: var(--tblr-btn-color);
+  --tblr-btn-hover-color: light-dark(white, black);
+  --tblr-btn-active-bg: var(--tblr-btn-hover-bg);
+  --tblr-btn-active-color: var(--tblr-btn-hover-color);
+}
+
+/* Give the accent strip its visible width instead of masking a full-size layer. */
+.card-status-start {
+  inset-inline-end: auto;
+  width: var(--tblr-card-status-size);
+  mask-image: none;
+}
+
+@supports (color: contrast-color(white)) {
+  .sqlpage-colored-card {
+    --sqlpage-card-fg: contrast-color(var(--sqlpage-card-bg));
+  }
+}
+
+/* Tabler tints are translucent and sit on top of the theme surface. */
+.sqlpage-tinted-card {
+  --sqlpage-card-fg: var(--tblr-body-color);
+}
+
+.sqlpage-colored-card :is(.card-title, .card-content, .card-footer) {
+  color: var(--sqlpage-card-fg, inherit);
+}
+
+.sqlpage-colored-card :is(.card-content, .card-footer) a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+.sqlpage-big-number-colored {
+  /* biome-ignore lint/complexity/noImportantStyles: override Tabler's tinted background utility */
+  color: color-mix(
+    in srgb,
+    var(--sqlpage-accent, currentColor),
+    light-dark(black, white) 48%
+  ) !important;
+}
+
+.sqlpage-big-number-colored .h1 {
+  color: inherit;
+}
+
+.sqlpage-big-number :is(.subheader, .subheader a, .dropdown-toggle) {
+  /* biome-ignore lint/complexity/noImportantStyles: override Tabler's text utilities */
+  color: var(--tblr-body-color) !important;
+}
+
+.sqlpage-colored-row td,
+.sqlpage-colored-row td a,
+.table-sort,
+.alert:not(.alert-important) .alert-description,
+.step-item.active ~ .step-item,
+.list-group-item-action .text-muted {
+  /* biome-ignore lint/complexity/noImportantStyles: override Tabler's text utilities */
+  color: var(--tblr-body-color) !important;
+}
+
+:is(p, .markdown li, .remove-bottom-margin li) > a:not([class]),
+.form-hint a,
+.form-label-description a {
+  text-decoration: underline;
+}
+
+.leaflet-container .leaflet-control-attribution a {
+  color: #004e72;
+  text-decoration: underline;
+}
