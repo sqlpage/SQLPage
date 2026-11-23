@@ -282,6 +282,11 @@ See https://github.com/tabler/tabler/issues/2404
   --tblr-btn-active-color: var(--tblr-btn-hover-color);
 }
 
+.sqlpage-button-outline.btn-outline-orange {
+  --tblr-btn-color: light-dark(#c54e00, var(--sqlpage-readable-accent));
+  --tblr-btn-border-color: light-dark(#f46600, var(--tblr-btn-color));
+}
+
 /* Give the accent strip its visible width instead of masking a full-size layer. */
 .card-status-start {
   inset-inline-end: auto;
