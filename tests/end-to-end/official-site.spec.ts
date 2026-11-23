@@ -388,6 +388,48 @@ test("chart documentation renders its examples without browser errors", async ({
   expect(errors).toEqual([]);
 });
 
+for (const width of [320, 390]) {
+  test(`treemap country and region labels fit the ${width}px preview`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto("/component.sql?component=chart");
+    const plot = page.locator(".card").filter({
+      has: page.getByRole("heading", {
+        name: "Quarterly Results By Region (in k$)",
+        exact: true,
+      }),
+    });
+    await expect(plot.getByText("Japan", { exact: true })).toBeVisible();
+    const clipped = await plot
+      .locator(".apexcharts-series")
+      .evaluateAll((groups) => {
+        const clipped: string[] = [];
+        for (const group of groups) {
+          const tiles = [...group.querySelectorAll(".apexcharts-treemap-rect")];
+          const right = Math.max(
+            ...tiles.map((tile) => tile.getBoundingClientRect().right),
+          );
+          const title = group.querySelector(":scope > text");
+          const badge = title?.previousElementSibling;
+          if (title && badge && badge.getBoundingClientRect().right > right + 1)
+            clipped.push(title.textContent ?? "");
+          for (const label of group.querySelectorAll(
+            ".apexcharts-data-labels > text",
+          )) {
+            const tile =
+              label.parentElement?.previousElementSibling?.getBoundingClientRect();
+            const text = label.getBoundingClientRect();
+            if (!tile || text.left < tile.left || text.right > tile.right)
+              clipped.push(label.textContent ?? "");
+          }
+        }
+        return clipped;
+      });
+    expect(clipped).toEqual([]);
+  });
+}
+
 test("map", async ({ page }) => {
   await page.goto("/documentation.sql?component=map#component");
   await expect(page.getByText("Loading...")).not.toBeVisible();

@@ -63,6 +63,19 @@
   display: block;
   overflow-x: auto;
 }
+@media (max-width: 27rem) {
+  .docs-example > .docs-example-source,
+  .docs-example-layout {
+    margin-inline: calc(0.25rem - var(--docs-gutter));
+  }
+  /* A chart card fills the preview. Keep its title inset and give the plot the full width. */
+  .docs-example-output:has(> .card > .card-body > .chart) {
+    padding-inline: 0;
+  }
+  .docs-example-output > .card > .card-body > .chart {
+    margin-inline: calc(-1 * var(--tblr-card-spacer-x));
+  }
+}
 @container example (min-width: 52rem) {
   .docs-example-layout {
     display: grid;
