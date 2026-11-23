@@ -2,6 +2,7 @@
 
 ## unreleased
 
+- Component reference pages accept `theme=light` and `theme=dark` to preview examples with SQLPage's stock themes.
 - The first-website tutorial now lets you choose an installation target, copy a command, or download an archive for macOS, Windows, Linux, or AWS Lambda.
 - Missing component pages on the official site return HTTP 404 and link to the catalog. Action buttons in colored alerts stay readable.
 - The `shell` sidebar now uses `navbar_title` and preserves the colors of the supplied logo in dark mode.
