@@ -227,3 +227,10 @@ See https://github.com/tabler/tabler/issues/2404
   color: inherit;
   text-decoration: underline;
 }
+
+/* Keep inline prose links identifiable without relying on color. */
+:is(p, .markdown li, .remove-bottom-margin li) > a:not([class]),
+.form-hint a,
+.form-label-description a {
+  text-decoration: underline;
+}

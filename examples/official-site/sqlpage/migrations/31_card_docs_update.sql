@@ -70,9 +70,9 @@ INSERT INTO example(component, description, properties) VALUES
     ('card', 'A gallery of images.',
         json('[
             {"component":"card", "title":"My favorite animals in pictures", "columns": 3},
-            {"title": "Lynx", "description_md": "The **lynx** is a medium-sized **wild cat** native to Northern, Central and Eastern Europe to Central Asia and Siberia, the Tibetan Plateau and the Himalayas.", "top_image": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Lynx_lynx_-_05.jpg/330px-Lynx_lynx_-_05.jpg", "top_image_width": 330, "top_image_height": 495, "top_image_lazy": true, "icon":"star" },
-            {"title": "Squirrel", "description_md": "The **chipmunk** is a small, striped rodent of the family Sciuridae. Chipmunks are found in North America, with the exception of the Siberian chipmunk which is found primarily in Asia.", "top_image": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/American_squirrel_eating_nut%2C_13_Jun_2013.JPG/330px-American_squirrel_eating_nut%2C_13_Jun_2013.JPG", "top_image_width": 330, "top_image_height": 495, "top_image_lazy": true },
-            {"title": "Spider", "description_md": "The **jumping spider family** (_Salticidae_) contains more than 600 described genera and about *6000 described species*, making it the largest family of spiders with about 13% of all species.", "top_image": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Australian_orb_weaver_spinning_web.jpg/330px-Australian_orb_weaver_spinning_web.jpg", "top_image_width": 330, "top_image_height": 495, "top_image_lazy": true }
+            {"title": "Lynx", "description_md": "The **lynx** is a medium-sized **wild cat** native to Northern, Central and Eastern Europe to Central Asia and Siberia, the Tibetan Plateau and the Himalayas.", "top_image_alt": "A Eurasian lynx", "top_image": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Lynx_lynx_-_05.jpg/330px-Lynx_lynx_-_05.jpg", "top_image_width": 330, "top_image_height": 495, "top_image_lazy": true, "icon":"star" },
+            {"title": "Squirrel", "description_md": "The **chipmunk** is a small, striped rodent of the family Sciuridae. Chipmunks are found in North America, with the exception of the Siberian chipmunk which is found primarily in Asia.", "top_image_alt": "A squirrel eating a nut", "top_image": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/American_squirrel_eating_nut%2C_13_Jun_2013.JPG/330px-American_squirrel_eating_nut%2C_13_Jun_2013.JPG", "top_image_width": 330, "top_image_height": 495, "top_image_lazy": true },
+            {"title": "Spider", "description_md": "The **jumping spider family** (_Salticidae_) contains more than 600 described genera and about *6000 described species*, making it the largest family of spiders with about 13% of all species.", "top_image_alt": "An orb weaver spinning a web", "top_image": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Australian_orb_weaver_spinning_web.jpg/330px-Australian_orb_weaver_spinning_web.jpg", "top_image_width": 330, "top_image_height": 495, "top_image_lazy": true }
         ]')),
     ('card', 'Beautifully colored cards with variable width. The blue card (width 6) takes half the screen, whereas of the red and green cards have the default width of 3',
         json('[
@@ -87,3 +87,7 @@ INSERT INTO example(component, description, properties) VALUES
             {"title": "Embedded Chart", "embed": "/examples/chart.sql?_sqlpage_embed" },
             {"title": "Embedded Video", "embed": "https://www.youtube.com/embed/mXdgmSdaXkg", "allow": "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share", "embed_mode": "iframe", "height": "350" }
         ]'));
+
+INSERT INTO parameter(component, name, description, type, top_level, optional) VALUES
+    ('card', 'top_image_alt', 'Alternative text for an informative card image. Leave empty if decorative.', 'TEXT', FALSE, TRUE),
+    ('card', 'embed_title', 'Accessible name of the iframe. Defaults to the card title, or Embedded content if no title is set.', 'TEXT', FALSE, TRUE);

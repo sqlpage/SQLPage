@@ -74,3 +74,6 @@ There, you will have access to the variables:
         )
     ),
    ('login', 'Basic login form', JSON('[{"component": "login", "username": "Username", "password": "Password", "autofocus": false}]'));
+
+INSERT INTO parameter(component, name, description, type, top_level, optional) VALUES
+    ('login', 'image_alt', 'Alternative text for an informative login image. Leave empty if decorative.', 'TEXT', TRUE, TRUE);

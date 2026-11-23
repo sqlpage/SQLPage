@@ -117,3 +117,6 @@ INSERT INTO example(component, description, properties) VALUES
             "image":"https://upload.wikimedia.org/wikipedia/commons/f/fa/Globe.svg"
         }]')
     );
+
+INSERT INTO parameter(component, name, description, type, top_level, optional) VALUES
+    ('button', 'image_alt', 'Alternative text for an informative button image. Leave empty if decorative or repeated by the button title.', 'TEXT', FALSE, TRUE);

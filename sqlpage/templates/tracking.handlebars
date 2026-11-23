@@ -21,7 +21,7 @@
 					{{#if link}}
 						<a href="{{link}}" class="tracking-block{{#if color}} bg-{{color}}{{/if}}" data-bs-toggle="tooltip" data-bs-placement="{{default ../placement "top"}}" title="{{title}}"></a>
 					{{else}}
-						<div class="tracking-block{{#if color}} bg-{{color}}{{/if}}" data-bs-toggle="tooltip" data-bs-placement="{{default ../placement "top"}}" title="{{title}}"></div>
+						<div role="img" aria-label="{{title}}" class="tracking-block{{#if color}} bg-{{color}}{{/if}}" data-bs-toggle="tooltip" data-bs-placement="{{default ../placement "top"}}" title="{{title}}"></div>
 					{{/if}}
 				{{/each_row}}
 			</div>

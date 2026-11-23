@@ -22,6 +22,10 @@ Run SQLPage from that directory, or run
 `docker compose -f examples/official-site/docker-compose.yml up --build` from
 the repository root.
 
+Add `theme=light` or `theme=dark` to a component reference URL to preview its
+live examples using SQLPage's stock theme. For example, visit
+`/component.sql?component=form&theme=light`.
+
 ## Landing page
 
 The home page is rendered by `index.sql` and the `landing-page` custom template.
