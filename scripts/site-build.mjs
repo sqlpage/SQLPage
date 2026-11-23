@@ -6,14 +6,18 @@ import {
   mkdtempSync,
   renameSync,
   rmSync,
+  writeFileSync,
 } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
+
+import { buildDocumentationSeed } from "./site-content.mjs";
 
 const repository = resolve(import.meta.dirname, "..");
 const siteDirectory = join(repository, "target", "official-site");
 const source = join(repository, "examples", "official-site");
 
 const excluded = new Set([
+  "content",
   "README.md",
   "docker-compose.yml",
   "test.hurl",
@@ -32,6 +36,10 @@ function buildSite() {
       recursive: true,
       filter: (file) => !excluded.has(relative(source, file)),
     });
+    writeFileSync(
+      join(next, "sqlpage", "migrations", "01_documentation.sql"),
+      buildDocumentationSeed(),
+    );
     copyFileSync(
       join(repository, "configuration.md"),
       join(next, "configuration.md"),

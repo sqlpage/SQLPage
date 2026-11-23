@@ -27,6 +27,8 @@ sqlpage_functions! {
 }
 ```
 
+Add the matching Markdown page to the [function reference](../../../../examples/official-site/content/functions/). The registry test checks that each public function has a page.
+
 The [`sqlpage_functions!`](function_traits.rs) macro generates the
 `SqlPageFunctionName` enum the SQL engine dispatches on. Per-function argument extraction, dispatch,
 and return-value conversion are handled generically in [`function_traits.rs`](function_traits.rs) by

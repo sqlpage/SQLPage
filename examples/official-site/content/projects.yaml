@@ -1,0 +1,68 @@
+- title: Advanced Authentication
+  folder: user-authentication
+  db_engine: postgres
+  description: Build a secure user authentication system with login, signup, and in-database session management.
+- title: Authenticated CRUD
+  folder: CRUD - Authentication
+  db_engine: sqlite
+  description: Complete Create-Read-Update-Delete operations with user authentication.
+- title: Image Gallery
+  folder: image gallery with user uploads
+  db_engine: sqlite
+  description: Create an image gallery with user uploads and session management.
+- title: Developer UI
+  folder: SQLPage developer user interface
+  db_engine: postgres
+  description: A web-based interface for managing SQLPage files and database tables.
+- title: Corporate Game
+  folder: corporate-conundrum
+  db_engine: sqlite
+  description: An interactive multiplayer board game with real-time updates.
+- title: Roundest Pokemon
+  folder: roundest_pokemon_rating
+  db_engine: sqlite
+  description: Demo app with a distinct non-default design, using custom HTML templates for everything.
+- title: Todo Application
+  folder: todo application (PostgreSQL)
+  db_engine: postgres
+  description: A full-featured todo list application with PostgreSQL backend.
+- title: MySQL & JSON
+  folder: mysql json handling
+  db_engine: mysql
+  description: Learn advanced JSON manipulation in MySQL to build advanced SQLPage applications.
+- title: Apache Web Server
+  folder: web servers - apache
+  db_engine: mysql
+  description: Use an existing Apache httpd Web Server to expose your SQLPage application.
+- title: Sending Emails
+  folder: sending emails
+  db_engine: sqlite
+  description: Use the fetch function to send emails (or interact with any other HTTP API).
+- title: Simple Website
+  folder: simple-website-example
+  db_engine: sqlite
+  description: Basic website example with navigation and data management.
+- title: Geographic App
+  folder: PostGIS - using sqlpage with geographic data
+  db_engine: postgres
+  description: Use SQLPage to create and manage geodata.
+- title: Multi-step form
+  folder: forms-with-multiple-steps
+  db_engine: sqlite
+  description: Guide to the implementation of forms that spread over multiple pages.
+- title: Custom HTML & JS
+  folder: custom form component
+  db_engine: mysql
+  description: Building a custom form component with a dynamic widget using HTML and javascript.
+- title: Splitwise Clone
+  folder: splitwise
+  db_engine: sqlite
+  description: An expense tracker app to split expenses with your friends, with nice debt charts.
+- title: Advanced Forms with MS SQL Server
+  folder: microsoft sql server advanced forms
+  db_engine: sql server
+  description: Forms with multi-value dropdowns, using SQL Server and its JSON functions.
+- title: Rich Text Editor
+  folder: rich-text-editor
+  db_engine: sqlite
+  description: A rich text editor with bold, italic, lists, images, and more. It posts its contents as Markdown.

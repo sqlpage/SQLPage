@@ -1,0 +1,36 @@
+- id: display-data
+  title: Display data
+  sort_order: 1
+- id: forms-and-feedback
+  title: Forms and feedback
+  sort_order: 2
+- id: navigation
+  title: Navigation
+  sort_order: 3
+- id: page-layout
+  title: Page layout and content
+  sort_order: 4
+- id: http-responses
+  title: HTTP responses
+  sort_order: 5
+- id: server-logic
+  title: Server logic
+  sort_order: 6
+- id: request-data
+  title: Request data
+  sort_order: 1
+- id: links-and-routing
+  title: Links and routing
+  sort_order: 2
+- id: files-and-uploads
+  title: Files and uploads
+  sort_order: 3
+- id: identity-and-security
+  title: Identity and security
+  sort_order: 4
+- id: external-services
+  title: External services
+  sort_order: 5
+- id: server-and-runtime
+  title: Server and runtime
+  sort_order: 6

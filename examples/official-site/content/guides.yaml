@@ -1,0 +1,28 @@
+- sort_order: 1
+  title: Your first website
+  link: /your-first-sql-website/
+  description: Install SQLPage and build a website from a SQL file.
+- sort_order: 2
+  title: SQL and variables
+  link: /extensions-to-sql.sql
+  description: Read request parameters, set variables, and call SQLPage functions.
+- sort_order: 3
+  title: Custom components
+  link: /custom_components.sql
+  description: Render your own HTML with Handlebars templates.
+- sort_order: 4
+  title: Database migrations
+  link: /your-first-sql-website/migrations.sql
+  description: Create and update your database schema with versioned SQL files.
+- sort_order: 5
+  title: Custom URLs
+  link: /your-first-sql-website/custom_urls.sql
+  description: Give your pages readable URLs and route requests to SQL files.
+- sort_order: 6
+  title: Reverse proxy
+  link: /your-first-sql-website/nginx.sql
+  description: Serve your site with Nginx and HTTPS.
+- sort_order: 7
+  title: Managed hosting
+  link: /your-first-sql-website/hosted.sql
+  description: Try SQLPage online or publish your website with DataPage.
