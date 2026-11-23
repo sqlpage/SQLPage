@@ -2,6 +2,8 @@
 
 ## unreleased
 
+- Big number title links have a larger target for touch and pointer users.
+
 - Carousel slide indicators and pagination controls now have accessible names. Enabled pagination controls are reachable by keyboard and no longer announced as disabled.
 - Tracking blocks without links now expose their titles to screen readers.
 

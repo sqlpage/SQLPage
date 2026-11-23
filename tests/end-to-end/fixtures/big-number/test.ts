@@ -76,3 +76,10 @@ test("long titles and descriptions wrap only when requested", async ({
     }
   }
 });
+
+test("title links have a usable target size", async ({ page }) => {
+  const link = page.getByRole("link", { name: "Plain value" });
+  const bounds = await link.boundingBox();
+  expect(bounds?.width).toBeGreaterThanOrEqual(24);
+  expect(bounds?.height).toBeGreaterThanOrEqual(24);
+});
