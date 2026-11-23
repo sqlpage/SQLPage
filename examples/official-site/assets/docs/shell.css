@@ -258,10 +258,12 @@
   border-start-end-radius: 0;
 }
 
+.docs-utility-link,
 .docs-footer a {
   color: var(--tblr-secondary-color);
 }
 
-.docs-footer a:hover {
+.docs-utility-link:is(:hover, :focus),
+.docs-footer a:is(:hover, :focus) {
   color: var(--tblr-link-hover-color);
 }

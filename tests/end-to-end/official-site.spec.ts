@@ -80,6 +80,27 @@ async function expectContrast(
   expect(ratio, `contrast for ${locator}`).toBeGreaterThanOrEqual(minimum);
 }
 
+test("documentation header links stay readable on hover and focus", async ({
+  page,
+}) => {
+  await page.goto("/components.sql");
+  const header = page.getByRole("banner");
+  const docs = header.getByRole("link", { name: "Docs", exact: true });
+  const github = header.getByRole("link", { name: "SQLPage on GitHub" });
+  for (const [link, minimum] of [
+    [docs, 4.5],
+    [github, 3],
+  ] as const) {
+    await expectContrast(link, minimum);
+    await link.hover();
+    await expectContrast(link, minimum);
+    await page.mouse.move(0, 0);
+    await link.focus();
+    await expectContrast(link, minimum);
+    await link.blur();
+  }
+});
+
 test("active page numbers have readable contrast in every pagination style", async ({
   page,
 }) => {
