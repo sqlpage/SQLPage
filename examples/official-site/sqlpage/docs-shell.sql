@@ -7,6 +7,10 @@ select 'shell-docs' as component,
     $options->>'title' as title,
     $options->>'description' as description,
     $options->>'css' as css,
+    case sqlpage.variables('get')->>'theme'
+        when 'light' then 'light'
+        when 'dark' then 'dark'
+    end as stock_theme,
     $section as section,
     cast($catalog as integer) as catalog,
     coalesce($kind || 's', 'guides') as topic_label,

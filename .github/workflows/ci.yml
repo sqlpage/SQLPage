@@ -12,8 +12,6 @@ on:
       - ".github/workflows/release.yml"
   # Required checks must be reported for every PR, including docs-only changes.
   pull_request:
-    branches:
-      - "main"
   merge_group:
 
 concurrency:
@@ -29,23 +27,41 @@ jobs:
   ci_selection:
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       pull-requests: read
     outputs:
       # Only a confirmed excluded-files-only PR may skip the core jobs.
       full: ${{ github.event_name != 'pull_request' || steps.paths.outputs.full != 'false' }}
+      # Run the audit when a tag or oversized PR cannot be filtered.
+      accessibility: ${{ steps.paths.outputs.accessibility != 'false' }}
     steps:
+      - uses: actions/checkout@v7
+        if: github.event_name != 'pull_request' && github.ref_type != 'tag'
       - id: paths
         name: Select test jobs
         # The PR files API is limited to 3000 files; larger PRs select core jobs.
-        if: github.event_name == 'pull_request' && github.event.pull_request.changed_files <= 3000
+        if: github.ref_type != 'tag' && (github.event_name != 'pull_request' || github.event.pull_request.changed_files <= 3000)
         uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         with:
-          predicate-quantifier: every
+          predicate-quantifier: some-with-excludes
           filters: |
             full:
+              - '**'
               - '!docs/**'
               - '!README.md'
               - '!.github/workflows/release.yml'
+            accessibility:
+              - 'sqlpage/templates/**'
+              - 'frontend/**'
+              - 'src/{dynamic_component,render,template_helpers,templates}.rs'
+              - 'examples/official-site/**'
+              - 'configuration.md'
+              - 'scripts/{build-frontend,site-build}.mjs'
+              - 'package-lock.json'
+              - 'package.json'
+              - 'tests/end-to-end/**'
+              - '.github/actions/install-frontend-dependencies/**'
+              - '.github/workflows/ci.yml'
 
   compile_and_lint:
     needs: ci_selection
@@ -233,7 +249,7 @@ jobs:
   playwright:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: compile_and_lint
+    needs: [ci_selection, compile_and_lint]
     defaults:
       run:
         working-directory: ./tests/end-to-end
@@ -257,9 +273,15 @@ jobs:
           name: official-site
           path: target/official-site
       - name: Run Playwright tests
+        env:
+          RUN_ACCESSIBILITY: ${{ needs.ci_selection.outputs.accessibility }}
         run: |
           chmod +x "${{ runner.temp }}/sqlpage-bin/sqlpage"
-          SQLPAGE_BINARY="${{ runner.temp }}/sqlpage-bin/sqlpage" npx playwright test
+          args=()
+          if [[ "$RUN_ACCESSIBILITY" == false ]]; then
+            args+=(--grep-invert @accessibility)
+          fi
+          SQLPAGE_BINARY="${{ runner.temp }}/sqlpage-bin/sqlpage" npx playwright test "${args[@]}"
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
