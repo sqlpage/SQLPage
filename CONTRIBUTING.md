@@ -67,6 +67,10 @@ built executable. Component suites use `fixtures/<suite>/{index.sql,test.ts}` an
 import the shared `fixture.ts` harness; root-level `*.spec.ts` files cover the
 official site.
 
+Run `npx playwright test --grep @accessibility` from `tests/end-to-end` to audit
+the official site's component documentation with axe-core. CI includes this test
+when component templates, frontend code, the official site, or audit inputs change.
+
 To show that an issue exists before you fix it, put the reproduction in a fixture and run it against releases with one command, such as `nix run .#reproduce -- repro_721 postgres v0.35.0 v0.36.1 tree`. The second argument is `sqlite` or `postgres`, and `tree` is your working tree. It prints Playwright's output for each version, then a table you can paste into the issue or pull request. Releases run from their Docker images, from v0.29.0 onwards, and Postgres from `docker compose`. Without Nix, run `npm run reproduce --` in `tests/end-to-end` instead.
 
 To run a whole suite against a release instead, set `SQLPAGE_RELEASE` to its tag, such as `SQLPAGE_RELEASE=v0.47.0 npx playwright test fixtures/tracking`. Both servers then run that release's Docker image against the same fixtures, on ports 18080 and 18081, so the test fails on the release and passes on your working tree. Add `--ui` to watch the page in each step.
