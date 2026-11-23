@@ -185,8 +185,38 @@
   gap: var(--tblr-spacer-3);
 }
 
-.docs-card-grid > .card:is(:hover, :focus-within) {
-  border-color: var(--tblr-primary);
+.docs-card-grid .stretched-link:hover {
+  text-decoration: none;
+}
+
+@media (hover: hover) {
+  .docs-card-grid > .card:hover {
+    background-color: color-mix(
+      in srgb,
+      var(--tblr-primary) 8%,
+      var(--tblr-bg-surface)
+    );
+    border-color: color-mix(
+      in srgb,
+      var(--tblr-primary) 32%,
+      var(--tblr-border-color)
+    );
+  }
+}
+
+.docs-card-grid > .card:has(.stretched-link:focus-visible) {
+  outline: 2px solid var(--tblr-primary);
+  outline-offset: 2px;
+}
+
+.docs-card-grid .stretched-link:focus-visible {
+  outline: none;
+}
+
+@media (forced-colors: active) {
+  .docs-card-grid > .card:has(.stretched-link:focus-visible) {
+    outline-color: Highlight;
+  }
 }
 
 .docs-main,
