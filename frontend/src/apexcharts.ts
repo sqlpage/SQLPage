@@ -305,8 +305,8 @@ function build_sqlpage_chart(c: HTMLElement) {
       ".apexcharts-datalabel, .apexcharts-pie-label",
     )) {
       if (label.previousElementSibling?.localName === "rect") continue;
-      label.setAttribute("fill", "#fff");
-      label.setAttribute("stroke", "#162333");
+      label.setAttribute("fill", "var(--tblr-white)");
+      label.setAttribute("stroke", "var(--tblr-dark)");
       label.setAttribute("stroke-width", "0.16em");
       label.setAttribute("stroke-linejoin", "round");
       label.setAttribute("paint-order", "stroke fill");

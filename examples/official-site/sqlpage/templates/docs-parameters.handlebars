@@ -1,19 +1,20 @@
 {{#each_row}}
-<section id="{{id}}" class="docs-parameters">
+<section id="{{id}}" class="docs-parameters my-5">
     <h2><a class="docs-self-link" href="#{{id}}">{{title}}</a></h2>
-    {{#if introduction}}<p>{{introduction}}</p>{{/if}}
-    <dl>
+    {{#if introduction}}<p class="text-secondary">{{introduction}}</p>{{/if}}
+    <dl class="border-bottom">
         {{#each (to_array parameters)}}
-            <div id="{{anchor}}">
-                <dt><code><a class="docs-self-link" href="#{{anchor}}">{{name}}</a></code>
-                    <small>
+            <div id="{{anchor}}" class="row g-2 mx-0 py-3 border-top">
+                <dt class="col-sm-4 text-break">
+                    <code><a class="docs-self-link" href="#{{anchor}}">{{name}}</a></code>
+                    <small class="d-block mt-1 font-monospace text-secondary fw-normal">
                         {{#if (eq type "COLOR")}}<a href="/colors.sql">{{type}}</a>
                         {{else if (eq type "ICON")}}<a href="https://tabler-icons.io/?ref=sqlpage">{{type}}</a>
                         {{else}}{{type}}{{/if}}
-                        {{#if required}}<strong>Required</strong>{{/if}}
+                        {{#if required}}<strong class="ms-2 text-primary">Required</strong>{{/if}}
                     </small>
                 </dt>
-                <dd>{{{markdown description_md}}}</dd>
+                <dd class="col-sm mb-0 text-break remove-bottom-margin">{{{markdown description_md}}}</dd>
             </div>
         {{/each}}
     </dl>

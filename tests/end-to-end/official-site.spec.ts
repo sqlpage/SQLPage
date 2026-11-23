@@ -182,6 +182,24 @@ test("browse, filter and copy a component example on a phone", async ({
   );
 });
 
+test("the page outline follows fragment links and scrolling", async ({
+  page,
+}) => {
+  await page.goto("/documentation.sql#reference");
+  const outline = page.getByRole("navigation", { name: "On this page" });
+  const current = outline.locator('[aria-current="location"]');
+  await expect(current).toHaveText("Reference");
+
+  await outline.getByRole("link", { name: "Anatomy of a SQL page" }).click();
+  await expect(current).toHaveText("Anatomy of a SQL page");
+  await page.evaluate(() =>
+    window.scrollTo(0, document.documentElement.scrollHeight),
+  );
+  await expect(current).toHaveText("Guides");
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect(current).toHaveText("Overview");
+});
+
 test.describe("function catalog without JavaScript", () => {
   test.use({ javaScriptEnabled: false });
 
@@ -313,7 +331,7 @@ test("tutorial code can be selected when clipboard writes are blocked", async ({
     .getByRole("button", { name: "Copy code", exact: true })
     .first();
   await copy.click();
-  const block = page.locator(".docs-snippet-tools + pre").first();
+  const block = page.locator("pre").first();
   await expect(block).toBeFocused();
   expect(
     await page.evaluate(() => window.getSelection()?.getRangeAt(0).toString()),

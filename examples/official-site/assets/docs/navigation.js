@@ -21,36 +21,36 @@ document.addEventListener("keydown", (event) => {
     origin.focus({ preventScroll: true });
     return;
   }
+  if (event.key.toLowerCase() !== "k" || !(event.ctrlKey || event.metaKey))
+    return;
   if (
-    event.key.toLowerCase() === "k" &&
-    (event.ctrlKey || event.metaKey) &&
-    !event.altKey &&
-    !event.shiftKey &&
-    !event.target.closest(
+    event.altKey ||
+    event.shiftKey ||
+    event.target.closest(
       "input, textarea, select, [contenteditable], [role=textbox], dialog, [aria-modal=true]",
     )
-  ) {
-    event.preventDefault();
-    shortcutOrigin = document.activeElement;
-    search.focus();
-    search.select();
-  }
+  )
+    return;
+  event.preventDefault();
+  shortcutOrigin = document.activeElement;
+  search.focus();
+  search.select();
 });
 
 // Keep navigation directly browsable when JavaScript is unavailable.
-const narrow = window.matchMedia("(max-width: 61.999rem)");
+const desktop = window.matchMedia("(min-width: 62rem)");
 const rails = document.querySelectorAll(".docs-disclosure");
 function sizeRails() {
-  for (const rail of rails) rail.open = !narrow.matches;
+  for (const rail of rails) rail.open = desktop.matches;
 }
 sizeRails();
-narrow.addEventListener("change", sizeRails);
+desktop.addEventListener("change", sizeRails);
 
 const filter = document.querySelector(".docs-filter");
 if (filter) {
   const input = filter.querySelector("input");
   const list = document.getElementById(input.getAttribute("aria-controls"));
-  const links = Array.from(list.querySelectorAll("a"));
+  const links = list.querySelectorAll("a");
   const status = filter.parentElement.querySelector('[role="status"]');
   filter.hidden = false;
   input.addEventListener("input", () => {
@@ -61,61 +61,49 @@ if (filter) {
       if (!link.hidden) matches++;
     }
     status.textContent = query ? `${matches} of ${links.length} shown` : "";
-    list.scrollTop = 0;
-    if (!query) revealCurrent();
+    if (query) list.scrollTop = 0;
+    else revealCurrent();
   });
 
   const current = list.querySelector('[aria-current="page"]');
   function revealCurrent() {
-    if (!current || current.hidden || !list.clientHeight) return;
-    const top = current.offsetTop;
-    if (
-      top < list.scrollTop ||
-      top + current.offsetHeight > list.scrollTop + list.clientHeight
-    ) {
-      list.scrollTop = top - (list.clientHeight - current.offsetHeight) / 2;
-    }
+    // Scroll only the sidebar. The document may have opened at a fragment.
+    if (current)
+      list.scrollTop =
+        current.offsetTop - (list.clientHeight - current.offsetHeight) / 2;
   }
   revealCurrent();
   list.closest("details").addEventListener("toggle", revealCurrent);
 }
 
-const sections = Array.from(document.querySelectorAll(".docs-outline a"))
-  .map((link) => ({
+const sections = Array.from(
+  document.querySelectorAll("#docs-outline a"),
+  (link) => ({
     link,
     target: document.getElementById(link.hash.slice(1)),
-  }))
-  .filter(({ target }) => target);
+  }),
+).filter(({ target }) => target);
 if (sections.length) {
-  const header = document.querySelector(".docs-header");
-  let activeLink;
+  const main = document.querySelector("main");
+  let current;
   function markSection() {
-    const top = header.getBoundingClientRect().bottom + 32;
-    // A fragment can land below the header when fonts or a preview finish loading.
-    const selected = sections.find(({ link, target }) => {
-      if (link.hash !== location.hash) return false;
-      const position = target.getBoundingClientRect().top;
-      return position >= 0 && position < innerHeight / 2;
-    });
-    const nearEnd =
-      window.scrollY > 0 &&
-      window.scrollY + innerHeight >= document.documentElement.scrollHeight - 1;
-    const section =
-      selected ??
-      (nearEnd
+    const atEnd =
+      scrollY > 0 &&
+      scrollY + innerHeight >= document.documentElement.scrollHeight - 1;
+    // The browser places fragment targets at this same offset below the sticky header.
+    const top = parseFloat(getComputedStyle(main).scrollMarginTop) + 1;
+    const { link } =
+      (atEnd
         ? sections.at(-1)
-        : (sections.findLast(
+        : sections.findLast(
             ({ target }) => target.getBoundingClientRect().top <= top,
-          ) ?? sections[0]));
-    const { link } = section;
-    if (activeLink === link) return;
-    activeLink?.removeAttribute("aria-current");
+          )) ?? sections[0];
+    if (link === current) return;
+    current?.removeAttribute("aria-current");
     link.setAttribute("aria-current", "location");
-    activeLink = link;
+    current = link;
   }
-  new ResizeObserver(markSection).observe(document.querySelector("main"));
-  markSection();
+  new ResizeObserver(markSection).observe(main);
   window.addEventListener("scroll", markSection, { passive: true });
   window.addEventListener("resize", markSection);
-  window.addEventListener("hashchange", markSection);
 }

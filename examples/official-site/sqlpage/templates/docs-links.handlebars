@@ -1,17 +1,21 @@
-<section class="docs-links" id="{{id}}" aria-labelledby="{{id}}-heading">
+<section class="my-5" id="{{id}}" aria-labelledby="{{id}}-heading">
     <h2 id="{{id}}-heading"><a class="docs-self-link" href="#{{id}}">{{title}}</a></h2>
-    <div class="docs-link-grid">
+    <div class="docs-card-grid">
         {{#each_row}}
-            <div class="docs-link-card">
-                <h3>
-                    <a href="{{link}}">{{#if icon}}{{icon_img icon 24}}{{/if}}{{title}}</a>
-                </h3>
-                <p>{{description}}</p>
-                {{#if links}}
-                    <ul>
-                        {{#each (to_array links)}}<li><a href="{{link}}"><code>{{title}}</code></a></li>{{/each}}
-                    </ul>
-                {{/if}}
+            <div class="card">
+                <div class="card-body">
+                    <h3 class="card-title">
+                        <a class="stretched-link text-reset" href="{{link}}">{{#if icon}}{{icon_img icon 24}} {{/if}}{{title}}</a>
+                    </h3>
+                    <p class="text-secondary">{{description}}</p>
+                    {{#if links}}
+                        <ul class="list-unstyled d-flex flex-wrap gap-2">
+                            {{#each (to_array links)}}
+                                <li><a class="position-relative z-2" href="{{link}}"><code>{{title}}</code></a></li>
+                            {{/each}}
+                        </ul>
+                    {{/if}}
+                </div>
             </div>
         {{/each_row}}
     </div>

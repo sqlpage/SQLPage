@@ -1,124 +1,110 @@
-<header id="overview" class="catalog-intro">
-    <div class="catalog-intro-copy">
-        <a class="catalog-back" href="/documentation.sql">{{icon_img "arrow-left" 16}} Documentation</a>
-        {{#if (eq kind "component")}}
-            <h1>Components</h1>
-            <p>Choose what your SQL renders. Explore the parameters and live examples for each component.</p>
-        {{else}}
-            <h1>Functions</h1>
-            <p>Call <code>sqlpage.*</code> to read requests, work with files, and reach external services. Brackets mark optional arguments.</p>
-        {{/if}}
+<header id="overview" class="card card-body">
+    <div class="row align-items-center g-4">
+        <div class="col-md">
+            <a href="/documentation.sql">{{icon_img "arrow-left" 16}} Documentation</a>
+            <h1 class="docs-title">{{#if (eq kind "component")}}Components{{else}}Functions{{/if}}</h1>
+            <p class="lead text-secondary mb-0">
+                {{#if (eq kind "component")}}
+                    Choose what your SQL renders. Explore the parameters and live examples for each component.
+                {{else}}
+                    Call <code>sqlpage.*</code> to read requests, work with files, and reach external services. Brackets mark optional arguments.
+                {{/if}}
+            </p>
+        </div>
+        <div class="col-md">
+            {{#if picks}}
+                <nav class="row row-cols-3 g-2" aria-label="Featured components">
+                    {{#each (to_array picks)}}
+                        <div class="col">
+                            <a class="card card-link align-items-center gap-2 p-3 font-monospace" href="{{link}}">
+                                <span class="text-primary" aria-hidden="true">{{icon_img icon 32}}</span>
+                                {{name}}
+                            </a>
+                        </div>
+                    {{/each}}
+                </nav>
+            {{else}}
+                <figure class="card m-0">
+                    <figcaption class="card-header py-2 justify-content-between">
+                        <span>{{icon_img "code" 16}} SQL</span>
+                        <a href="/functions.sql?function=url_encode">View function {{icon_img "arrow-right" 14}}</a>
+                    </figcaption>
+                    <div class="card-body">
+                        <code><span class="hljs-keyword">select</span> sqlpage.url_encode(<wbr><span class="hljs-string">'hello world'</span>);</code>
+                        <div class="text-secondary mt-2">Result <samp>{{encoded_example}}</samp></div>
+                    </div>
+                </figure>
+            {{/if}}
+        </div>
     </div>
-    {{#if picks}}
-    <nav class="catalog-picks" aria-label="Featured components">
-        {{#each (to_array picks)}}
-            <a class="catalog-pick" href="{{link}}">
-                <div class="catalog-pick-art" aria-hidden="true">
-                    {{#if (eq name "table")}}
-                        <table class="catalog-thumb-table">
-                            <thead><tr><th>City</th><th>°C</th></tr></thead>
-                            <tbody>
-                                <tr><td>Oslo</td><td>12</td></tr>
-                                <tr><td>Rome</td><td>23</td></tr>
-                                <tr><td>Lima</td><td>18</td></tr>
-                            </tbody>
-                        </table>
-                    {{else if (eq name "form")}}
-                        <div class="catalog-thumb-form">
-                            <span>Name<b>Ada</b></span>
-                            <span>City<b>Oslo</b></span>
-                        </div>
-                    {{else if (eq name "chart")}}
-                        <div class="catalog-thumb-chart">
-                            {{#each (to_array "[30,53,42,71,59,90]")}}<i style="height: {{this}}%"></i>{{/each}}
-                        </div>
-                    {{/if}}
-                </div>
-                <span class="catalog-pick-label">{{name}}{{icon_img "arrow-right" 14}}</span>
-            </a>
-        {{/each}}
-    </nav>
-    {{/if}}
-    {{#if (eq kind "function")}}
-        <figure class="catalog-call">
-            <figcaption>
-                <span>{{icon_img "code" 16}} SQL</span>
-                <a href="/functions.sql?function=url_encode">View function {{icon_img "arrow-right" 14}}</a>
-            </figcaption>
-            <code><b>select</b> sqlpage.url_encode(<wbr><em>'hello world'</em>);</code>
-            <div><span>Result</span> <samp>{{encoded_example}}</samp></div>
-        </figure>
-    {{/if}}
 </header>
 
-<div id="catalog" class="catalog-directory">
-    <aside class="catalog-sidebar">
-        <details open class="catalog-categories docs-disclosure">
-            <summary>
-                Categories
-                {{#if category_title}}<span class="catalog-selected-category">{{category_title}}</span>{{/if}}
-                {{icon_img "chevron-down" 15}}
-            </summary>
-            <nav aria-label="Categories">
-                <a href="{{all_link}}" {{#unless category}}aria-current="page"{{/unless}}>
-                    All {{plural}} <span aria-hidden="true">{{all_count}}</span>
+<div id="catalog" class="docs-columns mt-4">
+    <details open class="docs-disclosure">
+        <summary class="subheader">
+            Categories
+            {{#if category_title}}<span class="catalog-selection">{{category_title}}</span>{{/if}}
+            {{icon_img "chevron-down" 15}}
+        </summary>
+        <nav class="nav nav-vertical" aria-label="Categories">
+            <a class="nav-link" href="{{all_link}}" {{#unless category}}aria-current="page"{{/unless}}>
+                All {{plural}} <small class="ms-auto" aria-hidden="true">{{all_count}}</small>
+            </a>
+            {{#each (to_array categories)}}
+                <a class="nav-link" href="{{link}}" {{#if (eq id ../category)}}aria-current="page"{{/if}}>
+                    {{title}} <small class="ms-auto" aria-hidden="true">{{count}}</small>
                 </a>
-                {{#each (to_array categories)}}
-                    <a href="{{link}}" {{#if active}}aria-current="page"{{/if}}>
-                        {{title}} <span aria-hidden="true">{{count}}</span>
-                    </a>
-                {{/each}}
-            </nav>
-            {{#if (eq kind "function")}}
-                <a class="catalog-related" href="#evaluation">{{icon_img "book-2" 16}} Function evaluation</a>
-            {{/if}}
-        </details>
-    </aside>
+            {{/each}}
+        </nav>
+        {{#if (eq kind "function")}}
+            <a class="d-block mt-3 pt-2 border-top" href="#evaluation">{{icon_img "book-2" 16}} Function evaluation</a>
+        {{/if}}
+    </details>
     <div class="catalog-results">
-        <div class="catalog-tools">
-            <form class="docs-query" role="search" aria-label="Search {{plural}}" action="{{action}}#catalog" method="get">
-                {{icon_img "search" 19}}
-                <input type="search" name="q" value="{{query}}" aria-label="Search {{plural}}" placeholder="Name or purpose">
+        <div class="d-flex flex-wrap align-items-center gap-3">
+            <form class="input-group input-group-flat" role="search" aria-label="Search {{plural}}" action="{{action}}#catalog" method="get">
+                <span class="input-group-text" aria-hidden="true">{{icon_img "search" 19}}</span>
+                <input class="form-control" type="search" name="q" value="{{query}}" aria-label="Search {{plural}}" placeholder="Name or purpose">
                 {{#if category}}<input type="hidden" name="category" value="{{category}}">{{/if}}
-                <button type="submit">Search</button>
+                <button class="btn" type="submit">Search</button>
             </form>
-            <span class="catalog-count">{{matched}} {{#if (eq matched 1)}}{{kind}}{{else}}{{plural}}{{/if}}</span>
-            {{#if (and matched (or query category))}}<a class="catalog-clear" href="{{clear_link}}">Clear filters</a>{{/if}}
+            <small class="text-secondary">{{matched}} {{#if (eq matched 1)}}{{kind}}{{else}}{{plural}}{{/if}}</small>
+            {{#if (and matched (or query category))}}<a href="{{clear_link}}">Clear filters</a>{{/if}}
         </div>
         {{#unless matched}}
-            <div class="catalog-empty">
-                {{icon_img "search-off" 28}}
-                <h2>No matching {{plural}}</h2>
-                {{#if (and category all_count)}}
-                    <p><a href="{{all_link}}">See matches in other categories</a> or try another name.</p>
-                {{else}}
-                    <p>Try another name or a broader search.</p>
-                {{/if}}
-                <a href="{{clear_link}}">Clear filters {{icon_img "arrow-right" 16}}</a>
+            <div class="empty empty-bordered mt-4">
+                <div class="empty-icon">{{icon_img "search-off"}}</div>
+                <h2 class="empty-title">No matching {{plural}}</h2>
+                <p class="empty-subtitle text-secondary">
+                    {{#if (and category all_count)}}
+                        <a href="{{all_link}}">See matches in other categories</a> or try another name.
+                    {{else}}
+                        Try another name or a broader search.
+                    {{/if}}
+                </p>
+                <a class="empty-action" href="{{clear_link}}">Clear filters {{icon_img "arrow-right" 16}}</a>
             </div>
         {{/unless}}
         {{#each_row}}
-            <section class="catalog-group" aria-labelledby="group-{{id}}">
+            <section class="mt-4" aria-labelledby="group-{{id}}">
                 <h2 id="group-{{id}}">{{title}}</h2>
-                <ul class="catalog-entries catalog-{{../plural}}">
+                <ul class="list-unstyled {{#if (eq ../kind "component")}}docs-card-grid{{else}}list-group{{/if}}">
                     {{#each (to_array entries)}}
-                        <li>
-                            <a href="{{link}}" class="catalog-entry"
-                               aria-labelledby="entry-{{name}}"
-                               aria-describedby="summary-{{name}}{{#if arguments}} args-{{name}}{{/if}}{{#if example_count}} count-{{name}}{{/if}}">
-                                <span class="catalog-icon" aria-hidden="true">{{icon_img icon 20}}</span>
-                                <h3>
-                                    <span id="entry-{{name}}">{{name}}</span>
-                                    {{~#if (eq ../../kind "function")}}<span class="catalog-arguments" id="args-{{name}}">(<wbr>{{arguments}})</span>{{/if}}
-                                </h3>
-                                <p id="summary-{{name}}">{{summary}}</p>
-                                {{#if example_count}}
-                                    <small class="catalog-example-count" id="count-{{name}}">
-                                        {{icon_img "code" 14}} {{example_count}} {{#if (eq example_count 1)}}example{{else}}examples{{/if}}
-                                    </small>
-                                {{/if}}
-                                <span class="catalog-arrow" aria-hidden="true">{{icon_img "arrow-right" 16}}</span>
-                            </a>
+                        <li class="catalog-entry {{#if (eq ../../kind "component")}}card p-3{{else}}list-group-item list-group-item-action{{/if}}">
+                            <span class="text-primary" aria-hidden="true">{{icon_img icon 20}}</span>
+                            <h3 class="h3 font-monospace mb-0">
+                                <a class="stretched-link text-reset" href="{{link}}" aria-labelledby="entry-{{name}}"
+                                   aria-describedby="summary-{{name}}{{#if arguments}} args-{{name}}{{/if}}{{#if example_count}} count-{{name}}{{/if}}">
+                                    <span id="entry-{{name}}">{{name}}</span>{{~#if (eq ../../kind "function")}}<span class="text-secondary fw-normal" id="args-{{name}}">(<wbr>{{arguments}})</span>{{/if}}
+                                </a>
+                            </h3>
+                            <p class="text-secondary mb-0" id="summary-{{name}}">{{summary}}</p>
+                            {{#if example_count}}
+                                <small class="text-secondary" id="count-{{name}}">
+                                    {{icon_img "code" 14}} {{example_count}} {{#if (eq example_count 1)}}example{{else}}examples{{/if}}
+                                </small>
+                            {{/if}}
+                            <span class="text-secondary" aria-hidden="true">{{icon_img "arrow-right" 16}}</span>
                         </li>
                     {{/each}}
                 </ul>

@@ -17,11 +17,6 @@
     {{#if catalog}}
         <link rel="canonical" href="{{catalog_link}}">
         <link rel="stylesheet" href="/assets/docs/catalog.css">
-        {{#if (eq section "Components")}}<link rel="stylesheet" href="/assets/docs/catalog-preview.css">{{/if}}
-    {{else if (eq section "Search")}}
-        <link rel="stylesheet" href="/assets/docs/search.css">
-    {{else if (or (eq section "Components") (eq section "Functions"))}}
-        <link rel="stylesheet" href="/assets/docs/reference.css">
     {{else if (any (eq section "Guides") (eq section "Documentation") (eq section "Examples"))}}
         <link rel="stylesheet" href="/assets/docs/guides.css">
     {{/if}}
@@ -34,64 +29,63 @@
     <script type="module" nonce="{{@csp_nonce}}" src="/assets/highlightjs-launch.js"></script>
 </head>
 <body class="docs-site">
-    <a class="docs-skip" href="#sqlpage_main_wrapper">Skip to content</a>
-    <header class="docs-header" id="sqlpage_header">
-        <div class="docs-bar">
-            <div class="docs-wordmark">
-                <a class="docs-brand" href="/" aria-label="SQLPage home">
-                    <img src="/assets/icon.webp" width="38" height="43" alt="">SQLPage
+    <a class="skip-link visually-hidden-focusable" href="#sqlpage_main_wrapper">Skip to content</a>
+    <header class="docs-header navbar sticky-top" id="sqlpage_header">
+        <div class="docs-container docs-bar">
+            <div class="d-flex align-items-center gap-2">
+                <a class="navbar-brand" href="/" aria-label="SQLPage home">
+                    <img class="navbar-brand-image" src="/assets/icon.webp" width="38" height="43" alt="">SQLPage
                 </a>
-                <a class="docs-home" href="/documentation.sql">Docs</a>
+                <a class="link-secondary border-start ps-2" href="/documentation.sql">Docs</a>
             </div>
-            <nav class="docs-primary" aria-label="Main navigation">
-                <a href="/documentation.sql#guides" {{#if (eq section "Guides")}}aria-current="location"{{/if}}>Guides</a>
-                <a href="/components.sql" {{#if (eq section "Components")}}aria-current="location"{{/if}}>Components</a>
-                <a href="/functions.sql" {{#if (eq section "Functions")}}aria-current="location"{{/if}}>Functions</a>
-                <a href="/examples/" {{#if (eq section "Examples")}}aria-current="location"{{/if}}>Examples</a>
+            <nav class="docs-primary nav" aria-label="Main navigation">
+                <a class="nav-link" href="/documentation.sql#guides" {{#if (eq section "Guides")}}aria-current="location"{{/if}}>Guides</a>
+                <a class="nav-link" href="/components.sql" {{#if (eq section "Components")}}aria-current="location"{{/if}}>Components</a>
+                <a class="nav-link" href="/functions.sql" {{#if (eq section "Functions")}}aria-current="location"{{/if}}>Functions</a>
+                <a class="nav-link" href="/examples/" {{#if (eq section "Examples")}}aria-current="location"{{/if}}>Examples</a>
             </nav>
-            <div class="docs-tools">
+            <div class="d-flex align-items-center justify-content-end gap-2">
                 {{#unless (eq section "Search")}}
-                <form class="docs-search" action="/search.sql" role="search" aria-label="Documentation">
-                    <button aria-label="Search documentation">{{icon_img "search" 17}}</button>
-                    <input id="docs-search-input" aria-label="Search documentation" type="search" name="search" placeholder="Search">
-                    <kbd hidden aria-hidden="true">Ctrl K</kbd>
+                <form class="docs-search input-group input-group-flat" action="/search.sql" role="search" aria-label="Documentation">
+                    <input class="form-control" id="docs-search-input" aria-label="Search documentation" type="search" name="search" placeholder="Search">
+                    <button class="input-group-text gap-2" aria-label="Search documentation">
+                        <kbd class="bg-transparent text-reset p-0" hidden aria-hidden="true">Ctrl K</kbd>{{icon_img "search" 17}}
+                    </button>
                 </form>
                 {{/unless}}
-                <a class="docs-github" href="https://github.com/sqlpage/SQLPage" aria-label="SQLPage on GitHub">{{icon_img "brand-github" 20}}</a>
+                <a class="link-secondary" href="https://github.com/sqlpage/SQLPage" aria-label="SQLPage on GitHub">{{icon_img "brand-github" 20}}</a>
             </div>
         </div>
     </header>
 
-    <div class="page docs-layout{{#if catalog}} is-catalog{{/if}}{{#if topics}} with-topics{{/if}}{{#if outline}} with-outline{{/if}}">
+    <div class="page docs-container docs-layout docs-columns">
         {{#if topics}}
-        <details open class="docs-topics docs-disclosure">
-            <summary class="docs-rail-title">
-                {{topic_label}} {{icon_img "chevron-down" 14}}
-            </summary>
+        <details open class="docs-disclosure">
+            <summary class="subheader">{{topic_label}} {{icon_img "chevron-down" 14}}</summary>
             <nav aria-label="Browse {{topic_label}}">
                 {{#if catalog_link}}
-                    <label class="docs-filter" hidden>
-                        {{icon_img "filter" 16}}
-                        <input type="search" aria-label="Filter {{topic_label}}" aria-controls="docs-topic-list" placeholder="Filter {{topic_label}}" autocomplete="off">
+                    <label class="docs-filter input-group input-group-flat mb-2" hidden>
+                        <span class="input-group-text">{{icon_img "filter" 16}}</span>
+                        <input class="form-control" type="search" aria-label="Filter {{topic_label}}" aria-controls="docs-topic-list" placeholder="Filter {{topic_label}}" autocomplete="off">
                     </label>
                 {{/if}}
-                <div class="docs-topic-list" id="docs-topic-list">
+                <div class="docs-rail-links nav nav-vertical{{#if catalog_link}} font-monospace{{/if}}" id="docs-topic-list">
                     {{#each (to_array topics)}}
-                        <a href="{{link}}" {{#if (eq title ../current_item)}}aria-current="page"{{/if}}>{{title}}</a>
+                        <a class="nav-link" href="{{link}}" {{#if (eq title ../current_item)}}aria-current="page"{{/if}}>{{title}}</a>
                     {{/each}}
                 </div>
                 {{#if catalog_link}}
                     <small role="status"></small>
-                    <a class="docs-rail-return" href="{{catalog_link}}">{{icon_img "list" 16}} All {{topic_label}}</a>
+                    <a class="d-block mt-3 pt-2 border-top" href="{{catalog_link}}">{{icon_img "list" 16}} All {{topic_label}}</a>
                 {{/if}}
             </nav>
         </details>
         {{/if}}
         {{#if outline}}
         <details open class="docs-outline docs-disclosure">
-            <summary class="docs-rail-title">On this page {{icon_img "chevron-down" 14}}</summary>
-            <nav aria-label="On this page">
-                {{#each (to_array outline)}}<a href="{{link}}">{{title}}</a>{{/each}}
+            <summary class="subheader">On this page {{icon_img "chevron-down" 14}}</summary>
+            <nav id="docs-outline" class="docs-rail-links nav nav-vertical" aria-label="On this page">
+                {{#each (to_array outline)}}<a class="nav-link" href="{{link}}">{{title}}</a>{{/each}}
             </nav>
         </details>
         {{/if}}
@@ -100,9 +94,9 @@
         </main>
     </div>
 
-    <footer class="docs-footer" id="sqlpage_footer">
+    <footer class="docs-container docs-footer d-flex flex-wrap align-items-center justify-content-between gap-3 border-top py-4" id="sqlpage_footer">
         <a href="https://github.com/sqlpage/SQLPage/tree/main/examples/official-site">Built with SQLPage</a>
-        <nav aria-label="Resources">
+        <nav class="d-flex flex-wrap gap-3" aria-label="Resources">
             <a href="/blog.sql">Blog</a>
             <a href="/performance.sql">Performance</a>
             <a href="/safety.sql">Security</a>
@@ -112,9 +106,9 @@
         <a href="#sqlpage_main_wrapper">{{icon_img "arrow-up" 16}} Back to top</a>
     </footer>
     <template id="docs-snippet-tools">
-        <div class="docs-snippet-tools">
+        <div class="docs-code-toolbar rounded-top d-print-none">
             <span></span>
-            <button type="button" class="docs-snippet-copy" aria-live="polite">Copy code</button>
+            <button type="button" class="btn btn-sm ms-auto" aria-live="polite">Copy code</button>
         </div>
     </template>
 </body>

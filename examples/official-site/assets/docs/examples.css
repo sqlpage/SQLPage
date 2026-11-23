@@ -1,42 +1,21 @@
 .docs-example {
   container: example / inline-size;
-  margin: 2rem 0 0.625rem;
-  border-top: 1px solid var(--tblr-border-color);
-  padding-top: 1.25rem;
 }
-.docs-example-notes > :last-child {
-  margin-bottom: 0;
-}
-.docs-example > h3 {
-  margin-bottom: 0.5rem;
-}
-.docs-example > h3 > a {
-  color: var(--tblr-heading-color);
-  text-decoration: none;
-}
-.docs-example > h3 > a:hover {
-  text-decoration: underline;
-}
+
 .docs-example-source,
 .docs-example-result {
   min-width: 0;
 }
-.docs-example > .docs-example-source,
-.docs-example-layout {
-  margin-top: 1rem;
-  border: 1px solid var(--docs-line);
-  border-radius: 0.6rem;
-  background: #080d16;
-}
+
 .docs-example-result {
-  border-top: 1px solid var(--docs-line);
-  background: var(--docs-surface);
-  border-radius: 0 0 0.6rem 0.6rem;
+  border-top: var(--tblr-border-width) solid var(--tblr-border-color);
+  border-radius: 0 0 var(--tblr-border-radius) var(--tblr-border-radius);
 }
+
 .docs-example-output {
   display: flow-root;
   container-type: inline-size;
-  padding: 1rem;
+  padding: var(--tblr-spacer-3);
   --tblr-carousel-control-icon-filter: none;
   --tblr-carousel-indicator-active-bg: var(--tblr-heading-color);
 }
@@ -66,7 +45,7 @@
 @media (max-width: 27rem) {
   .docs-example > .docs-example-source,
   .docs-example-layout {
-    margin-inline: calc(0.25rem - var(--docs-gutter));
+    margin-inline: calc(var(--tblr-spacer-1) - var(--docs-gutter));
   }
   /* A chart card fills the preview. Keep its title inset and give the plot the full width. */
   .docs-example-output:has(> .card > .card-body > .chart) {
@@ -90,56 +69,17 @@
     display: grid;
     grid-template-rows: auto 1fr;
     border-top: 0;
-    border-left: 1px solid var(--docs-line);
-    border-radius: 0 0.6rem 0.6rem 0;
+    border-inline-start: var(--tblr-border-width) solid var(--tblr-border-color);
+    border-radius: 0 var(--tblr-border-radius) var(--tblr-border-radius) 0;
   }
   .docs-example-output {
     align-self: center;
   }
 }
 
-.docs-example-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  margin: 0;
-  min-height: 2.75rem;
-  padding: 0.25rem 0.9rem;
-  border-bottom: 1px solid var(--tblr-border-color);
-  font: 0.875rem var(--tblr-font-monospace);
-  color: var(--tblr-primary);
-  background: var(--tblr-bg-surface-secondary);
-}
-.docs-example-toolbar span {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-}
-.docs-example-toolbar button:not([hidden]) {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-@media print {
-  .docs-example-toolbar button:not([hidden]) {
-    display: none;
-  }
-}
-.docs-example-source pre,
-.docs-example-source pre code {
-  margin: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-}
 .docs-example-source pre {
   max-height: min(24rem, 60svh);
-  overflow: auto;
-  padding: 1rem;
-}
-.docs-example-source pre code {
-  padding: 0;
-  font: 0.9rem / 1.65 var(--tblr-font-monospace);
+  line-height: var(--tblr-line-height-base);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }

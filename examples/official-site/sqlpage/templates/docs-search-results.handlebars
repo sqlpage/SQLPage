@@ -1,24 +1,26 @@
-<section class="docs-search-results" aria-labelledby="search-heading">
-    <header>
-        <h1 id="search-heading">Search documentation</h1>
-        <form class="docs-query" action="/search.sql" method="get" role="search" aria-label="Documentation">
-            {{icon_img "search" 19}}
-            <input id="docs-search-input" type="search" name="search" value="{{query}}" aria-labelledby="search-heading"
+<section class="container-narrow px-0" aria-labelledby="search-heading">
+    <header class="row align-items-center g-3 mb-4">
+        <h1 id="search-heading" class="col-md-auto mb-0">Search documentation</h1>
+        <div class="col-md">
+            <form class="input-group input-group-flat" action="/search.sql" method="get" role="search" aria-label="Documentation">
+                <span class="input-group-text" aria-hidden="true">{{icon_img "search" 19}}</span>
+                <input id="docs-search-input" class="form-control" type="search" name="search" value="{{query}}" aria-labelledby="search-heading"
                    placeholder="Name or topic" {{#unless query}}autofocus{{/unless}}>
-            <button type="submit">Search</button>
-        </form>
+                <button class="btn" type="submit">Search</button>
+            </form>
+        </div>
     </header>
     {{#each_row}}
         {{#if (eq @row_index 0)}}
-            <p class="search-count">{{result_count}} {{#if (eq result_count 1)}}result{{else}}results{{/if}}</p>
-            <ol aria-label="Search results">
+            <p class="small text-secondary mb-2">{{result_count}} {{#if (eq result_count 1)}}result{{else}}results{{/if}}</p>
+            <ol class="list-group list-group-flush" aria-label="Search results">
         {{/if}}
-        <li>
-            <a href="{{link}}" aria-labelledby="result-{{@row_index}}">
-                <strong id="result-{{@row_index}}">{{title}}</strong>
-                {{#if description}}<span>{{description}}</span>{{/if}}
-                {{icon_img "arrow-right" 16}}
-            </a>
+        <li class="list-group-item list-group-item-action d-flex align-items-baseline gap-3">
+            <div class="flex-fill">
+                <a class="stretched-link fw-semibold text-reset" href="{{link}}">{{title}}</a>
+                {{#if description}}<p class="docs-excerpt small text-secondary mb-0">{{description}}</p>{{/if}}
+            </div>
+            {{icon_img "arrow-right" 16}}
         </li>
     {{/each_row}}
     {{#if @row_index}}

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { text } from "node:stream/consumers";
 import { type ConsoleMessage, expect, type Page, test } from "../../fixture.ts";
 
 const MARKS =
@@ -487,18 +488,28 @@ test("keeps treemap labels legible on a phone and in an SVG download", async ({
     );
     expect(fontSize).toBeGreaterThanOrEqual(12);
   }
-  const exported = await page.evaluate(async () => {
-    const chart = window.charts?.[0];
-    if (!chart) throw new Error("Chart fixture did not initialize");
-    const svg = new DOMParser().parseFromString(
-      await chart.getSvgString(),
-      "image/svg+xml",
+  const colors = await labels.evaluateAll((elements) =>
+    elements.map((el) => {
+      const { fill, stroke } = getComputedStyle(el);
+      return { fill, stroke };
+    }),
+  );
+  await page.getByRole("button", { name: "Menu" }).click();
+  const downloadStarted = page.waitForEvent("download");
+  await page.getByRole("menuitem", { name: "Download SVG" }).click();
+  const download = await downloadStarted;
+  const contents = await text(await download.createReadStream());
+  const exported = await page.evaluate((contents) => {
+    const svg = new DOMParser().parseFromString(contents, "image/svg+xml");
+    return Array.from(
+      svg.querySelectorAll('text.apexcharts-datalabel[paint-order^="stroke"]'),
+      (el) => ({
+        fill: el.getAttribute("fill"),
+        stroke: el.getAttribute("stroke"),
+      }),
     );
-    return svg.querySelectorAll(
-      'text.apexcharts-datalabel[stroke][paint-order^="stroke"]',
-    ).length;
-  });
-  expect(exported).toBe(chart.shapes.length);
+  }, contents);
+  expect(exported).toEqual(colors);
 });
 
 test("draws a rangeBar chart that asks to be stacked", async ({ page }) => {
