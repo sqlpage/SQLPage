@@ -207,6 +207,7 @@
               packages = cargoRuntime pkgs;
               env = cargoEnv pkgs // playwrightEnv pkgs;
               script = inBrowserWorkspace ''
+                npm --prefix ../.. run site:build
                 npx playwright test "$@"
               '';
             };

@@ -9,17 +9,14 @@ jobs:
   deploy_official_site:
     runs-on: ubuntu-latest
     steps:
-      - name: Cloning repo
-        uses: actions/checkout@v7
+      - name: Download tested website
+        uses: actions/download-artifact@v8
         with:
-          fetch-depth: 0
+          name: official-site
       - id: get_gitsha
-        name: Make a commit for the official site
+        name: Package the site for Dokku
         run: |
-          cp -r examples/official-site /tmp/
-          rm -rf * .[!.]*
-          cp -r /tmp/official-site/* .
-          git init .
+          git init --initial-branch=main .
           git config user.name "GitHub Actions Bot"
           git config user.email "<>"
           git add .
