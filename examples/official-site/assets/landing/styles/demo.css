@@ -158,7 +158,7 @@ form.mt-3 {
   box-shadow: 0 3px 14px color-mix(in srgb, var(--tblr-blue) 9.41%, transparent);
   background: var(--tblr-blue);
   border-color: var(--tblr-blue);
-  color: var(--tblr-dark);
+  color: var(--tblr-blue-fg);
 }
 .apexcharts-tooltip {
   color: var(--tblr-bg-surface);

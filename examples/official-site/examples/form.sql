@@ -1,4 +1,4 @@
-select 'shell' as component, 'dark' as theme, '[View source on Github](https://github.com/sqlpage/SQLPage/blob/main/examples/official-site/examples/form.sql)' as footer;
+select 'shell' as component, 'dark' as theme, '/assets/brand/brand.css' as css, '[View source on Github](https://github.com/sqlpage/SQLPage/blob/main/examples/official-site/examples/form.sql)' as footer;
 
 SELECT 'form' AS component, 'Complete Input Types Reference' AS title, '/examples/show_variables.sql' as action;
 

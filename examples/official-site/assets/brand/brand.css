@@ -8,7 +8,7 @@
 /* Official-site overrides use Tabler's existing theme properties directly.
    Both the standalone landing page and documentation import this file. */
 :root,
-.layout-boxed[data-bs-theme="dark"] {
+body[data-bs-theme="dark"] {
   color-scheme: dark;
   --tblr-font-sans-serif: Outfit, system-ui, sans-serif;
   --tblr-font-monospace:
@@ -20,12 +20,12 @@
   --tblr-light: #f9fafb;
   --tblr-dark: #1f2937;
   --tblr-gray-300: #d1d5db;
-  --tblr-primary-fg: var(--tblr-white);
 
-  /* Core colors refined for better contrast */
-  --tblr-body-color: hsl(225deg 35% 86%);
+  --tblr-body-color-rgb: 207, 213, 232;
+  --tblr-body-color: rgb(var(--tblr-body-color-rgb));
   --tblr-secondary-color: hsl(225, 15%, 80%);
   --tblr-muted-color: hsla(225, 15%, 75%, 0.8);
+  --tblr-disabled-color: hsl(225 15% 63%);
 
   /* Background system */
   --tblr-body-bg: hsl(225deg 44% 9%);
@@ -57,25 +57,44 @@
   --tblr-primary: rgb(var(--tblr-primary-rgb));
   --tblr-secondary: hsla(247, 60%, 94%, 0.7); /* Nebula purple */
 
-  /* Status + accent colors aligned with the brand palette */
-  --tblr-success-rgb: 16, 132, 86; /* Deep green for white text */
+  /* These accents are also used as text on dark and tinted surfaces. */
+  --tblr-success-rgb: 88, 186, 138;
   --tblr-success: rgb(var(--tblr-success-rgb));
-  --tblr-warning-rgb: 197, 124, 0; /* Deep amber */
+  --tblr-warning-rgb: 219, 153, 54;
   --tblr-warning: rgb(var(--tblr-warning-rgb));
-  --tblr-danger-rgb: 196, 68, 68; /* Deep crimson */
+  --tblr-danger-rgb: 238, 126, 126;
   --tblr-danger: rgb(var(--tblr-danger-rgb));
-  --tblr-purple-rgb: 118, 82, 200; /* Deep violet */
+  --tblr-purple-rgb: 170, 146, 238;
   --tblr-purple: rgb(var(--tblr-purple-rgb));
-  --tblr-cyan-rgb: 0, 149, 168; /* Deep cyan */
+  --tblr-cyan-rgb: 70, 177, 191;
   --tblr-cyan: rgb(var(--tblr-cyan-rgb));
-  --tblr-indigo-rgb: 96, 113, 215; /* Deep indigo */
+  --tblr-indigo-rgb: 132, 153, 240;
   --tblr-indigo: rgb(var(--tblr-indigo-rgb));
-  --tblr-teal: #267d63;
-  --tblr-teal-fg: #20050b;
+  --tblr-teal-rgb: 85, 177, 149;
+  --tblr-teal: rgb(var(--tblr-teal-rgb));
+
+  /* Foregrounds for filled buttons, badges, progress bars and cards. */
+  --tblr-primary-fg: var(--tblr-body-bg);
+  --tblr-secondary-fg: var(--tblr-body-bg);
+  --tblr-blue-fg: var(--tblr-body-bg);
+  --tblr-info-fg: var(--tblr-body-bg);
+  --tblr-success-fg: var(--tblr-body-bg);
+  --tblr-warning-fg: var(--tblr-body-bg);
+  --tblr-danger-fg: var(--tblr-body-bg);
+  --tblr-purple-fg: var(--tblr-body-bg);
+  --tblr-cyan-fg: var(--tblr-body-bg);
+  --tblr-indigo-fg: var(--tblr-body-bg);
+  --tblr-teal-fg: var(--tblr-body-bg);
 
   --tblr-green: var(--tblr-success);
+  --tblr-green-rgb: var(--tblr-success-rgb);
+  --tblr-green-fg: var(--tblr-success-fg);
   --tblr-yellow: var(--tblr-warning);
+  --tblr-yellow-rgb: var(--tblr-warning-rgb);
+  --tblr-yellow-fg: var(--tblr-warning-fg);
   --tblr-red: var(--tblr-danger);
+  --tblr-red-rgb: var(--tblr-danger-rgb);
+  --tblr-red-fg: var(--tblr-danger-fg);
 
   /* Luminous links */
   --tblr-link-color: hsl(212, 70%, 75%); /* Star glow */
@@ -101,4 +120,57 @@
   --hljs-cosmic-string: hsl(120, 40%, 75%); /* Green aurora */
   --hljs-cosmic-operator: hsl(0, 0%, 95%); /* White dwarf */
   --hljs-cosmic-keyword: hsl(210, 100%, 75%); /* Blue giant */
+}
+
+.pagination {
+  --tblr-pagination-active-color: var(--tblr-primary-fg);
+}
+
+.form-check-input,
+.form-check-input[type="checkbox"]:indeterminate {
+  --tblr-form-check-icon-color: var(--tblr-primary-fg);
+}
+
+.form-switch {
+  --tblr-form-switch-checked-color: var(--tblr-primary-fg);
+}
+
+/* Tabler draws these markers with white SVGs. Use a darker fill behind them. */
+.form-selectgroup-input:checked
+  + .form-selectgroup-label
+  .form-selectgroup-check,
+.form-imagecheck-input:checked ~ .form-imagecheck-figure::before {
+  background-color: color-mix(
+    in srgb,
+    var(--tblr-primary) 70%,
+    var(--tblr-body-bg)
+  );
+}
+
+.steps-counter .step-item:not(.active ~ .step-item)::before {
+  color: var(--tblr-primary-fg);
+}
+
+.card[class*="-fg"],
+.alert-important {
+  --tblr-heading-color: currentColor;
+}
+
+.alert-important:not(.alert-dark, .alert-muted) {
+  --tblr-alert-color: var(--tblr-primary-fg);
+}
+
+/* The alert action is a separate, dark button within the filled alert. */
+.alert-important .alert-link {
+  --tblr-alert-link-color: var(--tblr-body-color);
+}
+
+@supports (color: contrast-color(white)) {
+  .steps-counter .step-item:not(.active ~ .step-item)::before {
+    color: contrast-color(var(--tblr-steps-color));
+  }
+
+  .alert.alert-important {
+    --tblr-alert-color: contrast-color(var(--tblr-alert-variant-color));
+  }
 }

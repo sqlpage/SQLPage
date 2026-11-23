@@ -65,8 +65,14 @@
   color-scheme: light;
   overflow-anchor: none;
 }
-.demo-section .eyebrow {
-  color: var(--tblr-blue);
+.demo-section,
+.comparison-section {
+  --landing-light-accent: #315e93;
+  --landing-light-muted: #535c6b;
+  --landing-focus-color: var(--landing-light-accent);
+}
+:is(.demo-section, .comparison-section) :is(.eyebrow, h2 em) {
+  color: var(--landing-light-accent);
 }
 .demo-section h2 {
   font-size: clamp(60px, 7.7vw, 106px);
@@ -234,10 +240,7 @@
   border-color: transparent;
 }
 .benefit.featured p {
-  color: var(
-    --tblr-success-lt,
-    color-mix(in srgb, var(--tblr-success) 20%, var(--tblr-dark))
-  );
+  color: inherit;
 }
 .chip {
   display: inline-flex;

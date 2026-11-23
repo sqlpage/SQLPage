@@ -1,6 +1,7 @@
 /* Four frontend views pair concise copy with diagrams and deployment links. */
 .deployment-section {
   --section-color: var(--tblr-blue);
+  --landing-focus-color: var(--tblr-primary-fg);
   /* Match the solid wave at the edge, then retain the section's diagonal gradient. */
   background:
     linear-gradient(180deg, var(--section-color), transparent 180px),
@@ -83,9 +84,9 @@
   display: block;
   margin-top: 5px;
   font: 13px / 1.4 var(--tblr-font-monospace);
-  opacity: 0.75;
 }
 .frontend-panels {
+  --landing-focus-color: var(--tblr-primary);
   border-radius: 20px;
   padding: 55px 45px;
   background: var(--tblr-body-bg);
@@ -204,7 +205,7 @@
   background: color-mix(in srgb, var(--stage-color) 45%, var(--tblr-body-bg));
   padding: 10px 0;
   text-align: center;
-  color: var(--tblr-secondary-color);
+  color: var(--tblr-light);
 }
 .render-timeline > span:nth-child(2) {
   --stage-color: var(--tblr-blue);

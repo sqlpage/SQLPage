@@ -4,7 +4,7 @@
     <div aria-hidden="true" style="height:100px;border:1px solid #43545c;margin-bottom:16px;background:{{#if hex}}{{hex}}{{else}}var(--{{css_var}}){{/if}}"></div>
     <h3 style="font-size:20px;font-weight:500">{{name}}</h3>
     {{#if hex}}<code>{{hex}}</code>{{/if}}
-    {{#if css_var}}<code>{{css_var}}</code>{{/if}}
+    {{#if css_var}}<code>--{{css_var}}</code>{{/if}}
     {{#if description}}<p style="font-size:16px;color:#9caeb5;margin-top:12px">{{description}}</p>{{/if}}
 </div>
 {{/each_row}}
