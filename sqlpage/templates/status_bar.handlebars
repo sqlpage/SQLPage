@@ -20,8 +20,7 @@
     class="status-bar d-flex divide-x overflow-x-auto bg-surface fs-5 {{#if (default fixed true)}}fixed-bottom border-top{{else}}my-2 border rounded{{/if}} {{class}}">
     {{#each_row}}
         {{#if link}}<a href="{{link}}"{{else}}<span{{/if}}
-            class="d-flex flex-shrink-0 align-items-center gap-1 text-nowrap px-3 py-1 {{#if color}}sqlpage-accent text-{{color}}{{/if}} {{class}}"
-            {{#if color}}style="--sqlpage-accent: var(--tblr-{{color}}, currentColor);"{{/if}}
+            class="d-flex flex-shrink-0 align-items-center gap-1 text-nowrap px-3 py-1 {{#if color}}text-{{color}}{{/if}} {{class}}"
             {{#if tooltip}}data-bs-toggle="tooltip" title="{{tooltip}}"{{/if}}>
             {{#if icon}}<span aria-hidden="true">{{~icon_img icon 16~}}</span>{{/if}}
             {{#if title includeZero=true}}{{title}}{{else}}<span class="visually-hidden">{{tooltip}}</span>{{/if}}

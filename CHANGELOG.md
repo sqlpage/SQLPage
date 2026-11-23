@@ -8,7 +8,7 @@
 - Button, card, carousel, and login images accept alternative text. Embedded card frames use their own title or the card title.
 - Keyboard users can focus and scroll code blocks and responsive tables.
 - Inline links are underlined so they stand out without relying on color. The documentation search button has a clear accessible name separate from its shortcut hint.
-- Improved text contrast while preserving accent hues for big numbers, outlined buttons, and tinted cards. Also improved contrast for alert descriptions, solid cards, status badges, dividers, lists, map credits, status bars, upcoming steps, tabs, and tables. Disabled buttons expose their state and cannot be activated.
+- Disabled buttons expose their state to assistive technology and cannot be activated.
 - Tracking blocks without links now expose their titles to screen readers.
 
 - Component reference pages accept `theme=light` and `theme=dark` to preview examples with SQLPage's stock themes.

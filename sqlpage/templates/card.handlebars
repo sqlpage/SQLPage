@@ -26,14 +26,13 @@
             <div class="card h-100
                 {{~#if active}} card-active {{/if~}}
                 {{~#if background_color}}
-                    bg-{{background_color}} text-{{background_color}}-fg sqlpage-colored-card{{#if (ne (replace background_color "-lt" "") background_color)}} sqlpage-tinted-card{{/if}}
+                    bg-{{background_color}} text-{{background_color}}-fg
                 {{~else}}
                     {{#if (all embed (not title) (not icon))}}
                         bg-transparent border-0
                     {{/if}}
                 {{/if}}
                 "
-                {{#if background_color}}style="--sqlpage-card-bg: var(--tblr-{{background_color}}); --sqlpage-accent: var(--tblr-{{replace background_color '-lt' ''}});"{{/if}}
                 {{#if (and embed (ne embed_mode "iframe"))}}data-pre-init="card" data-embed="{{embed}}"{{/if}}>
                 {{#if link}}
                     <a href="{{link}}"{{#if target}} target="{{target}}"{{/if}} style="text-decoration: inherit; color: inherit">

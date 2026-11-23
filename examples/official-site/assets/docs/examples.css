@@ -16,51 +16,43 @@
   display: flow-root;
   container-type: inline-size;
   padding: var(--tblr-spacer-3);
-}
-
-/* The branded previews adjust native components to fit the docs layout. */
-:where([data-site-theme="custom-docsite"]) .docs-example-output {
   --tblr-carousel-control-icon-filter: none;
   --tblr-carousel-indicator-active-bg: var(--tblr-heading-color);
-
-  /* Preview columns can have much less room than the viewport. */
-  & > .row > * {
-    flex-grow: 1;
-    min-width: min(100%, 17rem);
-  }
-  & form .row > label {
-    min-width: min(100%, 12rem);
-  }
-  & .card {
-    max-width: 100%;
-  }
-  & .table-freeze-columns tr > :first-child {
-    width: clamp(7rem, 32cqi, 11rem);
-    min-width: min(9rem, 40cqi);
-    white-space: normal;
-  }
-  & .pagination {
-    flex-wrap: wrap;
-  }
-  & .markdown table {
-    display: block;
-    overflow-x: auto;
-  }
-
-  @media (max-width: 27rem) {
-    /* Give charts the full preview width while keeping the titles inset. */
-    &:has(> .card > .card-body > .chart) {
-      padding-inline: 0;
-    }
-    & > .card > .card-body > .chart {
-      margin-inline: calc(-1 * var(--tblr-card-spacer-x));
-    }
-  }
+}
+/* Tabler sizes columns against the viewport. A card in a preview can have much less room. */
+.docs-example-output > .row > * {
+  flex-grow: 1;
+  min-width: min(100%, 17rem);
+}
+.docs-example-output form .row > label {
+  min-width: min(100%, 12rem);
+}
+.docs-example-output .card {
+  max-width: 100%;
+}
+.docs-example-output .table-freeze-columns tr > :first-child {
+  width: clamp(7rem, 32cqi, 11rem);
+  min-width: min(9rem, 40cqi);
+  white-space: normal;
+}
+.docs-example-output .pagination {
+  flex-wrap: wrap;
+}
+.docs-example-output .markdown table {
+  display: block;
+  overflow-x: auto;
 }
 @media (max-width: 27rem) {
   .docs-example > .docs-example-source,
   .docs-example-layout {
     margin-inline: calc(var(--tblr-spacer-1) - var(--docs-gutter));
+  }
+  /* A chart card fills the preview. Keep its title inset and give the plot the full width. */
+  .docs-example-output:has(> .card > .card-body > .chart) {
+    padding-inline: 0;
+  }
+  .docs-example-output > .card > .card-body > .chart {
+    margin-inline: calc(-1 * var(--tblr-card-spacer-x));
   }
 }
 @container example (min-width: 52rem) {

@@ -54,8 +54,10 @@
   }
 }
 
-.docs-search:has(kbd:not([hidden])) input {
-  padding-inline-end: 3rem;
+@media (width >= 62rem) and (not (pointer: coarse)) {
+  .docs-search:has(kbd:not([hidden])) input {
+    padding-inline-end: 3rem;
+  }
 }
 
 .docs-columns {
