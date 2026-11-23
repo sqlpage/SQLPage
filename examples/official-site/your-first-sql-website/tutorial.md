@@ -1,19 +1,8 @@
 ## Building your website locally
 
-Create a folder on your computer where you will store all contents related to your sql website.
-In the rest of this tutorial, we will call this folder the **root folder** of your website.
+Start SQLPage from the folder where you will keep your SQL files, then open [localhost:8080](http://localhost:8080). This folder is your website’s **root folder**.
 
-- On **Windows**, place the `sqlpage.exe` you downloaded above at the root of the folder. Then double-click the `sqlpage.exe` file to start the server.
-- On **Linux**, place `sqlpage.bin` at the root of the folder. Then open a terminal, cd to the root folder of your website, and run `./sqlpage.bin` to start the server.
-- On **Mac OS**, if you installed SQLPage using Homebrew, then you do not need to place anything at the root of the folder. Open Terminal, cd to the root folder of your website, and type `sqlpage` to start the server. If you downloaded SQLPage instead, place `sqlpage.bin` in this folder and run `./sqlpage.bin`.
-
-![screenshot for the sql website setup on linux](first-sql-website-launch.png)
-
-You should see a message in your terminal telling you that SQLPage is ready, and giving you the address of your website.
-
-You can open your website locally by visiting [`http://localhost:8080`](http://localhost:8080)
-
-SQLPage should have automatically created a folder called `sqlpage` with a SQLite database file named `sqlpage.db`. This is your website's default database - don't worry, we'll learn how to connect to other databases like PostgreSQL, MySQL, or SQL Server later!
+SQLPage creates a SQLite database at `sqlpage/sqlpage.db` by default. You can [connect another database](#connect-to-a-custom-database) later.
 
 ## Your website's first SQL file
 

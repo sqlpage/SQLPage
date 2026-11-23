@@ -44,7 +44,8 @@ Key features:
 
 ## Getting Started
 
-- [Introduction to SQLPage: installation, guiding principles, and a first example](/your-first-sql-website/tutorial.md): Complete beginner tutorial covering setup, database connections, forms, and deployment
+- [Install SQLPage](/your-first-sql-website/#download): Choose a download or package manager for macOS, Windows, or Linux
+- [Your first SQL website](/your-first-sql-website/tutorial.md): Build a website, connect a database, handle forms, and deploy
 
 ## Core Documentation
 

@@ -104,10 +104,32 @@ xpath "//main//a[@href='/your-first-sql-website/migrations.sql']" count == 1
 body not contains "An error occurred"
 
 GET http://localhost:8080/your-first-sql-website/
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)
 HTTP 200
 [Asserts]
+header "Vary" contains "User-Agent"
 xpath "//main//h1" count == 1
 xpath "//*[@id='connect-to-a-custom-database']" count == 1
+xpath "//*[@id='download']//code[normalize-space()='brew install sqlpage']" count == 1
+
+GET http://localhost:8080/your-first-sql-website/?os=windows&method=homebrew
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)
+HTTP 200
+[Asserts]
+xpath "//*[@id='download']//a[contains(@href,'/releases/latest/download/sqlpage-windows.zip')]" count == 1
+
+GET http://localhost:8080/your-first-sql-website/
+User-Agent: Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Mobile Safari/537.36
+HTTP 200
+[Asserts]
+xpath "//*[@id='download']//nav[@aria-label='Operating system']//a[not(@aria-current)]" count == 3
+xpath "//*[@id='download']//a[contains(@href,'/releases/latest/download/')]" count == 0
+
+GET http://localhost:8080/your-first-sql-website/?os=any
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)
+HTTP 200
+[Asserts]
+xpath "//*[@id='download']//nav[@aria-label='Operating system']//a[not(@aria-current)]" count == 3
 
 GET http://localhost:8080/examples/tabs/?db=postgres
 HTTP 302

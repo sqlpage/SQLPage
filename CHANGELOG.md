@@ -2,6 +2,7 @@
 
 ## unreleased
 
+- The first-website tutorial now lets you choose a target OS and installation method, copy the command, or download the matching release.
 - Missing component pages on the official site return HTTP 404 and link to the catalog. Action buttons in colored alerts stay readable.
 - The `shell` sidebar now uses `navbar_title` and preserves the colors of the supplied logo in dark mode.
 - Chart export menus, tooltips, and series colors now follow the theme surrounding each chart, including in custom shells. Chart labels on colored marks have a contrasting outline that carries over to SVG downloads.

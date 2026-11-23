@@ -22,12 +22,30 @@
   contain: size;
 }
 
+.docs-intro-compact {
+  grid-template-columns: minmax(0, 1fr) 7rem;
+}
+
+.docs-intro-compact > .card-body {
+  padding: var(--tblr-spacer-3) var(--tblr-spacer-4);
+}
+
+.docs-intro-compact .docs-title {
+  font-size: clamp(1.75rem, 3vw, 2.5rem);
+}
+
+.docs-intro-compact p {
+  max-width: 58ch;
+  margin-bottom: 0;
+}
+
 @media (max-width: 36rem) {
   .docs-intro {
     grid-template-columns: 1fr;
   }
 
-  .docs-intro .object-fit-contain {
+  .docs-intro .object-fit-contain,
+  .docs-intro-compact img {
     display: none;
   }
 

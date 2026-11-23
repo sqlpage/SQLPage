@@ -22,6 +22,14 @@ for (const source of document.querySelectorAll(".docs-example-source")) {
   );
 }
 
+for (const command of document.querySelectorAll(".install-command")) {
+  enableCopy(
+    command.querySelector("button"),
+    command.querySelector("code"),
+    "Command",
+  );
+}
+
 // Attach tools only to standalone snippets, leaving live previews and their source intact.
 const toolbar = document.getElementById("docs-snippet-tools");
 for (const code of document.querySelectorAll(

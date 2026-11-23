@@ -1,0 +1,47 @@
+<section id="download" class="docs-install my-4" aria-labelledby="install-heading">
+    <div class="d-flex align-items-baseline justify-content-between gap-2 mb-2">
+        <h2 class="mb-0" id="install-heading"><a class="docs-self-link" href="#download">Install SQLPage</a></h2>
+        <a class="small" href="https://editor.datapage.app">Try in browser {{icon_img "arrow-up-right" 14}}</a>
+    </div>
+    <div class="card">
+        <div class="install-controls">
+            <nav aria-label="Operating system" class="install-options">
+                <span class="install-label" aria-hidden="true">OS</span>
+                <div class="nav">
+                    {{#each (to_array platforms)}}
+                        <a class="nav-link" href="{{link}}" {{#if active}}aria-current="true"{{/if}}>
+                            {{#if icon}}{{icon_img icon 16}}{{/if}} {{label}}
+                        </a>
+                    {{/each}}
+                </div>
+            </nav>
+            {{#if (or command download_url)}}
+            <nav aria-label="Installation method" class="install-options">
+                <span class="install-label" aria-hidden="true">Method</span>
+                <div class="nav">
+                    {{#each (to_array methods)}}
+                        <a class="nav-link" href="{{link}}" {{#if active}}aria-current="true"{{/if}}>{{label}}</a>
+                    {{/each}}
+                </div>
+            </nav>
+            {{/if}}
+        </div>
+        <div class="install-instructions">
+            {{#if download_url}}
+                <a class="btn btn-blue gap-2" href="{{download_url}}">{{icon_img "download" 18}} {{download_label}}</a>
+            {{else if command}}
+                <div class="install-command">
+                    <button class="btn btn-sm gap-1 px-2" type="button" aria-label="Copy command" hidden>
+                        {{icon_img "copy" 16}} <span aria-live="polite">Copy</span>
+                    </button>
+                    {{icon_img "terminal" 19}}
+                    <code tabindex="-1">{{command}}</code>
+                </div>
+            {{else}}
+                <p class="text-secondary mb-0">Choose the operating system you want to install SQLPage on.</p>
+            {{/if}}
+            {{#if notes}}<div class="install-notes">{{{markdown notes}}}</div>{{/if}}
+        </div>
+    </div>
+</section>
+{{#each_row}}{{/each_row}}

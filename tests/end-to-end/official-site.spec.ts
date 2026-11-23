@@ -358,6 +358,74 @@ test("tutorial code can be selected when clipboard writes are blocked", async ({
   ).toBeVisible();
 });
 
+test("switch installation target and copy its command on a phone", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.setViewportSize({ width: 320, height: 700 });
+  await page.goto("/your-first-sql-website/?os=macos#download");
+  const installer = page.locator("#download");
+  await expect(
+    installer.getByText("brew install sqlpage", { exact: true }),
+  ).toBeVisible();
+
+  await installer
+    .getByRole("navigation", { name: "Operating system" })
+    .getByRole("link", { name: "Windows", exact: true })
+    .press("Enter");
+  const download = installer.locator('a[href$="/sqlpage-windows.zip"]');
+  await expect(download).toBeVisible();
+  await installer
+    .getByRole("navigation", { name: "Installation method" })
+    .getByRole("link", { name: "Scoop", exact: true })
+    .click();
+  await expect(page).toHaveURL(/method=scoop/);
+  expect(new URL(page.url()).hash).toBe("#download");
+  await installer.getByRole("button", { name: /copy/i }).press("Enter");
+  await expect
+    .poll(() => page.evaluate(() => navigator.clipboard.readText()))
+    .toBe("scoop install sqlpage");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
+    320,
+  );
+
+  await page.goBack();
+  await expect(download).toBeVisible();
+});
+
+test.describe("installation without JavaScript", () => {
+  test.use({ javaScriptEnabled: false });
+
+  test("follow a platform link and reopen a bookmarked method", async ({
+    page,
+  }) => {
+    await page.goto("/your-first-sql-website/?os=windows#download");
+    const installer = page.locator("#download");
+    await installer
+      .getByRole("navigation", { name: "Operating system" })
+      .getByRole("link", { name: "Linux", exact: true })
+      .click();
+    await expect(
+      installer.locator('a[href$="/sqlpage-linux.tgz"]'),
+    ).toBeVisible();
+    await installer
+      .getByRole("navigation", { name: "Installation method" })
+      .getByRole("link", { name: "Docker", exact: true })
+      .click();
+    await page.reload();
+    await expect(
+      installer.locator("code").filter({ hasText: "docker run" }),
+    ).toBeVisible();
+    await expect(
+      installer.getByRole("link", { name: "macOS", exact: true }),
+    ).toHaveAttribute("href", "?os=macos&method=docker#download");
+    await expect(installer.getByRole("button", { name: /copy/i })).toHaveCount(
+      0,
+    );
+  });
+});
+
 test("chart documentation renders its examples without browser errors", async ({
   page,
 }) => {

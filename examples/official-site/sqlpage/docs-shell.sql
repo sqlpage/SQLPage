@@ -6,6 +6,7 @@ set catalog = $kind is not null and $options->>'current' is null;
 select 'shell-docs' as component,
     $options->>'title' as title,
     $options->>'description' as description,
+    $options->>'css' as css,
     $section as section,
     cast($catalog as integer) as catalog,
     coalesce($kind || 's', 'guides') as topic_label,

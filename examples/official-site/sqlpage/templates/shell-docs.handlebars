@@ -20,6 +20,7 @@
     {{else if (any (eq section "Guides") (eq section "Documentation") (eq section "Examples"))}}
         <link rel="stylesheet" href="/assets/docs/guides.css">
     {{/if}}
+    {{#if css}}<link rel="stylesheet" href="{{css}}">{{/if}}
     <script defer nonce="{{@csp_nonce}}" src="{{static_path 'sqlpage.js'}}"></script>
     <script defer nonce="{{@csp_nonce}}" src="/assets/docs/navigation.js"></script>
     <script type="module" nonce="{{@csp_nonce}}" src="/assets/docs/examples.js"></script>
