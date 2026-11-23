@@ -10,13 +10,10 @@ const sharedRulesToFix = ["label-content-name-mismatch", "link-in-text-block"];
 const componentRulesToFix: Partial<Record<string, string[]>> = {
   button: ["color-contrast", "image-alt"],
   card: ["color-contrast", "frame-title", "image-alt"],
-  carousel: ["button-name"],
   code: ["scrollable-region-focusable"],
   login: ["image-alt"],
   map: ["color-contrast"],
-  pagination: ["link-name"],
   table: ["scrollable-region-focusable"],
-  tracking: ["aria-prohibited-attr"],
 };
 
 const stockThemes = ["light", "dark"] as const;
@@ -40,7 +37,6 @@ const stockBaseline: Partial<
     "frame-title": { light: 1, dark: 1 },
     "image-alt": { light: 3, dark: 3 },
   },
-  carousel: { "button-name": { light: 4, dark: 4 } },
   datagrid: { "color-contrast": { light: 3, dark: 2 } },
   divider: { "color-contrast": { dark: 1 } },
   foldable: { "link-in-text-block": { light: 1, dark: 1 } },
@@ -51,7 +47,6 @@ const stockBaseline: Partial<
   },
   map: { "color-contrast": { dark: 3 } },
   modal: { "color-contrast": { light: 2, dark: 1 } },
-  pagination: { "link-name": { light: 8, dark: 8 } },
   status_bar: { "color-contrast": { light: 1 } },
   steps: { "color-contrast": { light: 2, dark: 2 } },
   tab: { "color-contrast": { dark: 2 } },
@@ -61,7 +56,6 @@ const stockBaseline: Partial<
   },
   text: { "link-in-text-block": { light: 4, dark: 4 } },
   timeline: { "link-in-text-block": { light: 1, dark: 1 } },
-  tracking: { "aria-prohibited-attr": { light: 16, dark: 16 } },
 };
 
 test("component documentation passes axe WCAG A and AA checks", {

@@ -24,3 +24,8 @@ test("tracking block with a link keeps its tooltip", async ({ page }) => {
   await page.locator(".tracking-block").first().hover();
   await expect(page.getByRole("tooltip")).toHaveText("Monday: up");
 });
+
+test("tracking blocks expose their titles", async ({ page }) => {
+  await expect(page.getByRole("link", { name: "Monday: up" })).toBeVisible();
+  await expect(page.getByRole("img", { name: "Tuesday: down" })).toBeVisible();
+});
