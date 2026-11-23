@@ -50,12 +50,6 @@ code {
   font-size: 100%;
 }
 
-.apexcharts-text,
-.apexcharts-datalabel {
-  fill: var(--tblr-body-color);
-  font-weight: var(--tblr-body-font-weight);
-}
-
 .apexcharts-tooltip .apexcharts-tooltip-title {
   color: inherit;
 }
@@ -63,6 +57,10 @@ code {
 .apexcharts-tooltip a {
   color: currentColor;
   text-decoration: underline;
+}
+
+.apexcharts-theme-dark .apexcharts-menu-item:focus-visible {
+  background-color: var(--apx-menu-hover);
 }
 
 .apexcharts-canvas:has(.apexcharts-tooltip.apexcharts-active a)
@@ -130,6 +128,27 @@ li p {
 .leaflet-container {
   /* biome-ignore lint/complexity/noImportantStyles: leaflet's stylesheet is injected after this one, at the same specificity */
   background: var(--tblr-active-bg) !important;
+}
+
+.leaflet-container :is(.leaflet-popup-content-wrapper, .leaflet-popup-tip) {
+  background: var(--tblr-bg-surface);
+  color: var(--tblr-body-color);
+}
+
+.leaflet-container .leaflet-popup-content a {
+  color: var(--tblr-link-color);
+}
+
+.leaflet-container .leaflet-popup-content a:hover {
+  color: var(--tblr-link-hover-color);
+}
+
+.leaflet-container .leaflet-popup a.leaflet-popup-close-button {
+  color: var(--tblr-secondary-color);
+}
+
+.leaflet-container .leaflet-popup a.leaflet-popup-close-button:hover {
+  color: var(--tblr-body-color);
 }
 
 /*

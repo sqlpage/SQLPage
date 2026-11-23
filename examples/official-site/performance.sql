@@ -2,10 +2,7 @@ select 'http_header' as component,
     'public, max-age=600, stale-while-revalidate=3600, stale-if-error=86400' as "Cache-Control",
     '<https://sql-page.com/performance>; rel="canonical"' as "Link";
 
-select 'dynamic' as component, json_patch(json_extract(properties, '$[0]'), json_object(
-    'title', 'SQLPage applications are fast'
-)) as properties
-FROM example WHERE component = 'shell' LIMIT 1;
+select 'shell-docs' as component, 'SQLPage applications are fast' as title;
 
 select 'hero' as component,
     'Performance in SQLPage' as title,
@@ -14,8 +11,6 @@ select 'hero' as component,
 
 select 'text' as component,
     '
-# Performance of SQLPage applications
-
 In SQLPage, the website author *declaratively* specifies the contents and behavior of the website using SQL queries,
 as opposed to writing imperative code in a backend programming language like Java, Ruby, Python, or PHP.
 
@@ -91,12 +86,8 @@ interaction.
 Performance is a key feature of SQLPage.
 Its architecture allows you to build fast websites without having to implement advanced optimizations yourself.
 
-## Ready to get started?
+## Tutorials and performance tuning
 
-[Build your fast, secure, and beautiful website](/your-first-sql-website) with SQLPage today!
-
-## Already a SQLPage developer ?
-
-Have a look at our [performance guide](/blog?post=Performance+Guide) to learn the best practices to leverage
-all the features that will make your site faster.
+- [Build your first SQLPage website](/your-first-sql-website/).
+- [Tune queries and database connections in an existing application](/blog?post=Performance+Guide).
 ' as contents_md;

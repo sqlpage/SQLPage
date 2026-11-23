@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { text } from "node:stream/consumers";
 import { type ConsoleMessage, expect, type Page, test } from "../../fixture.ts";
 
 const MARKS =
@@ -464,11 +465,51 @@ test("leaves a rangeBar chart on a category axis alone", async ({ page }) => {
   expect(chart.shapes).toHaveLength(2);
 });
 
-test("leaves a treemap chart alone", async ({ page }) => {
+test("keeps treemap labels legible on a phone and in an SVG download", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
   const chart = await renderChart(page, "treemap");
 
   expect(chart.failures).toEqual([]);
   expect(chart.shapes).toHaveLength(4);
+  const labels = page.locator("#test-chart .apexcharts-datalabel");
+  await expect(labels).toHaveText([
+    "United States",
+    "Canada",
+    "France",
+    "Germany",
+  ]);
+  for (const label of await labels.all()) {
+    await expect(label).toHaveCSS("paint-order", /^stroke/);
+    await expect(label).not.toHaveCSS("stroke", "none");
+    const fontSize = await label.evaluate((el) =>
+      parseFloat(getComputedStyle(el).fontSize),
+    );
+    expect(fontSize).toBeGreaterThanOrEqual(12);
+  }
+  const colors = await labels.evaluateAll((elements) =>
+    elements.map((el) => {
+      const { fill, stroke } = getComputedStyle(el);
+      return { fill, stroke };
+    }),
+  );
+  await page.getByRole("button", { name: "Menu" }).click();
+  const downloadStarted = page.waitForEvent("download");
+  await page.getByRole("menuitem", { name: "Download SVG" }).click();
+  const download = await downloadStarted;
+  const contents = await text(await download.createReadStream());
+  const exported = await page.evaluate((contents) => {
+    const svg = new DOMParser().parseFromString(contents, "image/svg+xml");
+    return Array.from(
+      svg.querySelectorAll('text.apexcharts-datalabel[paint-order^="stroke"]'),
+      (el) => ({
+        fill: el.getAttribute("fill"),
+        stroke: el.getAttribute("stroke"),
+      }),
+    );
+  }, contents);
+  expect(exported).toEqual(colors);
 });
 
 test("draws a rangeBar chart that asks to be stacked", async ({ page }) => {

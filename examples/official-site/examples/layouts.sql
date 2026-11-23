@@ -6,6 +6,7 @@ set sidebar = coalesce($sidebar, 0);
 select 'dynamic' as component, 
     json_patch(properties->0, 
         json_object(
+            'title', 'Shell layouts | SQLPage',
             'layout', $layout,
             'sidebar', $sidebar = 1
         )

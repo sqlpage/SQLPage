@@ -1,0 +1,10 @@
+<header class="card docs-intro{{#if compact}} docs-intro-compact{{/if}} mb-4 overflow-hidden" id="overview">
+    <div class="card-body">
+        {{#if version}}<span class="font-monospace text-primary">SQLPage v{{version}}</span>{{/if}}
+        <h1 class="docs-title">{{title}}</h1>
+        <p class="fs-2 text-secondary">{{description}}</p>
+        {{#if link}}<a class="btn btn-primary" href="{{link}}">{{link_text}}</a>{{/if}}
+    </div>
+    {{#if image}}<img class="{{#if photograph}}object-fit-cover{{else}}object-fit-contain{{/if}}" src="{{image}}" alt="">{{/if}}
+</header>
+{{#each_row}}{{/each_row}}

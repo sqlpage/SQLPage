@@ -10,9 +10,9 @@ VALUES (
         'transfer-vertical',
         'Sends an HTTP request and returns the results as a string.
 
-### Example
+## HTTP request examples
 
-#### Simple GET query
+### Simple GET query
 
 In this example, we use an API call to find the latitude and longitude of a place
 the user searched for, and we display it on a map.
@@ -30,7 +30,7 @@ select $user_search as title,
   CAST($api_results->>0->>''lon'' AS FLOAT) as longitude;
 ```
 
-#### POST query with a body
+### POST query with a body
 
 In this example, we use the complex form of the function to make an
 authenticated POST request, with custom request headers and a custom request body.
@@ -61,7 +61,7 @@ select
 ```
 
 
-#### Authenticated request using Basic Auth
+### Authenticated request using Basic Auth
 
 Here''s how to make a request to an API that requires [HTTP Basic Authentication](https://en.wikipedia.org/wiki/Basic_access_authentication):
 
@@ -77,7 +77,7 @@ set api_results = sqlpage.fetch($request);
 > This will add the `Authorization: Basic bXlfdXNlcm5hbWU6bXlfcGFzc3dvcmQK` header to the request,
 > where `bXlfdXNlcm5hbWU6bXlfcGFzc3dvcmQK` is the base64 encoding of the string `my_username:my_password`.
 
-# JSON parameter format
+## JSON parameter format
 
 The fetch function accepts either a URL string, or a JSON object with the following parameters:
  - `url`: The URL to fetch. Required.
@@ -89,7 +89,7 @@ The fetch function accepts either a URL string, or a JSON object with the follow
  - `password`: Optional password for HTTP Basic Authentication. Only used if username is provided. Introduced in version 0.33.0.
  - `response_encoding`: Optional charset to use for decoding the response body. Defaults to `utf8`, or `base64` if the response contains binary data. All [standard web encodings](https://encoding.spec.whatwg.org/#concept-encoding-get) are supported, plus `hex`, `base64`, and `base64url`. Introduced in version 0.37.0.
 
-# Error handling and reading response headers
+## Error handling and reading response headers
 
 If the request fails, this function throws an error, that will be displayed to the user.
 The response headers are not available for inspection.

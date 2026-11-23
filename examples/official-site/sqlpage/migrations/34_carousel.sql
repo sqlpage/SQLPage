@@ -142,7 +142,7 @@ VALUES (
         JSON(
             '[
                 {"component":"carousel","name":"cats1","title":"Famous Database Animals"},
-                {"image":"https://upload.wikimedia.org/wikipedia/commons/thumb/d/d7/Elefantes_africanos_de_sabana_%28Loxodonta_africana%29%2C_Elephant_Sands%2C_Botsuana%2C_2018-07-28%2C_DD_114-117_PAN.jpg/2560px-Elefantes_africanos_de_sabana_%28Loxodonta_africana%29%2C_Elephant_Sands%2C_Botsuana%2C_2018-07-28%2C_DD_114-117_PAN.jpg"},
+                {"image":"https://upload.wikimedia.org/wikipedia/commons/thumb/d/d7/Elefantes_africanos_de_sabana_%28Loxodonta_africana%29%2C_Elephant_Sands%2C_Botsuana%2C_2018-07-28%2C_DD_114-117_PAN.jpg/1280px-Elefantes_africanos_de_sabana_%28Loxodonta_africana%29%2C_Elephant_Sands%2C_Botsuana%2C_2018-07-28%2C_DD_114-117_PAN.jpg"},
                 {"image":"https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/Penguin_Island_panorama_with_ferry_and_dolphins_in_foreground%2C_March_2023_06.jpg/1280px-Penguin_Island_panorama_with_ferry_and_dolphins_in_foreground%2C_March_2023_06.jpg"}
                 ]'
         )
@@ -152,7 +152,7 @@ VALUES (
         'An advanced example of carousel with controls',
         JSON(
             '[
-                {"component":"carousel","title":"SQL web apps","width":6, "center":true,"controls":true,"auto":true},
+                {"component":"carousel","title":"SQL web apps","width":10, "center":true,"controls":true,"auto":true},
                 {"image":"/sqlpage_cover_image.webp","title":"SQLPage is modern","description":"Built by engineers who have built so many web applications the old way, they decided they just wouldn''t anymore.", "height": 512},
                 {"image":"/sqlpage_illustration_alien.webp","title":"SQLPage is easy", "description":"SQLPage connects to your database, then it turns your SQL queries into nice websites.", "height": 512}
                 ]'

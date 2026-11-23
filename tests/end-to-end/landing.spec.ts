@@ -495,6 +495,9 @@ test("landing page: live components, deployment and mobile navigation", async ({
     demo.getByRole("link", { name: "form", exact: true }),
   ).toHaveAttribute("href", "/component.sql?component=form");
   await expect(page.locator(".sql-editor")).toBeHidden();
+  await expect(
+    page.getByRole("link", { name: "Browse the component reference" }),
+  ).toHaveAttribute("href", "/components.sql");
   await page
     .getByRole("tab", { name: "big_number KPIs at a glance", exact: true })
     .click();
@@ -698,6 +701,10 @@ test("landing metadata and navigation remain indexable without JavaScript", asyn
     await page
       .getByRole("link", { name: "Documentation", exact: true })
       .first()
+      .click();
+    await page
+      .getByRole("main")
+      .getByRole("link", { name: "Components", exact: true })
       .click();
     await expect
       .poll(() =>

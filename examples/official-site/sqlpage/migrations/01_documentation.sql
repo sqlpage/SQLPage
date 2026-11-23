@@ -29,6 +29,32 @@ CREATE TABLE example(
     FOREIGN KEY (component) REFERENCES component(name) ON DELETE CASCADE
 );
 
+-- The reference shows the SQL and renders the same stored component rows.
+-- Arrays with several items become repeated column aliases, as in handwritten SQLPage files.
+CREATE VIEW example_with_source AS
+SELECT example.rowid AS example_id,
+    row_number() OVER (PARTITION BY component ORDER BY example.rowid) AS example_number,
+    example.*,
+    (SELECT group_concat('select' || char(10) || (
+        WITH fields AS (
+            SELECT field.key AS name, coalesce(item.type, field.type) AS type,
+                CASE WHEN item.key IS NULL THEN field.value ELSE item.value END AS value
+            FROM json_each(statement.value) AS field
+            LEFT JOIN json_each(
+                CASE WHEN field.type = 'array' AND json_array_length(field.value) > 1 THEN field.value END
+            ) AS item ON true
+        )
+        SELECT group_concat('    ' || CASE type
+                WHEN 'true' THEN 'TRUE'
+                WHEN 'false' THEN 'FALSE'
+                WHEN 'array' THEN 'JSON(' || quote(value) || ')'
+                WHEN 'object' THEN 'JSON(' || quote(value) || ')'
+                ELSE quote(value)
+            END || format(' as "%w"', name), ',' || char(10))
+        FROM fields
+    ) || ';', char(10) || char(10)) FROM json_each(example.properties) AS statement) AS source
+FROM example;
+
 INSERT INTO component(name, icon, description) VALUES
     ('list', 'list', 'A vertical list of items. Each item can be clickable and link to another page.');
 INSERT INTO parameter(component, name, description, type, top_level, optional) SELECT 'list', * FROM (VALUES
@@ -217,19 +243,19 @@ INSERT INTO example(component, description, properties) VALUES
 
 INSERT INTO component(name, icon, description) VALUES
     ('form', 'cursor-text', '
-# Building forms in SQL
+## Building forms in SQL
 
 The form component will display a series of input fields of various types, that can be filled in by the user.
 When the user submits the form, the data is posted to an SQL file specified in the `action` property.
 
-## Handle Data with SQL
+### Handling submitted values
 
 The receiving SQL page will be able to handle the data,
 and insert it into the database, use it to perform a search, format it, update existing data, etc.
 
 A value in a field named "x" will be available as `:x` in the SQL query of the target page.
 
-## Examples
+### Form projects
 
  - [A multi-step form](https://github.com/sqlpage/SQLPage/tree/main/examples/forms-with-multiple-steps), guiding the user through a process without overwhelming them with a large form.
  - [File upload form](https://github.com/sqlpage/SQLPage/tree/main/examples/image%20gallery%20with%20user%20uploads), letting users upload images to a gallery.
@@ -1116,7 +1142,7 @@ Numbers can be displayed
     ),
     (
     'table',
-    '# Dynamic column names in a table
+    '#### Dynamic column names in a table
 
 In all the previous examples, the column names were hardcoded in the SQL query.
 This makes it very easy to quickly visualize the results of a query as a table,
@@ -1514,17 +1540,16 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('theme', 'Set to "dark" to use a dark theme.', 'TEXT', TRUE, TRUE),
     ('footer', 'Muted text to display in the footer of the page. This can be used to display a link to the terms and conditions of your application, for instance. By default, shows "Built with SQLPage". Supports links with markdown.', 'TEXT', TRUE, TRUE),
     ('preview_image', 'The URL of an image to display as a link preview when the page is shared on social media', 'URL', TRUE, TRUE),
-    ('navbar_title', 'The title to display in the top navigation bar. Used to display a different title in the top menu than the one that appears in the tab of the browser.', 'TEXT', TRUE, TRUE),
+    ('navbar_title', 'The title shown in the navigation bar or sidebar. Defaults to the page title. Set an empty string to show just the logo.', 'TEXT', TRUE, TRUE),
     ('target', 'Where the menu items should open: "_blank" for a new tab, "_self" for the same tab, "_parent" for the parent frame, or "_top" for the full body of the window. Set it inside a "menu_item" json object; it has no effect when set directly on the shell.', 'TEXT', TRUE, TRUE),
     ('class', 'class attribute added to the page''s html element. It can be used to apply custom styling to the whole page through css.', 'TEXT', TRUE, TRUE)
 ) x;
 
 INSERT INTO example(component, description, properties) VALUES
     ('shell', '
-This example contains the values used for the shell of the page you are currently viewing.
+This example configures a dark shell with menus linking to pages on this site.
 
-The `menu_item` property is used both in its simple string form, to generate a link named "functions" that points to "functions.sql",
-and in its object form, to generate a dropdown menu named "Community" with links to the blog, the github repository, and the issues page.
+Each `menu_item` object defines a link or a dropdown. The "Community" menu links to the blog, issue tracker, discussions, and source code.
 
 The object form can be used directly only on database engines that have a native JSON type.
 On other engines (such as SQLite), you can use the [`dynamic`](?component=dynamic#component) component to generate the same result.
@@ -1535,6 +1560,7 @@ You see the [page layouts demo](./examples/layouts.sql) for a live example of th
      json('[{
             "component": "shell",
             "title": "SQLPage: SQL websites",
+            "navbar_title": "SQLPage",
             "link": "/",
             "menu_item": [
                 {"title": "About", "submenu": [
@@ -1575,13 +1601,7 @@ You see the [page layouts demo](./examples/layouts.sql) for a live example of th
             "font_size": 19,
             "image": "/assets/icon.webp",
             "favicon": "/favicon.ico",
-            "javascript": [
-                "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js",
-                "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/languages/sql.min.js",
-                "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/languages/handlebars.min.js",
-                "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/languages/json.min.js",
-                "/assets/highlightjs-launch.js"
-            ],
+            "javascript_module": "/assets/highlightjs-launch.js",
             "css": "/assets/highlightjs-and-tabler-theme.css",
             "footer": "[Built with SQLPage](https://github.com/sqlpage/SQLPage/tree/main/examples/official-site)"
         }]')),

@@ -168,15 +168,6 @@ VALUES (
     'name',
     'Name of the file input field in the form.',
     'TEXT'
-), 
-(
-    'uploaded_file_path',
-    2,
-    'allowed_mime_type',
-    'Makes the function return NULL if the uploaded file is not of the specified MIME type.
-    If omitted, any MIME type is allowed.
-    This makes it possible to restrict the function to only accept certain file types.',
-    'TEXT'
 ),
 (
     'uploaded_file_mime_type',

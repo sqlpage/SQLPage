@@ -1,5 +1,5 @@
 -- This demonstrates how to build multi-step forms using the `form` component, and hidden inputs.
-select 'dynamic' as component, properties FROM example WHERE component = 'shell' LIMIT 1;
+select 'shell-docs' as component, 'Multi-step form | SQLPage' as title, 'Examples' as section;
 
 select 'text' as component, '
 # SQLPage Multi-Step Form Example

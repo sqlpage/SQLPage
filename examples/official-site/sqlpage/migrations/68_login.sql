@@ -24,6 +24,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('error_message_md','A markdown error message to display above the form, typically shown after a failed login attempt.','TEXT',TRUE,TRUE),
     ('username','Label and placeholder for the user account identifier text field.','TEXT',TRUE,FALSE),
     ('password','Label and placeholder for the password field.','TEXT',TRUE,FALSE),
+    ('autofocus','Focus the username field when the page opens. Defaults to true. Set to false when the form is one part of a larger page.','BOOLEAN',TRUE,TRUE),
     ('username_icon','Icon to display on the left side of the input field, on the same line.','ICON',TRUE,TRUE),
     ('password_icon','Icon to display on the left side of the input field, on the same line.','ICON',TRUE,TRUE),
     ('image','The URL of an centered image displayed before the title.','URL',TRUE,TRUE),
@@ -60,6 +61,7 @@ There, you will have access to the variables:
                     "title": "Please login to your account",
                     "username": "Username",
                     "password": "Password",
+                    "autofocus": false,
                     "username_icon": "user",
                     "password_icon": "lock",
                     "forgot_password_text": "Forgot your password?",
@@ -71,4 +73,4 @@ There, you will have access to the variables:
             ]'
         )
     ),
-   ('login', 'Most basic login form', JSON('[{"component": "login"}]'));
+   ('login', 'Basic login form', JSON('[{"component": "login", "username": "Username", "password": "Password", "autofocus": false}]'));

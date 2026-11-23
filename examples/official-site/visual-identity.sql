@@ -1,10 +1,6 @@
 select 'http_header' as component,
     'public, max-age=600, stale-while-revalidate=3600, stale-if-error=86400' as "Cache-Control";
-select 'dynamic' as component, json_patch(json_extract(properties, '$[0]'), json_object(
-    'title', 'Visual Identity - SQLPage',
-    'css', '/assets/highlightjs-and-tabler-theme.css',
-    'theme', 'dark'
-)) as properties FROM example WHERE component = 'shell' LIMIT 1;
+select 'shell-docs' as component, 'Visual Identity - SQLPage' as title;
 
 select 'text' as component, 'SQLPage visual identity' as title, '
 SQLPage turns data into useful applications. Its identity pairs the round geometry of **Outfit** with the landing sculpture: three stacked metal sections, two luminous bands, and a detached jewel.

@@ -1,4 +1,4 @@
-select 'dynamic' as component, properties FROM example WHERE component = 'shell' LIMIT 1;
+select 'shell-docs' as component, 'File uploads | SQLPage' as title, 'Examples' as section;
 
 select 'title' as component, 'SQLPage Image Upload Demo' as contents;
 
