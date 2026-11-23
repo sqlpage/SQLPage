@@ -51,7 +51,7 @@ Key features:
 
 - [Components reference](/components.sql): List of all ' || (select count(*) from component) || ' built-in UI components with parameters and examples
 - [Functions reference](/functions.sql): SQLPage built-in functions for handling requests, encoding data, and more
-- [Configuration guide](https://github.com/sqlpage/SQLPage/blob/main/configuration.md): Complete list of configuration options in sqlpage.json
+- [Configuration reference](/configuration): Accepted values and defaults for SQLPage server settings
 
 ## Components
 

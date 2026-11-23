@@ -7,6 +7,9 @@ where name = lower($search) or (kind = 'function' and lower($search) in (
 ))
 order by kind limit 1;
 
+select 'redirect' as component, '/configuration#' || name as link
+from config_option where name = lower($search);
+
 select 'shell-docs' as component, 'Search' as section,
     coalesce($search || ' | ', '') || 'SQLPage documentation search' as title;
 
@@ -17,7 +20,10 @@ set escaped_search = '"' || replace(coalesce($search, ''), '"', '""') || '"';
 
 with matches as (
     select title, trim(description, char(13) || char(10) || ' ') as summary, page, parameters, fragment, rank,
-        row_number() over (partition by page, parameters order by rank, rowid) as position
+        row_number() over (
+            partition by page, parameters, case when page = '/configuration' then fragment end
+            order by rank, rowid
+        ) as position
     from documentation_fts
     where documentation_fts match $escaped_search
 )

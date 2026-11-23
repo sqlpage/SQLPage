@@ -8,7 +8,7 @@
     "typecheck": "tsc && tsc -p tests/js && tsc -p tests/end-to-end",
     "format": "biome format --write .",
     "fix": "biome check --fix --unsafe .",
-    "site:build": "node scripts/site-build.mjs",
+    "site:build": "cargo run --locked --quiet --features config-schema --example export_config_schema | node scripts/site-build.mjs",
     "site": "npm run build && npm run site:build && cd target/official-site && cargo run --locked --manifest-path ../../Cargo.toml"
   },
   "repository": {

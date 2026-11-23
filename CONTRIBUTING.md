@@ -107,5 +107,6 @@ Deployment recreates the website's database from the site's SQL migrations.
 
 Run `npm run site` to preview changes using the same site build as deployment.
 
-Update [configuration.md](./configuration.md) for configuration changes and
+Document server options on the Rust fields of [`AppConfig`](./src/app_config.rs).
+Keep setup examples in [configuration.md](./configuration.md). Update
 [CHANGELOG.md](./CHANGELOG.md) for user-visible changes in an unreleased version.

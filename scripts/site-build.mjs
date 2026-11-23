@@ -4,10 +4,13 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   renameSync,
   rmSync,
+  writeFileSync,
 } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
+import { buildConfigurationMigration } from "./site-configuration.mjs";
 
 const repository = resolve(import.meta.dirname, "..");
 const siteDirectory = join(repository, "target", "official-site");
@@ -21,7 +24,7 @@ const excluded = new Set([
   join("sqlpage", "https"),
 ]);
 
-function buildSite() {
+function buildSite(configurationSchema) {
   const parent = dirname(siteDirectory);
   mkdirSync(parent, { recursive: true });
   const temporary = mkdtempSync(join(parent, ".official-site-"));
@@ -35,6 +38,10 @@ function buildSite() {
     copyFileSync(
       join(repository, "configuration.md"),
       join(next, "configuration.md"),
+    );
+    writeFileSync(
+      join(next, "sqlpage", "migrations", "1000_configuration_reference.sql"),
+      buildConfigurationMigration(configurationSchema),
     );
     // Stage the complete site before exchanging the previous preview.
     try {
@@ -56,4 +63,4 @@ function buildSite() {
   }
 }
 
-buildSite();
+buildSite(JSON.parse(readFileSync(0, "utf8")));
