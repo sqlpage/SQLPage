@@ -47,6 +47,9 @@ row:
     type: URL
     required: true
     description: The URL (absolute or relative) of an image to display in the carousel.
+  - name: image_alt
+    type: TEXT
+    description: Alternative text describing the slide image. Leave empty if the image is decorative or its caption already describes it.
   - name: title
     type: TEXT
     description: Add caption to the slide.

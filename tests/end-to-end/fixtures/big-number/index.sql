@@ -7,6 +7,7 @@ SELECT
 SELECT
     'plain-color' AS id,
     'Plain value' AS title,
+    '#plain-color' AS title_link,
     '1,234' AS value,
     'red' AS color;
 

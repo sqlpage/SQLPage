@@ -42,6 +42,9 @@ row:
   - name: image
     type: TEXT
     description: Path to image file (relative. relative to web root or URL) to be displayed on the button.
+  - name: image_alt
+    type: TEXT
+    description: Alternative text for an informative button image. Leave empty if decorative or repeated by the button title.
   - name: link
     type: URL
     description: The URL to which the button should navigate when clicked. If the form attribute is specified,

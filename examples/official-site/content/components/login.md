@@ -40,6 +40,9 @@ top:
   - name: image
     type: URL
     description: The URL of an centered image displayed before the title.
+  - name: image_alt
+    type: TEXT
+    description: Alternative text for an informative login image. Leave empty if decorative.
   - name: password
     type: TEXT
     required: true

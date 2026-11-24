@@ -3,14 +3,16 @@
 ## unreleased
 
 - The [configuration reference](https://sql-page.com/configuration) now lists server settings and their defaults directly from SQLPage. Search for a setting by name or link to it with a URL such as `/configuration#listen_on`.
-- The first-website tutorial now lets you choose an installation target, copy a command, or download an archive for macOS, Windows, Linux, or AWS Lambda.
-- Missing component pages on the official site return HTTP 404 and link to the catalog. Action buttons in colored alerts stay readable.
+- Big number title links have a larger target for touch and pointer users.
+- Carousel slide indicators and pagination arrows now have accessible names. Keyboard users can activate carousel arrows and enabled pagination links. Screen readers announce the current page.
+- Button, card, carousel, and login images accept alternative text. Embedded card frames use their own title or the card title.
+- Inline links are underlined so they stand out without relying on color. The documentation search button has a clear accessible name separate from its shortcut hint.
+- Disabled buttons expose their state to assistive technology and cannot be activated.
+- Tracking blocks without links now expose their titles to screen readers.
 - The `shell` sidebar now uses `navbar_title` and preserves the colors of the supplied logo in dark mode.
 - Chart export menus, tooltips, and series colors now follow the theme surrounding each chart, including in custom shells. Chart labels on colored marks have a contrasting outline that carries over to SVG downloads.
 - Map marker popups follow the surrounding theme so their titles and links stay readable.
 - Each `login` component’s labels target its own fields. Set `false AS autofocus` to keep the username field from taking focus when the page opens.
-- The official documentation now connects tutorials, component examples, and the function reference through shared navigation. Browse by task, open search with Ctrl+K or ⌘K, and share a link to a specific parameter. Code blocks have copy controls. Wide examples show SQL beside the live result.
-- Improved contrast for text and controls across the official SQLPage site.
 - JSON `shell` menu items with a link are now links in the accessibility tree instead of being announced as buttons; only submenu toggles keep `role="button"`.
 - The new [`status_bar` component](https://sql-page.com/component.sql?component=status_bar) displays short status messages and links along the bottom of the screen or inline with page content.
 - A file input with `multiple` now keeps every selected file, instead of only the last one. The new [`sqlpage.persist_uploaded_files`](https://sql-page.com/functions.sql?function=persist_uploaded_files) function saves them all and returns a JSON array with the `path`, original `name`, `mime_type` and `size` of each file.

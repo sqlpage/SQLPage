@@ -57,6 +57,7 @@ types, and frontend unit tests. Dynamic frontend changes also need Playwright:
 
 ```bash
 npm run site:build
+npm run site:test
 cd tests/end-to-end
 npx playwright install --with-deps --only-shell chromium
 npm test

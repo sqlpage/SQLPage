@@ -3,7 +3,7 @@
     {{#if form}}
     <button type="submit" form="{{form}}" {{#if link}}formaction="{{link}}"{{/if}} 
     {{else}}
-    <a href="{{link}}"
+    <a{{#unless disabled}} href="{{link}}"{{/unless}}
     {{/if}}
         class="btn text-wrap{{#if disabled}} disabled{{/if}}
         {{~#if color}} btn-{{color}}{{/if}}
@@ -12,6 +12,7 @@
         {{~#if ../shape}} btn-{{../shape}}{{/if}}
         {{~#if narrow}} btn-icon{{/if}}
         {{~#if space_after}} me-auto{{/if}}"
+        {{~#if disabled}}{{#if form}} disabled{{else}} aria-disabled="true" tabindex="-1"{{/if}}{{/if}}
         {{~#if id}} id="{{id}}"{{/if}}
         {{~#if target}} target="{{target}}"{{/if}}
         {{~#if download}} download="{{download}}"{{/if}}
@@ -22,9 +23,9 @@
         {{~#if image~}}
             <span {{~#if title}} class="me-1"{{/if}}>
                 {{~#if (eq ../size 'sm')}}
-                    <img width=16 height=16 src="{{image}}">
+                    <img width=16 height=16 src="{{image}}" alt="{{image_alt}}">
                 {{~else~}}
-                    <img width=24 height=24 src="{{image}}">
+                    <img width=24 height=24 src="{{image}}" alt="{{image_alt}}">
                 {{~/if~}}
             </span>
         {{~/if~}}

@@ -2,6 +2,6 @@
     {{#each_row}}
         {{#if title}}<h2>{{title}}</h2>{{/if}}
         {{#if description}}<p>{{description}}</p>{{else}}{{#if description_md}}{{{markdown description_md}}}{{/if}}{{/if}}
-        <pre class="mb-0"><code {{#if language}}class="language-{{language}}"{{/if}}>{{contents}}</code></pre>
+        <pre class="mb-0" tabindex="0"><code {{#if language}}class="language-{{language}}"{{/if}}>{{contents}}</code></pre>
     {{/each_row}}
 </div>

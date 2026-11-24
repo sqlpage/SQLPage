@@ -38,7 +38,7 @@
                     <a href="{{link}}"{{#if target}} target="{{target}}"{{/if}} style="text-decoration: inherit; color: inherit">
                 {{/if}}
                 {{#if top_image}}
-                    <img src="{{top_image}}" class="card-img-top"{{#if top_image_width}} width="{{top_image_width}}"{{/if}}{{#if top_image_height}} height="{{top_image_height}}"{{/if}}{{#if top_image_lazy}} loading="lazy"{{/if}}/>
+                    <img src="{{top_image}}" alt="{{top_image_alt}}" class="card-img-top"{{#if top_image_width}} width="{{top_image_width}}"{{/if}}{{#if top_image_height}} height="{{top_image_height}}"{{/if}}{{#if top_image_lazy}} loading="lazy"{{/if}}/>
                 {{/if}}
                 {{#if color}}
                     {{#if (not embed)}}
@@ -55,7 +55,7 @@
                     </div>
                     {{~#if embed ~}}
                     {{~#if (eq embed_mode "iframe")}}
-                        <iframe src="{{embed}}" 
+                        <iframe src="{{embed}}" title="{{default embed_title (default title 'Embedded content')}}"
                             width="{{#if width}}{{width}}{{else}}100%{{/if}}"
                             {{~#if height}} height="{{height}}"{{/if~}}
                             {{~#if allow}} allow="{{allow}}"{{/if~}}

@@ -67,6 +67,9 @@ row:
               You can also set height and width parameters to configure the appearance and the sandbox and allow parameters to configure
               security aspects of the iframe. Refer to the [MDN page](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe)
               for an explanation of these parameters.
+  - name: embed_title
+    type: TEXT
+    description: Accessible name of the iframe. Defaults to the card title, or Embedded content if no title is set.
   - name: footer
     type: TEXT
     description: Muted text to display at the bottom of the card.
@@ -104,6 +107,9 @@ row:
   - name: top_image
     type: URL
     description: The URL (absolute or relative) of an image to display at the top of the card.
+  - name: top_image_alt
+    type: TEXT
+    description: Alternative text for an informative card image. Leave empty if decorative.
   - name: top_image_height
     type: INTEGER
     description: Specify the top image height, in pixels. Helps prevent layout shifts.
