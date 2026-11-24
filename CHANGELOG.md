@@ -2,6 +2,7 @@
 
 ## unreleased
 
+- The [configuration reference](https://sql-page.com/configuration) now lists server settings and their defaults directly from SQLPage. Search for a setting by name or link to it with a URL such as `/configuration#listen_on`.
 - Big number title links have a larger target for touch and pointer users.
 - Carousel slide indicators and pagination arrows now have accessible names. Keyboard users can activate carousel arrows and enabled pagination links. Screen readers announce the current page.
 - Button, card, carousel, and login images accept alternative text. Embedded card frames use their own title or the card title.

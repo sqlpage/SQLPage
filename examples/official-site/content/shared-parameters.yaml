@@ -1,0 +1,10 @@
+id:
+  name: id
+  type: TEXT
+  description: id attribute added to the container in HTML. It can be used to target this item through css
+    or for scrolling to this item through links (use "#id" in link url).
+class:
+  name: class
+  type: TEXT
+  description: class attribute added to the container in HTML. It can be used to apply custom styling to this
+    item through css. Added in v0.18.0.

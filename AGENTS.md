@@ -38,11 +38,12 @@ relevant tests and the formatting/lint checks in CONTRIBUTING.md before stopping
 Report unavailable checks and failures accurately; a test summary followed by a
 hung process is a failure.
 
-Update the existing page or documentation migration for changed behavior. Add a
-migration only for new documentation content.
+Edit the authored content under `examples/official-site/content/` and the site’s
+standalone SQL and Markdown pages in place.
 
 Build and preview the official site with the commands in its [README](./examples/official-site/README.md).
-Update `configuration.md` for configuration changes.
+Document server options on `AppConfig` where the site build reads them. Keep
+setup examples in `configuration.md`.
 
 Add a concise CHANGELOG.md entry only for user-visible changes, and never edit
 an already tagged release.

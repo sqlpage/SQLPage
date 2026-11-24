@@ -2,9 +2,10 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "lib": ["es2022"],
+    "allowJs": true,
     "module": "nodenext",
     "moduleResolution": "nodenext",
     "types": ["node"]
   },
-  "include": ["*.spec.ts"]
+  "include": ["*.spec.ts", "*.checks.ts"]
 }

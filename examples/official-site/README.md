@@ -4,7 +4,7 @@ The SQLPage website is of course built with SQLPage !
 
 Things that you may be interested to look at:
  - The [custom component we use for our stylish home page](./sqlpage/templates/landing-page.handlebars)
- - The [migrations](./sqlpage/migrations) that populate the database with the documentation for all components
+ - The [component reference](./content/components/) and its live examples
  - The [advanced multistep form example](./examples/multistep-form/)
 
 It is hosted as a simple Docker container on [sql-page.com](https://sql-page.com).
@@ -17,7 +17,9 @@ Run `npm ci --ignore-scripts` from the repository root, then `npm run site`.
 The preview uses the same build as CI and deployment. Rerun the command after editing the site.
 
 After `npm run build`, run `npm run site:build` to prepare the site under
-`target/official-site/`.
+`target/official-site/`. The build command is also available directly:
+`cargo run --locked --features site-build --example build_site`.
+Run `npm run site:test` against the prepared site to check component coverage.
 Run SQLPage from that directory, or run
 `docker compose -f examples/official-site/docker-compose.yml up --build` from
 the repository root.
@@ -25,6 +27,15 @@ the repository root.
 Add `theme=light` or `theme=dark` to a component reference URL to preview its
 live examples using SQLPage's stock theme. For example, visit
 `/component.sql?component=form&theme=light`.
+
+## Editing documentation
+
+- Edit [component](./content/components/form.md) and [function](./content/functions/link.md) descriptions in Markdown. The filename is the public name. Put the summary, category, and parameters in the YAML header.
+- Add [component examples](./content/components/form/examples/) beside the component page. The numbered filename determines display order. The Markdown body explains the example. When supplied, the `rows` in the header provide both the rendered preview and the displayed SQL.
+- Edit [blog posts](./content/blog/) in Markdown and the [guides](./content/guides.yaml) and [example project cards](./content/projects.yaml) in YAML.
+- Document configuration settings on [`AppConfig`](../../src/app_config.rs). The site uses its Serde field names, schema types, and defaults for the searchable configuration reference.
+
+The Rust builder loads these sources into SQLite and generates one startup seed from bound values. The checked-in SQL migrations supply the site’s demos and installation options.
 
 ## Landing page
 

@@ -57,6 +57,7 @@ types, and frontend unit tests. Dynamic frontend changes also need Playwright:
 
 ```bash
 npm run site:build
+npm run site:test
 cd tests/end-to-end
 npx playwright install --with-deps --only-shell chromium
 npm test
@@ -107,9 +108,10 @@ Architectural constraints and documentation maintenance rules are in
 [AGENTS.md](./AGENTS.md).
 
 Edit existing documentation in the [official site](./examples/official-site/) in place.
-Deployment recreates the website's database from the site's SQL migrations.
+The site [README](./examples/official-site/README.md) describes the format for authoring references and examples.
 
 Run `npm run site` to preview changes using the same site build as deployment.
 
-Update [configuration.md](./configuration.md) for configuration changes and
+Document server options on the Rust fields of [`AppConfig`](./src/app_config.rs).
+Keep setup examples in [configuration.md](./configuration.md). Update
 [CHANGELOG.md](./CHANGELOG.md) for user-visible changes in an unreleased version.
