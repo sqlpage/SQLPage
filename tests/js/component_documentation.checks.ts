@@ -4,7 +4,6 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
-import { buildDocumentationSeed } from "../../scripts/site-content.mjs";
 
 // Check both directions: every property a template reads has documentation,
 // and each documented property is used at the advertised level.
@@ -221,7 +220,15 @@ function read_templates(): Map<string, TemplateProperties> {
 
 function read_documentation(): Map<string, TemplateProperties> {
   const db = new DatabaseSync(":memory:");
-  db.exec(buildDocumentationSeed());
+  db.exec(
+    fs.readFileSync(
+      path.join(
+        REPO_ROOT,
+        "target/official-site/sqlpage/migrations/01_documentation.sql",
+      ),
+      "utf8",
+    ),
+  );
 
   const documented = new Map<string, TemplateProperties>();
   for (const row of db.prepare("select name from component").all()) {

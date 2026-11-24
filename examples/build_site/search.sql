@@ -23,3 +23,6 @@ JOIN reference_entry AS e ON e.kind = 'component' AND e.name = x.component;
 
 INSERT INTO documentation_fts(title, description, page, parameters)
 SELECT title, description, '/blog.sql', json_object('post', title) FROM blog_posts;
+
+INSERT INTO documentation_fts(title, description, page, fragment)
+SELECT name, description_md, '/configuration', name FROM config_option;

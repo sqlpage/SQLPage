@@ -4,6 +4,13 @@ CREATE TABLE reference_category (
     sort_order INTEGER NOT NULL
 );
 
+CREATE TABLE config_option (
+    name TEXT PRIMARY KEY,
+    type TEXT NOT NULL,
+    default_md TEXT,
+    description_md TEXT NOT NULL
+);
+
 CREATE TABLE component (
     name TEXT PRIMARY KEY,
     description TEXT NOT NULL,

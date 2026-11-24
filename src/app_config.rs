@@ -14,8 +14,15 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::time::Duration;
 
-#[cfg(not(feature = "lambda-web"))]
+#[cfg(any(not(feature = "lambda-web"), feature = "config-schema"))]
 const DEFAULT_DATABASE_FILE: &str = "sqlpage.db";
+
+const DEFAULT_IDLE_TIMEOUT: Duration = Duration::from_mins(30);
+const DEFAULT_MAX_LIFETIME: Duration = Duration::from_hours(1);
+const CERTIFICATE_CACHE_DIRECTORY: &str = "sqlpage/https";
+
+#[cfg(feature = "config-schema")]
+mod schema;
 
 impl AppConfig {
     pub fn from_cli(cli: &Cli) -> anyhow::Result<Self> {
@@ -92,19 +99,11 @@ impl AppConfig {
         let is_sqlite = self.database_url.starts_with("sqlite:");
         self.database_connection_idle_timeout = resolve_timeout(
             self.database_connection_idle_timeout,
-            if is_sqlite {
-                None
-            } else {
-                Some(Duration::from_mins(30))
-            },
+            (!is_sqlite).then_some(DEFAULT_IDLE_TIMEOUT),
         );
         self.database_connection_max_lifetime = resolve_timeout(
             self.database_connection_max_lifetime,
-            if is_sqlite {
-                None
-            } else {
-                Some(Duration::from_hours(1))
-            },
+            (!is_sqlite).then_some(DEFAULT_MAX_LIFETIME),
         );
     }
 
@@ -207,210 +206,252 @@ pub fn load_from_env() -> anyhow::Result<AppConfig> {
         .with_context(|| format!("Unable to load configuration from {}", config_dir.display()))
 }
 
+/// Settings accepted in a server configuration file.
 #[derive(Debug, Deserialize, PartialEq, Clone)]
+#[cfg_attr(feature = "config-schema", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "config-schema", schemars(transform = schema::remove_unset_defaults))]
 #[allow(clippy::struct_excessive_bools)]
 pub struct AppConfig {
+    /// Database connection URL or ODBC connection string. Percent-encode special
+    /// characters in URL usernames and passwords. See [Database connection strings](https://github.com/sqlpage/SQLPage/blob/main/configuration.md#database-connection-strings).
+    /// The server also recognizes an existing `sqlpage.db` in the working directory for compatibility.
     #[serde(default = "default_database_url")]
+    #[cfg_attr(feature = "config-schema", schemars(default, extend("x-default-description" = format!(
+        "SQLite file `{DEFAULT_DATABASE_FILE}` in the configuration directory, or in-memory SQLite on Lambda or when the directory is unwritable."
+    ))))]
     pub database_url: String,
-    /// A separate field for the database password. If set, this will override any password specified in the `database_url`.
+
+    /// Overrides the password in `database_url`. This value does not require percent encoding.
     #[serde(default)]
     pub database_password: Option<String>,
+
+    /// Maximum number of simultaneous database connections. Must be greater than zero.
+    #[cfg_attr(feature = "config-schema", schemars(extend("x-default-description" = schema::pool_sizes())))]
     pub max_database_pool_connections: Option<u32>,
+
+    /// Close a database connection after this many idle seconds. Set to zero to disable.
     #[serde(
         default,
         deserialize_with = "deserialize_duration_seconds",
         rename = "database_connection_idle_timeout_seconds"
     )]
+    #[cfg_attr(feature = "config-schema", schemars(with = "Option<f64>", extend(
+        "x-default-description" = schema::timeout(DEFAULT_IDLE_TIMEOUT)
+    )))]
     pub database_connection_idle_timeout: Option<Duration>,
+
+    /// Maximum age in seconds of a connection in the pool. Set to zero to disable.
     #[serde(
         default,
         deserialize_with = "deserialize_duration_seconds",
         rename = "database_connection_max_lifetime_seconds"
     )]
+    #[cfg_attr(feature = "config-schema", schemars(with = "Option<f64>", extend(
+        "x-default-description" = schema::timeout(DEFAULT_MAX_LIFETIME)
+    )))]
     pub database_connection_max_lifetime: Option<Duration>,
 
+    /// SQLite extensions to load, such as `mod_spatialite`. Use a space-separated list in environment variables.
     #[serde(default)]
     pub sqlite_extensions: Vec<String>,
 
+    /// Host and port on which to listen, for example `127.0.0.1:8080` or `localhost:8080`.
     #[serde(default, deserialize_with = "deserialize_socket_addr")]
+    #[cfg_attr(feature = "config-schema", schemars(with = "Option<String>", extend(
+        "x-default-description" = format!("`{}` with `https_domain`, otherwise `{}`.",
+            default_listen_on(true), default_listen_on(false)
+        )
+    )))]
     pub listen_on: Option<SocketAddr>,
+
+    /// Overrides the port in `listen_on`. A Kubernetes service URI in this setting is ignored.
     #[serde(default, deserialize_with = "deserialize_port")]
+    #[cfg_attr(feature = "config-schema", schemars(with = "Option<PortOrUrl>", extend("x-default-description" = "The port in `listen_on`.")))]
     pub port: Option<u16>,
+
+    /// Unix socket path. On Unix this serves HTTP exclusively on the socket and overrides TCP listener settings.
     pub unix_socket: Option<PathBuf>,
 
-    /// Number of times to retry connecting to the database after a failure when the server starts
-    /// up. Retries will happen every 5 seconds. The default is 6 retries, which means the server
-    /// will wait up to 30 seconds for the database to become available.
+    /// Number of times to retry a failed database connection at startup, with five seconds between attempts.
     #[serde(default = "default_database_connection_retries")]
     pub database_connection_retries: u32,
 
-    /// Maximum number of seconds to wait before giving up when acquiring a database connection from the
-    /// pool. The default is 10 seconds.
+    /// Maximum time in seconds to wait for a connection from the database pool. Must be positive.
     #[serde(default = "default_database_connection_acquire_timeout_seconds")]
     pub database_connection_acquire_timeout_seconds: f64,
 
-    /// The directory where the .sql files are located. Defaults to the current directory.
+    /// Root directory for SQL pages and static files. Static serving follows symlinks.
+    /// A symlink under the web root exposes its target, including files outside the web root.
+    /// Keep links to private files and directories outside the web root. See the [security guide](https://github.com/sqlpage/SQLPage/blob/main/SECURITY.md).
     #[serde(default = "default_web_root")]
+    #[cfg_attr(
+        feature = "config-schema",
+        schemars(default = "schema::working_directory")
+    )]
     pub web_root: PathBuf,
 
-    /// The directory where the sqlpage configuration file is located. Defaults to `./sqlpage`.
+    /// Directory containing the configuration file, templates, migrations, and connection management scripts.
+    /// Keep this directory private. To select it before the server looks for the configuration file,
+    /// pass `--config-dir` or set `CONFIGURATION_DIRECTORY` or `SQLPAGE_CONFIGURATION_DIRECTORY`.
     #[serde(default = "configuration_directory")]
+    #[cfg_attr(
+        feature = "config-schema",
+        schemars(default = "default_configuration_directory")
+    )]
     pub configuration_directory: PathBuf,
 
-    /// Set to true to allow the `sqlpage.exec` function to be used in SQL queries.
-    /// This should be enabled only if you trust the users writing SQL queries, since it gives
-    /// them the ability to execute arbitrary shell commands on the server.
+    /// Allow `sqlpage.exec` to execute server-side commands. Enable only if everyone who can write SQL pages,
+    /// including through the `sqlpage_files` database table, is trusted to run arbitrary commands.
     #[serde(default)]
     pub allow_exec: bool,
 
-    /// SMTP server host used by the `sqlpage.send_mail` function.
+    /// SMTP server hostname or IP address used by `sqlpage.send_mail`. Required when configuring a port, credentials, or sender.
     pub smtp_host: Option<String>,
 
-    /// SMTP server port. Defaults to 25 for plaintext, 465 for implicit TLS, and 587 for STARTTLS.
+    /// Port used to connect to the SMTP server. Valid ports range from 1 to 65535.
+    #[cfg_attr(feature = "config-schema", schemars(extend("x-default-description" = format!(
+        "{} for `none`, {} for `tls`, {} for `starttls`.",
+        SmtpTlsMode::None.default_port(), SmtpTlsMode::Tls.default_port(), SmtpTlsMode::Starttls.default_port()
+    ))))]
     pub smtp_port: Option<u16>,
 
-    /// Optional SMTP user name used by the `sqlpage.send_mail` function.
-    /// If set, `SQLPage` authenticates to `SMTP_HOST` with this user name and `smtp_password`.
+    /// SMTP username. Set it together with `smtp_password` and use `starttls` or `tls`.
     pub smtp_username: Option<String>,
 
-    /// Optional SMTP password used by the `sqlpage.send_mail` function when `smtp_username` is set.
+    /// SMTP password. Set it together with `smtp_username`.
     pub smtp_password: Option<String>,
 
-    /// Default sender used by the `sqlpage.send_mail` function when the message has no `from` property.
+    /// Default sender address for `sqlpage.send_mail`, optionally including a display name.
+    /// The message's `from` property overrides this setting.
     pub smtp_from: Option<String>,
 
-    /// Encryption mode used to connect to `SMTP_HOST`.
+    /// SMTP transport security. Use `starttls` to require a STARTTLS upgrade or `tls` to use TLS from connection start.
+    /// Use `none` only with a trusted relay that does not require credentials.
     #[serde(default)]
     pub smtp_tls_mode: SmtpTlsMode,
 
-    /// Maximum combined decoded size of attachments in one email.
+    /// Maximum combined size in bytes of decoded attachments in one email, independent of the upload limit.
     #[serde(default = "default_max_email_attachment_size")]
     pub max_email_attachment_size: usize,
 
-    /// Maximum size of uploaded files in bytes. The default is 5MiB (5 * 1024 * 1024 bytes)
+    /// Maximum size in bytes of submitted forms and uploaded files.
     #[serde(default = "default_max_file_size")]
     pub max_uploaded_file_size: usize,
 
-    /// The base URL of the `OpenID` Connect provider.
-    /// Required when enabling Single Sign-On through an OIDC provider.
+    /// Issuer URL of the [OpenID Connect provider](https://github.com/sqlpage/SQLPage/blob/main/configuration.md#openid-connect-oidc-authentication). Required for single sign-on.
+    #[cfg_attr(feature = "config-schema", schemars(with = "Option<String>", url))]
     pub oidc_issuer_url: Option<IssuerUrl>,
-    /// The client ID assigned to `SQLPage` when registering with the OIDC provider.
-    /// Defaults to `sqlpage`.
+
+    /// Client ID assigned by the OIDC provider.
     #[serde(default = "default_oidc_client_id")]
     pub oidc_client_id: String,
-    /// The client secret for authenticating `SQLPage` to the OIDC provider.
-    /// Required when enabling Single Sign-On through an OIDC provider.
+
+    /// Client secret required to authenticate with the OIDC provider. Keep this value private.
     pub oidc_client_secret: Option<String>,
-    /// Space-separated list of [scopes](https://openid.net/specs/openid-connect-core-1_0.html#ScopeClaims) to request during OIDC authentication.
-    /// Defaults to "openid email profile"
+
+    /// Space-separated [scopes](https://openid.net/specs/openid-connect-core-1_0.html#ScopeClaims) to request during login.
     #[serde(default = "default_oidc_scopes")]
     pub oidc_scopes: String,
 
-    /// Defines a list of path prefixes that should be protected by OIDC authentication.
-    /// By default, all paths are protected.
-    /// If you specify a list of prefixes, only requests whose path starts with one of the prefixes will require authentication.
-    /// For example, if you set this to `["/private"]`, then requests to `/private/some_page.sql` will require authentication,
-    /// but requests to `/index.sql` will not.
-    /// NOTE: `OIDC_PUBLIC_PATHS` takes precedence over `OIDC_PROTECTED_PATHS`.
-    /// For example, if you have `["/private"]` on the `protected_paths` like before, but also `["/private/public"]` on the `public_paths`, then `/private` requires authentication, but `/private/public` requires not authentication.
-    /// You cannot make a path inside a public path private again. So expanding the previous example, if you now add `/private/public/private_again`, then this path will still be accessible.
+    /// Path prefixes that require OIDC authentication, relative to `site_prefix`.
+    /// For example, use `["/admin", "/users/settings"]` to require login for both prefixes.
+    /// All prefixes must begin with `/`. The server normalizes decoded dot segments and repeated separators
+    /// and recognizes ASCII case aliases on case-insensitive storage. Public prefixes take precedence.
+    /// Use a space-separated list for environment variables.
     #[serde(default = "default_oidc_protected_paths")]
     pub oidc_protected_paths: Vec<String>,
 
-    /// Defines path prefixes to exclude from OIDC authentication.
-    /// By default, no paths are excluded.
-    /// Paths matching these prefixes will not require authentication.
-    /// For example, if set to `["/public"]`, requests to `/public/some_page.sql` will not require authentication,
-    /// but requests to `/index.sql` will still require it.
-    /// To make `/protected/public.sql` public while protecting its containing directory,
-    /// set `oidc_public_paths` to `["/protected/public.sql"]` and `oidc_protected_paths` to `["/protected"]`.
-    /// Be aware that any path starting with `/protected/public.sql` (e.g., `/protected/public.sql.backup`) will also become public.
+    /// Path prefixes accessible without OIDC authentication, relative to `site_prefix`.
+    /// All prefixes must begin with `/`. They override protected prefixes, including nested protected prefixes. A trailing slash limits a directory match:
+    /// `/public/` matches its contents while `/public` also matches `/publicity`.
+    /// Use a space-separated list for environment variables.
     #[serde(default)]
     pub oidc_public_paths: Vec<String>,
 
-    /// Additional trusted audiences for OIDC JWT tokens, beyond the client ID.
-    /// By default (when None), all additional audiences are trusted for compatibility
-    /// with providers that include multiple audience values (like ZITADEL, Azure AD, etc.).
-    /// Set to an empty list to only allow the client ID as audience.
-    /// Set to a specific list to only allow those specific additional audiences.
+    /// JWT audiences accepted in addition to the client ID. Omitting the setting accepts all additional audiences.
+    /// Set `[]` to accept only the client ID, or list specific additional audiences.
+    /// Use a space-separated list for environment variables.
     #[serde(default)]
     pub oidc_additional_trusted_audiences: Option<Vec<String>>,
 
-    /// A domain name to use for the HTTPS server. If this is set, the server will perform all the necessary
-    /// steps to set up an HTTPS server automatically. All you need to do is point your domain name to the
-    /// server's IP address.
-    ///
-    /// It will listen on port 443 for HTTPS connections,
-    /// and will automatically request a certificate from Let's Encrypt
-    /// using the ACME protocol (requesting a TLS-ALPN-01 challenge).
+    /// Public domain for automatic Let's Encrypt certificates. Point its DNS record to this server.
+    /// HTTPS always listens on port 443. A different port in `listen_on` or `port` also serves plain HTTP.
     pub https_domain: Option<String>,
 
-    /// The hostname where your application is publicly accessible (e.g., "myapp.example.com").
-    /// This is used for OIDC redirect URLs. If not set, `https_domain` will be used instead.
+    /// Public hostname for OIDC redirect URLs, for example `myapp.example.com`.
+    /// Wildcard and loopback listeners use `localhost` and the listener port when deriving this value.
+    #[cfg_attr(feature = "config-schema", schemars(extend("x-default-description" = "Uses `https_domain` or the listener address.")))]
     pub host: Option<String>,
 
-    /// The email address to use when requesting a certificate from Let's Encrypt.
-    /// Defaults to `contact@<https_domain>`.
+    /// Contact email for Let's Encrypt certificate requests.
+    #[cfg_attr(feature = "config-schema", schemars(extend("x-default-description" = "`contact@<https_domain>`")))]
     pub https_certificate_email: Option<String>,
 
-    /// The directory to store the Let's Encrypt certificate in. Defaults to `./sqlpage/https`.
+    /// Writable directory for caching HTTPS certificates. The relative default is resolved against the working directory.
     #[serde(default = "default_https_certificate_cache_dir")]
+    #[cfg_attr(
+        feature = "config-schema",
+        schemars(default = "schema::certificate_cache_directory")
+    )]
     pub https_certificate_cache_dir: PathBuf,
 
-    /// URL to the ACME directory. Defaults to the Let's Encrypt production directory.
+    /// ACME directory URL used to request HTTPS certificates.
     #[serde(default = "default_https_acme_directory_url")]
     pub https_acme_directory_url: String,
 
-    /// Whether we should run in development or production mode. Used to determine
-    /// whether to show error messages to the user.
+    /// Development or production mode. Production hides detailed errors from users and caches files between requests.
     #[serde(default)]
     pub environment: DevOrProd,
 
-    /// Serve the website from a sub path. For example, if you set this to `/sqlpage/`, the website will be
-    /// served from `https://yourdomain.com/sqlpage/`. Defaults to `/`.
-    /// This is useful if you want to serve the website on the same domain as other content, and
-    /// you are using a reverse proxy to route requests to the correct server.
+    /// Base path for all URLs. Set `/sqlpage/` to serve the site at `https://example.com/sqlpage/`.
     #[serde(
         deserialize_with = "deserialize_site_prefix",
         default = "default_site_prefix"
     )]
     pub site_prefix: String,
 
-    /// Maximum number of messages that can be stored in memory before sending them to the client.
-    /// This prevents a single request from using up all available memory.
+    /// Maximum number of rendered rows queued while waiting for a slow client. Must be greater than zero.
     #[serde(default = "default_max_pending_rows")]
     pub max_pending_rows: usize,
 
-    /// Whether to compress the http response body when the client supports it.
-    /// Enabling response compression hinders the ability of `SQLPage` to stream every single byte
-    /// of data as soon as it is produced.
-    /// As a rule of thub, enable response compression when your app is fast.
+    /// Compress HTTP responses when the client supports compression. This saves bandwidth but can buffer streamed output.
     #[serde(default = "default_compress_responses")]
     pub compress_responses: bool,
 
-    /// Content-Security-Policy header to send to the client.
-    /// If not set, a default policy allowing
-    ///  - scripts from the same origin,
-    ///  - script elements with the `nonce="{{@csp_nonce}}"` attribute,
+    /// Content-Security-Policy header for HTML responses. An empty string disables it.
+    /// A custom policy can use `'nonce-{NONCE}'` to include a fresh nonce for each request.
     #[serde(default)]
+    #[cfg_attr(feature = "config-schema", schemars(with = "String", extend(
+        "default" = crate::webserver::content_security_policy::DEFAULT_CONTENT_SECURITY_POLICY
+    )))]
     pub content_security_policy: ContentSecurityPolicyTemplate,
 
-    /// Whether `sqlpage.fetch` should load trusted certificates from the operating system's certificate store
-    /// By default, it loads Mozilla's root certificates that are embedded in the `SQLPage` binary, or the ones pointed to by the
-    /// `SSL_CERT_FILE` and `SSL_CERT_DIR` environment variables.
+    /// Load trusted HTTPS certificates for `sqlpage.fetch` from the operating system's certificate store.
+    /// When the system store is enabled, `SSL_CERT_FILE` and `SSL_CERT_DIR` select certificate sources.
+    /// Disabling this setting uses the embedded Mozilla roots.
     #[serde(default = "default_system_root_ca_certificates")]
+    #[cfg_attr(feature = "config-schema", schemars(default, extend(
+        "x-default-description" = "True when `SSL_CERT_FILE` or `SSL_CERT_DIR` is nonempty, otherwise false."
+    )))]
     pub system_root_ca_certificates: bool,
 
-    /// Maximum depth of recursion allowed in the `run_sql` function.
+    /// Maximum recursion depth for `sqlpage.run_sql`. Valid values range from 0 to 255.
     #[serde(default = "default_max_recursion_depth")]
     pub max_recursion_depth: u8,
 
+    /// Allow raw HTML in Markdown. Enable only when all Markdown content is trusted.
     #[serde(default = "default_markdown_allow_dangerous_html")]
     pub markdown_allow_dangerous_html: bool,
 
+    /// Allow dangerous protocols such as `javascript:` in Markdown links. Enable only when all Markdown content is trusted.
     #[serde(default = "default_markdown_allow_dangerous_protocol")]
     pub markdown_allow_dangerous_protocol: bool,
 
+    /// Time in milliseconds to cache a file before checking the filesystem for changes.
+    #[cfg_attr(feature = "config-schema", schemars(extend("x-default-description" = format!(
+        "{} in production, {} in development.",
+        DevOrProd::Production.default_cache_stale_duration_ms(), DevOrProd::Development.default_cache_stale_duration_ms()
+    ))))]
     pub cache_stale_duration_ms: Option<u64>,
 }
 
@@ -418,23 +459,23 @@ impl AppConfig {
     #[must_use]
     pub fn cache_stale_duration_ms(&self) -> u64 {
         self.cache_stale_duration_ms
-            .unwrap_or_else(|| if self.environment.is_prod() { 1000 } else { 0 })
+            .unwrap_or_else(|| self.environment.default_cache_stale_duration_ms())
     }
 
     #[must_use]
     pub fn listen_on(&self) -> SocketAddr {
-        let mut addr = self.listen_on.unwrap_or_else(|| {
-            if self.https_domain.is_some() {
-                SocketAddr::from(([0, 0, 0, 0], 443))
-            } else {
-                SocketAddr::from(([0, 0, 0, 0], 8080))
-            }
-        });
+        let mut addr = self
+            .listen_on
+            .unwrap_or_else(|| default_listen_on(self.https_domain.is_some()));
         if let Some(port) = self.port {
             addr.set_port(port);
         }
         addr
     }
+}
+
+fn default_listen_on(https: bool) -> SocketAddr {
+    SocketAddr::from(([0, 0, 0, 0], if https { 443 } else { 8080 }))
 }
 
 impl RoutingConfig for AppConfig {
@@ -457,6 +498,10 @@ fn configuration_directory() -> PathBuf {
             }
         }
     }
+    default_configuration_directory()
+}
+
+fn default_configuration_directory() -> PathBuf {
     PathBuf::from("./sqlpage")
 }
 
@@ -506,17 +551,19 @@ fn env_config() -> config::Environment {
         .with_list_parse_key("oidc_additional_trusted_audiences")
 }
 
+#[derive(Deserialize)]
+#[cfg_attr(feature = "config-schema", derive(schemars::JsonSchema))]
+#[serde(untagged)]
+enum PortOrUrl {
+    Port(u16),
+    Url(String),
+}
+
 fn deserialize_port<'de, D>(deserializer: D) -> Result<Option<u16>, D::Error>
 where
     D: Deserializer<'de>,
 {
     // deserializes both 8080 and "tcp://1.1.1.1:9090"
-    #[derive(Deserialize)]
-    #[serde(untagged)]
-    enum PortOrUrl {
-        Port(u16),
-        Url(String),
-    }
     let port_or_url: Option<PortOrUrl> = Deserialize::deserialize(deserializer)?;
     match port_or_url {
         Some(PortOrUrl::Port(p)) => Ok(Some(p)),
@@ -712,7 +759,7 @@ fn default_max_email_attachment_size() -> usize {
 }
 
 fn default_https_certificate_cache_dir() -> PathBuf {
-    default_web_root().join("sqlpage").join("https")
+    default_web_root().join(CERTIFICATE_CACHE_DIRECTORY)
 }
 
 fn default_https_acme_directory_url() -> String {
@@ -758,6 +805,7 @@ fn default_oidc_protected_paths() -> Vec<String> {
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone, Copy, Eq, Default)]
+#[cfg_attr(feature = "config-schema", derive(schemars::JsonSchema))]
 #[serde(rename_all = "lowercase")]
 pub enum DevOrProd {
     #[default]
@@ -766,6 +814,7 @@ pub enum DevOrProd {
 }
 
 #[derive(Debug, Deserialize, PartialEq, Clone, Copy, Eq, Default)]
+#[cfg_attr(feature = "config-schema", derive(Serialize, schemars::JsonSchema))]
 #[serde(rename_all = "lowercase")]
 pub enum SmtpTlsMode {
     None,
@@ -783,6 +832,10 @@ impl SmtpTlsMode {
     }
 }
 impl DevOrProd {
+    fn default_cache_stale_duration_ms(self) -> u64 {
+        if self.is_prod() { 1000 } else { 0 }
+    }
+
     pub(crate) fn is_prod(self) -> bool {
         self == DevOrProd::Production
     }

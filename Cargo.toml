@@ -62,6 +62,10 @@ tokio = { version = "1.24.1", features = ["macros", "rt", "process", "sync"] }
 tokio-stream = "0.1.9"
 anyhow = "1"
 serde = "1"
+schemars = { version = "1", optional = true }
+# Share SQLPage's bundled libsqlite3-sys with the site builder.
+rusqlite = { version = "0.41", default-features = false, optional = true }
+serde_yaml_ng = { version = "0.10", optional = true }
 serde_json = { version = "1.0.82", features = [
     "preserve_order",
     "raw_value",
@@ -137,6 +141,8 @@ opentelemetry-semantic-conventions = { version = "0.33", features = ["semconv_ex
 
 [features]
 default = []
+config-schema = ["dep:schemars"]
+site-build = ["config-schema", "dep:rusqlite", "dep:serde_yaml_ng"]
 odbc-static = ["odbc-sys", "odbc-sys/vendored-unix-odbc"]
 lambda-web = [
     "dep:actix-http",
@@ -151,3 +157,8 @@ actix-http = "3"
 tempfile = "3"
 tokio = { version = "1", features = ["rt", "time", "test-util"] }
 
+[[example]]
+name = "build_site"
+# The application Docker build omits examples.
+path = "examples/build_site/main.rs"
+required-features = ["site-build"]

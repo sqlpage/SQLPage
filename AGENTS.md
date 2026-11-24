@@ -42,7 +42,8 @@ Edit the authored content under `examples/official-site/content/` and the siteâ€
 standalone SQL and Markdown pages in place.
 
 Build and preview the official site with the commands in its [README](./examples/official-site/README.md).
-Update `configuration.md` for configuration changes.
+Document server options on `AppConfig` where the site build reads them. Keep
+setup examples in `configuration.md`.
 
 Add a concise CHANGELOG.md entry only for user-visible changes, and never edit
 an already tagged release.

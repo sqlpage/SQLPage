@@ -62,10 +62,16 @@ jobs:
         with:
           shared-key: rust-sqlpage-proj-test
           save-if: ${{ github.ref == 'refs/heads/main' }}
+      - run: sudo apt-get update && sudo apt-get install -y unixodbc-dev
       - run: cargo fmt --all -- --check
       - run: cargo clippy --all-targets --all-features -- -D warnings
       - name: Prepare official website
         run: npm run site:build
+      - name: Check official documentation
+        run: |
+          npm run site:test
+          cargo test --locked --features site-build --example build_site
+          cargo test --locked --features site-build --test mod configuration_docs
       - name: Upload prepared website
         uses: actions/upload-artifact@v7
         with:

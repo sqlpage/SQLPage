@@ -19,6 +19,19 @@ xpath "string(//main//a[normalize-space()='Components']/@href)" == "/components.
 xpath "string(//main//a[normalize-space()='Functions']/@href)" == "/functions.sql"
 body not contains "An error occurred"
 
+GET http://localhost:8080/configuration
+HTTP 200
+[Asserts]
+xpath "//*[@id='listen_on']//a[@href='#listen_on']" count == 1
+xpath "normalize-space(//*[@id='listen_on']/dd)" contains "443"
+xpath "//*[@id='database_connection_idle_timeout_seconds']" count == 1
+body not contains "An error occurred"
+
+GET http://localhost:8080/search.sql?search=LISTEN_ON
+HTTP 302
+[Asserts]
+header "Location" == "/configuration#listen_on"
+
 GET http://localhost:8080/components.sql
 HTTP 200
 [Asserts]
