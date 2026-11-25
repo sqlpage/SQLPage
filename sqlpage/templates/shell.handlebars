@@ -171,7 +171,7 @@
         {{#if sidebar}}
         <aside class="navbar navbar-vertical navbar-expand-lg" {{#if sidebar_theme}}data-bs-theme="{{sidebar_theme}}" {{/if}}>
             <div class="container-fluid">
-                <button class="navbar-toggler collapsed" type="button" data-bs-target="#sidebar-menu" aria-controls="sidebar-menu" data-bs-toggle="collapse" aria-expanded="false" aria-label="Toggle navigation">
+                <button class="navbar-toggler collapsed" type="button" data-bs-target="#sidebar-menu" aria-controls="sidebar-menu" data-bs-toggle="collapse" aria-expanded="false" aria-label="{{default navbar_toggle_label 'Toggle navigation'}}">
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <a class="navbar-brand d-inline ps-2 text-truncate" href="{{#if link}}{{link}}{{else}}/{{/if}}">
@@ -203,7 +203,7 @@
                     <a class="text-decoration-none text-body" href="{{#if link}}{{link}}{{else}}/{{/if}}">{{default navbar_title title}}</a>
                 </span>
                 {{#if (or menu_item search_target)}}
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar-menu" aria-controls="navbar-menu" aria-expanded="false" aria-label="Toggle navigation">
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar-menu" aria-controls="navbar-menu" aria-expanded="false" aria-label="{{default navbar_toggle_label 'Toggle navigation'}}">
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <div class="collapse navbar-collapse flex-grow-0" id="navbar-menu">
