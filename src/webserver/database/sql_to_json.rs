@@ -159,9 +159,10 @@ pub(super) fn sql_nonnull_to_json<'r>(
     match type_name {
         "REAL" | "FLOAT" | "FLOAT4" | "FLOAT8" | "DOUBLE" => decode_raw::<f64>(raw_value).into(),
         "NUMERIC" | "DECIMAL" => decimal_to_json(&decode_raw(raw_value)),
-        "INT8" | "BIGINT" | "SERIAL8" | "BIGSERIAL" | "IDENTITY" | "INT64" | "INTEGER8"
-        | "BIGINT SIGNED" => decode_raw::<i64>(raw_value).into(),
-        "INT" | "INT4" | "INTEGER" | "MEDIUMINT" | "YEAR" => decode_raw::<i32>(raw_value).into(),
+        // SQLite INTEGER and unsigned ODBC SQL_INTEGER can exceed the i32 range.
+        "INTEGER" | "INT8" | "BIGINT" | "SERIAL8" | "BIGSERIAL" | "IDENTITY" | "INT64"
+        | "INTEGER8" | "BIGINT SIGNED" => decode_raw::<i64>(raw_value).into(),
+        "INT" | "INT4" | "MEDIUMINT" | "YEAR" => decode_raw::<i32>(raw_value).into(),
         "INT2" | "SMALLINT" | "TINYINT" => decode_raw::<i16>(raw_value).into(),
         "BIGINT UNSIGNED" => decode_raw::<u64>(raw_value).into(),
         "INT UNSIGNED" | "MEDIUMINT UNSIGNED" | "SMALLINT UNSIGNED" | "TINYINT UNSIGNED" => {
