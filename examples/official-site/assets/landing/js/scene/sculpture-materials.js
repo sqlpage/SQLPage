@@ -1,5 +1,5 @@
 /** PBR material tuning; shader snippets preserve Three's lighting pipeline. */
-import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.186.1/+esm";
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.187.0/+esm";
 import { STUDIO_RADIANCE_SCALE, STUDIO_URL } from "./sculpture-assets.js";
 
 // The studio's GGX convolution is baked once, offline. CubeUV is already

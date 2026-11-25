@@ -1,7 +1,7 @@
 /** A horizontal studio floor, lit by the same softboxes as the sculpture. */
-import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.186.1/+esm";
-import { Reflector } from "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/objects/Reflector.js/+esm";
-import { FullScreenQuad } from "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/postprocessing/Pass.js/+esm";
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.187.0/+esm";
+import { Reflector } from "https://cdn.jsdelivr.net/npm/three@0.187.0/examples/jsm/objects/Reflector.js/+esm";
+import { FullScreenQuad } from "https://cdn.jsdelivr.net/npm/three@0.187.0/examples/jsm/postprocessing/Pass.js/+esm";
 import { STUDIO_RADIANCE_SCALE } from "./sculpture-assets.js";
 
 export function createSculptureStudio(environment, shaders) {

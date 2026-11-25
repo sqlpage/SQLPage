@@ -2,9 +2,9 @@
  * Owns one square renderer and its resource lifetime. Scroll supplies placement;
  * controls supply local rotation. Materials, studio surfaces and glow stay independent.
  */
-import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.186.1/+esm";
-import { RectAreaLightUniformsLib } from "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/lights/RectAreaLightUniformsLib.js/+esm";
-import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/loaders/GLTFLoader.js/+esm";
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.187.0/+esm";
+import { RectAreaLightUniformsLib } from "https://cdn.jsdelivr.net/npm/three@0.187.0/examples/jsm/lights/RectAreaLightUniformsLib.js/+esm";
+import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.187.0/examples/jsm/loaders/GLTFLoader.js/+esm";
 import { createFiniteJewelLight } from "./finite-jewel-light.js";
 import { JEWEL_EDGES } from "./jewel-edges.js";
 import { MODEL_URL } from "./sculpture-assets.js";

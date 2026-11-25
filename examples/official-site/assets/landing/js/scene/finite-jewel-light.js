@@ -1,4 +1,4 @@
-import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.186.1/+esm";
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.187.0/+esm";
 
 /**
  * A local, finite-emitter approximation for this sculpture's illuminated wires.

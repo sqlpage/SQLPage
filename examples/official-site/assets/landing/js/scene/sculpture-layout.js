@@ -1,5 +1,5 @@
 /** Shared camera calibration for the static preview and live square renderer. */
-import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.186.1/+esm";
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.187.0/+esm";
 
 export const DEFAULT_TILT = new THREE.Quaternion().setFromEuler(
   new THREE.Euler(0.39, -0.24, -0.245, "XYZ"),

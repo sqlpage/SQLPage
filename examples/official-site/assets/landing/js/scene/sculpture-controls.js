@@ -1,5 +1,5 @@
 /** Trackball input is isolated from scene animation; vertical touch gestures stay native. */
-import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.186.1/+esm";
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.187.0/+esm";
 
 const clamp = THREE.MathUtils.clamp;
 

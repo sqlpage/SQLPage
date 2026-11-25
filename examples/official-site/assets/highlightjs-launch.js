@@ -7,7 +7,7 @@ if (document.querySelector("pre code")) {
 
 async function highlightCode() {
   const base =
-    "https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.11.1/es";
+    "https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.12.0/es";
   const { default: engine } = await import(`${base}/highlight.min.js`);
   await Promise.all(
     ["sql", "json", "handlebars", "nginx"].map(async (language) => {
