@@ -3,10 +3,10 @@ export function initSqlHighlight(element, signal) {
   let engine;
   const ready = Promise.all([
     import(
-      "https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.11.1/es/core.min.js"
+      "https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.12.0/es/core.min.js"
     ),
     import(
-      "https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.11.1/es/languages/sql.min.js"
+      "https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.12.0/es/languages/sql.min.js"
     ),
   ])
     .then(([core, sql]) => {

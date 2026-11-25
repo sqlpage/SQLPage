@@ -36,6 +36,9 @@ test("centers the map on a pair of coordinates", async ({ page }) => {
   expect(map.errors).toEqual([]);
   expect(map.logged).toEqual([]);
   expect(map.initialized).toBe(true);
+  await expect(
+    page.locator(".leaflet-control-attribution a").first(),
+  ).toHaveCSS("text-decoration-line", "underline");
 });
 
 test("reports a center whose longitude is missing", async ({ page }) => {
