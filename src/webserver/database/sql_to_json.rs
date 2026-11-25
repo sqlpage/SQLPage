@@ -644,6 +644,37 @@ mod tests {
     }
 
     #[actix_web::rt::test(system = "crate::test_database::System")]
+    async fn test_sqlite_integer_64bit() -> anyhow::Result<()> {
+        let Some(db_url) = db_specific_test("sqlite") else {
+            return Ok(());
+        };
+        let db = connect(db_url).await?;
+        let mut c = db.connection.acquire().await?;
+        c.execute(
+            "CREATE TEMPORARY TABLE big_ints (v INTEGER, v_hi INTEGER, v_lo INTEGER, v_max INTEGER, v_min INTEGER)",
+        )
+        .await?;
+        c.execute(
+            "INSERT INTO big_ints VALUES (3000000000, 2147483648, -2147483649, 9223372036854775807, -9223372036854775808)",
+        )
+        .await?;
+        let row = first_row(c.fetch_many("SELECT *, v + 0 AS v_expr FROM big_ints", &[], &[])).await?;
+        let actual = row.value;
+        expect_json_object_equal(
+            &actual,
+            &serde_json::json!({
+                "v": 3_000_000_000_i64,
+                "v_hi": 2_147_483_648_i64,
+                "v_lo": -2_147_483_649_i64,
+                "v_max": i64::MAX,
+                "v_min": i64::MIN,
+                "v_expr": 3_000_000_000_i64,
+            }),
+        );
+        Ok(())
+    }
+
+    #[actix_web::rt::test(system = "crate::test_database::System")]
     async fn test_sqlite_types() -> anyhow::Result<()> {
         let Some(db_url) = db_specific_test("sqlite") else {
             return Ok(());
