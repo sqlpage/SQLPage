@@ -63,6 +63,14 @@ VALUES (
     ),
     (
         'alert',
+        'close_label',
+        'Accessible name of the close button of a dismissible alert, which screen readers announce. The default is "Close".',
+        'TEXT',
+        TRUE,
+        TRUE
+    ),
+    (
+        'alert',
         'important',
         'Set this to TRUE to make the alert message more prominent.',
         'BOOLEAN',

@@ -2,6 +2,7 @@
 
 ## unreleased
 
+- New `navbar_toggle_label` property on the `shell` and `close_label` property on the `alert` component, to translate the accessible names of the menu toggle button and of the alert close button. ([#1632](https://github.com/sqlpage/SQLPage/issues/1632))
 - Updated Rust and browser dependencies, including SQLite, ApexCharts, and Tabler.
 - SQLite query results preserve the full 64-bit range of `INTEGER` values. ([#1636](https://github.com/sqlpage/SQLPage/issues/1636))
 - Big number title links have a larger target for touch and pointer users.
