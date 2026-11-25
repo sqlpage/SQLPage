@@ -62,12 +62,12 @@ VALUES (
         TRUE
     ),
     (
-          'alert',
-          'close_label',
-          'Accessible name of the close button of a dismissible alert, which screen readers announce. The default is "Close".',
-          'TEXT',
-          TRUE,
-          TRUE
+        'alert',
+        'close_label',
+        'Accessible name of the close button of a dismissible alert, which screen readers announce. The default is "Close".',
+        'TEXT',
+        TRUE,
+        TRUE
     ),
     (
         'alert',
