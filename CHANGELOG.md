@@ -12,7 +12,7 @@
 - Tracking blocks without links now expose their titles to screen readers.
 - The `shell` sidebar now uses `navbar_title` and preserves the colors of the supplied logo in dark mode.
 - Chart export menus, tooltips, and series colors now follow the theme surrounding each chart, including in custom shells. Chart labels on colored marks have a contrasting outline that carries over to SVG downloads.
-- Map marker popups follow the surrounding theme so their titles and links stay readable.
+- Map marker popups follow the surrounding theme so their titles and links stay readable. Map attribution links are underlined.
 - Each `login` component’s labels target its own fields. Set `false AS autofocus` to keep the username field from taking focus when the page opens.
 - JSON `shell` menu items with a link are now links in the accessibility tree instead of being announced as buttons; only submenu toggles keep `role="button"`.
 - The new [`status_bar` component](https://sql-page.com/component.sql?component=status_bar) displays short status messages and links along the bottom of the screen or inline with page content.

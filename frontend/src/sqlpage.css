@@ -130,6 +130,10 @@ li p {
   background: var(--tblr-active-bg) !important;
 }
 
+.leaflet-container .leaflet-control-attribution a {
+  text-decoration: underline;
+}
+
 .leaflet-container :is(.leaflet-popup-content-wrapper, .leaflet-popup-tip) {
   background: var(--tblr-bg-surface);
   color: var(--tblr-body-color);
