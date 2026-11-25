@@ -2,6 +2,7 @@
 
 ## unreleased
 
+- New `navbar_toggle_label` property on the `shell` and `close_label` property on the `alert` component, to translate the accessible names of the menu toggle button and of the alert close button. ([#1632](https://github.com/sqlpage/SQLPage/issues/1632))
 - Big number title links have a larger target for touch and pointer users.
 - Carousel slide indicators and pagination arrows now have accessible names. Keyboard users can activate carousel arrows and enabled pagination links. Screen readers announce the current page.
 - Button, card, carousel, and login images accept alternative text. Embedded card frames use their own title or the card title.
