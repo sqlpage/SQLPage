@@ -2,6 +2,7 @@
 
 ## unreleased
 
+- Updated Rust and browser dependencies, including SQLite, ApexCharts, and Tabler.
 - SQLite query results preserve the full 64-bit range of `INTEGER` values. ([#1636](https://github.com/sqlpage/SQLPage/issues/1636))
 - Big number title links have a larger target for touch and pointer users.
 - Carousel slide indicators and pagination arrows now have accessible names. Keyboard users can activate carousel arrows and enabled pagination links. Screen readers announce the current page.
@@ -11,7 +12,7 @@
 - Tracking blocks without links now expose their titles to screen readers.
 - The `shell` sidebar now uses `navbar_title` and preserves the colors of the supplied logo in dark mode.
 - Chart export menus, tooltips, and series colors now follow the theme surrounding each chart, including in custom shells. Chart labels on colored marks have a contrasting outline that carries over to SVG downloads.
-- Map marker popups follow the surrounding theme so their titles and links stay readable.
+- Map marker popups follow the surrounding theme so their titles and links stay readable. Map attribution links are underlined.
 - Each `login` component’s labels target its own fields. Set `false AS autofocus` to keep the username field from taking focus when the page opens.
 - JSON `shell` menu items with a link are now links in the accessibility tree instead of being announced as buttons; only submenu toggles keep `role="button"`.
 - The new [`status_bar` component](https://sql-page.com/component.sql?component=status_bar) displays short status messages and links along the bottom of the screen or inline with page content.

@@ -6,6 +6,9 @@ const wcagTags = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 const themes = ["documentation", "light", "dark"] as const;
 type Theme = (typeof themes)[number];
 
+// Audit settled colors without sampling a toast during its opacity transition.
+test.use({ reducedMotion: "reduce" });
+
 // Keep color-contrast active and allow only the observed counts per component
 // and theme. All other rules still require zero violations.
 const upstreamContrast: Record<string, Partial<Record<Theme, number>>> = {

@@ -66,7 +66,7 @@ then stays at each section's `data-scene-stop` page anchor while rotating. Later
 handoffs fade between anchors without interpolating position. Anchor measurements
 refresh after content and viewport changes, including iframe resizing.
 
-Scene modules use pinned Three.js 0.186.1 ES modules from jsDelivr. Keep their core
+Scene modules use pinned Three.js 0.187.0 ES modules from jsDelivr. Keep their core
 module URLs identical when upgrading. Shaders are ordinary `.glsl` files in
 `js/scene/shaders/`, fetched relative to `shader-sources.js`; successful loads are
 shared, while failed loads can be retried. The model, lighting map, and static

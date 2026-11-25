@@ -1,6 +1,6 @@
 /** Cropped emission mask → two blur scales → alpha composite over the PBR scene. */
-import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.186.1/+esm";
-import { FullScreenQuad } from "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/postprocessing/Pass.js/+esm";
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.187.0/+esm";
+import { FullScreenQuad } from "https://cdn.jsdelivr.net/npm/three@0.187.0/examples/jsm/postprocessing/Pass.js/+esm";
 
 // Only luminous geometry enters this cropped buffer. Two blur scales retain
 // a crisp core and a quiet halo, without full-viewport bloom or runtime mips.
