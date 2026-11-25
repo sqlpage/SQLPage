@@ -2,6 +2,7 @@
 
 ## unreleased
 
+- Updated Rust and browser dependencies, including SQLite, ApexCharts, and Tabler.
 - SQLite query results preserve the full 64-bit range of `INTEGER` values. ([#1636](https://github.com/sqlpage/SQLPage/issues/1636))
 - Big number title links have a larger target for touch and pointer users.
 - Carousel slide indicators and pagination arrows now have accessible names. Keyboard users can activate carousel arrows and enabled pagination links. Screen readers announce the current page.
