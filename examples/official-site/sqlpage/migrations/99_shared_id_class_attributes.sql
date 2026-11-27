@@ -41,7 +41,8 @@ FROM (VALUES
     ('carousel', TRUE),
     ('login', TRUE),
     ('pagination', TRUE),
-    ('facet', TRUE)
+    ('facet', TRUE),
+    ('badge',TRUE)
 );
 
 INSERT INTO parameter(component, top_level, name, description, type, optional) 
@@ -83,5 +84,6 @@ FROM (VALUES
     ('carousel', TRUE),
     ('login', TRUE),
     ('pagination', TRUE),
-    ('facet', TRUE)
+    ('facet', TRUE),
+    ('badge',TRUE)
 );
