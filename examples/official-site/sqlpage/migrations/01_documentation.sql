@@ -984,6 +984,7 @@ INSERT INTO parameter(component, name, description, type, top_level, optional) S
     ('search_placeholder', 'Customizes the placeholder text shown in the search input field. Replaces the default "Search..." with text that better describes what users should search for.', 'TEXT', TRUE, TRUE),
     ('markdown', 'Set this to the name of a column whose content should be interpreted as markdown . Used to display rich text with links in the table. This argument can be repeated multiple times to intepret multiple columns as markdown.', 'TEXT', TRUE, TRUE),
     ('icon', 'Set this to the name of a column whose content should be interpreted as a tabler icon name. Used to display icons in the table. This argument can be repeated multiple times to intepret multiple columns as icons. Introduced in v0.8.0.', 'TEXT', TRUE, TRUE),
+    ('embed', 'Name of a column whose values are URLs to HTML fragments, such as other SQLPage pages. Repeat this property to select multiple columns. The browser fetches each nonempty URL with `_sqlpage_embed=1`, which skips the SQLPage shell, and initializes any components inside the cell. Use only URLs whose HTML you trust. There is one request per populated cell. Sorting uses the original URL, and search skips embedded cells.', 'TEXT', TRUE, TRUE),
     ('align_right', 'Name of a column the contents of which should be right-aligned. This argument can be repeated multiple times to align multiple columns to the right. Introduced in v0.15.0.', 'TEXT', TRUE, TRUE),
     ('align_center', 'Name of a column the contents of which should be center-aligned. This argument can be repeated multiple times to align multiple columns to the center.', 'TEXT', TRUE, TRUE),
     ('monospace', 'Name of a column the contents of which should be displayed in monospace. This argument can be repeated multiple times to display multiple columns in monospace. Introduced in v0.32.1.', 'TEXT', TRUE, TRUE),
@@ -1027,6 +1028,12 @@ INSERT INTO example(component, description, properties) VALUES
         json('[{"component":"table", "markdown": "Name", "icon": "icon", "search": true}, '||
         '{"icon": "table", "name": "[Table](?component=table)", "description": "Displays SQL results as a searchable table.", "_sqlpage_color": "red"},
         {"icon": "timeline", "name": "[Chart](?component=chart)", "description": "Show graphs based on numeric data."}
+        ]')),
+    ('table', 'A table that embeds a chart from another SQLPage file in each row.',
+        json('[
+        {"component": "table", "embed": "Chart"},
+        {"Starting number": 7, "Chart": "/examples/chart.sql?n=7&color=blue"},
+        {"Starting number": 13, "Chart": "/examples/chart.sql?n=13&color=green"}
         ]')),
     ('table', 'A sortable table with a colored footer showing the average value of its entries.',
         json('[{"component":"table", "sort":true}, '||
