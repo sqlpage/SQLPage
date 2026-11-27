@@ -10,30 +10,28 @@ const nonce =
     ? document.currentScript.nonce
     : "";
 
-function sqlpage_card(root: InitRoot) {
-  const cards = select_all(root, "[data-pre-init=card]", HTMLElement);
-  for (const c of cards) {
-    c.removeAttribute("data-pre-init");
-    if (!c.dataset.embed) continue;
-    const url = new URL(c.dataset.embed, window.location.href);
-    url.searchParams.set("_sqlpage_embed", "1");
-    fetch(url)
-      .then((res) => res.text())
-      .then((html) => {
-        const body = c.querySelector(".card-content");
-        if (body) body.innerHTML = html;
-        const spinner = c.querySelector(".card-loading-placeholder");
-        spinner?.remove();
-        const fragLoadedEvt = new CustomEvent("fragment-loaded", {
-          bubbles: true,
-        });
-        c.dispatchEvent(fragLoadedEvt);
-      })
-      .catch((e) => {
-        console.error(e);
-        c.querySelector(".card-loading-placeholder")?.remove();
-      });
+function sqlpage_embed(root: InitRoot) {
+  for (const host of select_all(root, "[data-pre-init=embed]", HTMLElement)) {
+    host.removeAttribute("data-pre-init");
+    if (host.dataset.embed) void load_embed(host, host.dataset.embed);
   }
+}
+
+async function load_embed(host: HTMLElement, src: string) {
+  const content = host.querySelector("[data-embed-content]") ?? host;
+  const loading = host.querySelector("[data-embed-loading]");
+  try {
+    const url = new URL(src, window.location.href);
+    url.searchParams.set("_sqlpage_embed", "1");
+    const response = await fetch(url);
+    content.innerHTML = await response.text();
+  } catch (e) {
+    console.error(e);
+    loading?.remove();
+    return;
+  }
+  loading?.remove();
+  host.dispatchEvent(new CustomEvent("fragment-loaded", { bubbles: true }));
 }
 
 function setup_table(root_el: HTMLElement) {
@@ -530,7 +528,7 @@ function sqlpage_modal(root: InitRoot) {
 
 add_init_fn(sqlpage_table);
 add_init_fn(sqlpage_map);
-add_init_fn(sqlpage_card);
+add_init_fn(sqlpage_embed);
 add_init_fn(sqlpage_form);
 add_init_fn(sqlpage_modal);
 add_init_fn(load_scripts);
