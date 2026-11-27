@@ -46,7 +46,7 @@
                                     {{~#if (array_contains_case_insensitive ../../align_right @key)}} text-end {{/if~}}
                                     {{~#if (array_contains_case_insensitive ../../align_center @key)}} text-center {{/if~}}
                                 "
-                                    data-column_type="{{typeof this}}"
+                                    data-column_type="{{#if (array_contains_case_insensitive ../../embed @key)}}string{{else}}{{typeof this}}{{/if}}"
                                     {{~#if (array_contains_case_insensitive ../../raw_numbers @key)}} data-raw_number="1"{{/if~}}
                                     {{~#if (array_contains_case_insensitive ../../money @key)}} data-money="1"{{/if~}}
                                 >
@@ -80,15 +80,21 @@
                                 {{~#if (array_contains_case_insensitive ../../align_right @key)}} text-end {{/if~}}
                                 {{~#if (array_contains_case_insensitive ../../align_center @key)}} text-center {{/if~}}
                                 {{~#if (array_contains_case_insensitive ../../monospace @key)}} font-monospace {{/if~}}
-                            ">
-                                {{~#if (array_contains_case_insensitive ../../markdown @key)~}}
+                            "
+                                {{~#if (and this (array_contains_case_insensitive ../../embed @key))}} data-pre-init="embed" data-embed="{{this}}"{{/if~}}
+                            >
+                                {{~#if (array_contains_case_insensitive ../../embed @key)~}}
+                                    {{~#if this~}}
+                                        <div class="spinner-border spinner-border-sm" role="status" data-embed-loading>
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                    {{~/if~}}
+                                {{~else if (array_contains_case_insensitive ../../markdown @key)~}}
                                     {{{markdown this}}}
-                                {{~else~}}
-                                {{~#if (array_contains_case_insensitive ../../icon @key)~}}
+                                {{~else if (array_contains_case_insensitive ../../icon @key)~}}
                                     {{~icon_img this~}}
                                 {{~else~}}
                                     {{this}}
-                                {{~/if~}}
                                 {{~/if~}}
                             </td>
                             {{/if~}}

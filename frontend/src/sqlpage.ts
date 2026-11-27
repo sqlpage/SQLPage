@@ -38,11 +38,12 @@ function setup_table(root_el: HTMLElement) {
   const search_input = root_el.querySelector<HTMLInputElement>("input.search");
   const table_el = root_el.querySelector("table");
   if (!table_el) return;
-  const sort_button_els = table_el.querySelectorAll<HTMLElement>(
-    "button.sort[data-sort]",
-  );
-  const sort_buttons = [...sort_button_els];
-  const item_parent = table_el.querySelector("tbody");
+  const sort_buttons = [
+    ...table_el.querySelectorAll<HTMLElement>(
+      ":scope > thead button.sort[data-sort]",
+    ),
+  ];
+  const item_parent = table_el.tBodies[0];
   const has_sort = sort_buttons.length > 0;
 
   if (search_input || has_sort) {
@@ -56,8 +57,6 @@ function setup_table(root_el: HTMLElement) {
   apply_number_formatting(table_el);
 }
 
-/**
- */
 function setup_table_search_behavior(
   search_input: HTMLInputElement,
   items: TableRow[],
@@ -68,9 +67,17 @@ function setup_table_search_behavior(
       .split(/\s+/)
       .filter((s) => s);
     for (const item of items) {
-      const show = lower_search.every((s) =>
-        item.el.textContent.toLowerCase().includes(s),
-      );
+      if (lower_search.length === 0) {
+        item.el.style.display = "";
+        continue;
+      }
+      const text = [...item.el.cells]
+        .map((cell) =>
+          cell.hasAttribute("data-embed") ? "" : cell.textContent,
+        )
+        .join("")
+        .toLowerCase();
+      const show = lower_search.every((s) => text.includes(s));
       item.el.style.display = show ? "" : "none";
     }
   }
@@ -79,8 +86,10 @@ function setup_table_search_behavior(
   onSearch();
 }
 
-function apply_number_formatting(table_el: HTMLElement) {
-  const header_els = table_el.querySelectorAll<HTMLElement>("thead > tr > th");
+function apply_number_formatting(table_el: HTMLTableElement) {
+  const header_els = table_el.querySelectorAll<HTMLElement>(
+    ":scope > thead > tr > th",
+  );
   const col_types = [...header_els].map((el) => el.dataset.column_type);
   const col_rawnums = [...header_els].map((el) => !!el.dataset.raw_number);
   const col_money = [...header_els].map((el) => !!el.dataset.money);
@@ -90,9 +99,10 @@ function apply_number_formatting(table_el: HTMLElement) {
     : undefined;
   const currency = table_el.dataset.currency;
 
-  for (const tr_el of table_el.querySelectorAll("tbody tr, tfoot tr")) {
-    const cells = tr_el.getElementsByTagName("td");
-    for (const [idx, cell_el] of [...cells].entries()) {
+  for (const tr_el of table_el.querySelectorAll<HTMLTableRowElement>(
+    ":scope > :is(tbody, tfoot) > tr",
+  )) {
+    for (const [idx, cell_el] of [...tr_el.cells].entries()) {
       const column_type = col_types[idx];
       const is_raw_number = col_rawnums[idx];
       const text = cell_el.textContent;
@@ -110,24 +120,29 @@ function apply_number_formatting(table_el: HTMLElement) {
   }
 }
 
-type TableRow = { el: HTMLElement; sort_keys: { num: number; str: string }[] };
+type TableRow = {
+  el: HTMLTableRowElement;
+  sort_keys: { num: number; str: string }[];
+};
 
 /** Prepare the table rows for sorting.
  */
 function table_parse_data(
-  table_el: HTMLElement,
+  table_el: HTMLTableElement,
   sort_buttons: HTMLElement[],
 ): TableRow[] {
   const is_num = [...sort_buttons].map(
     (btn_el) => btn_el.parentElement?.dataset.column_type === "number",
   );
-  const row_els = table_el.querySelectorAll<HTMLElement>("tbody tr");
+  const row_els = table_el.querySelectorAll<HTMLTableRowElement>(
+    ":scope > tbody > tr",
+  );
   return [...row_els].map((tr_el) => {
-    const cells = tr_el.getElementsByTagName("td");
     return {
       el: tr_el,
       sort_keys: sort_buttons.map((_btn_el, idx) => {
-        const str = cells[idx]?.textContent ?? "";
+        const cell = tr_el.cells[idx];
+        const str = cell?.dataset.embed ?? cell?.textContent ?? "";
         const num = is_num[idx] ? Number.parseFloat(str) : Number.NaN;
         return { num, str };
       }),

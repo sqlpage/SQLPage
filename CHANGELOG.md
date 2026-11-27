@@ -2,6 +2,7 @@
 
 ## unreleased
 
+- The `table` component can fetch and display HTML fragments in selected columns using `embed`.
 - Updated Rust and browser dependencies, including SQLite, ApexCharts, and Tabler.
 - SQLite query results preserve the full 64-bit range of `INTEGER` values. ([#1636](https://github.com/sqlpage/SQLPage/issues/1636))
 - Big number title links have a larger target for touch and pointer users.

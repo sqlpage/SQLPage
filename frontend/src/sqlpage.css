@@ -69,13 +69,13 @@ code {
 }
 
 /** table **/
-.table-freeze-headers thead {
+.table-freeze-headers > table > thead {
   position: sticky;
   top: 0;
   z-index: 2;
 }
 
-.table-freeze-footers tfoot {
+.table-freeze-footers > table > tfoot {
   position: sticky;
   bottom: 0;
   z-index: 2;
@@ -89,13 +89,13 @@ code {
   max-height: 50vh;
 }
 
-.table-freeze-columns th:first-child {
+.table-freeze-columns > table > thead > tr > th:first-child {
   position: sticky;
   left: 0;
   z-index: 2;
 }
 
-.table-freeze-columns td:first-child {
+.table-freeze-columns > table > :is(tbody, tfoot) > tr > td:first-child {
   position: sticky;
   left: 0;
   background: var(--tblr-bg-surface-secondary);
@@ -103,7 +103,7 @@ code {
 }
 
 /* Prevent the fixed headers from hiding the selected target row */
-.table-freeze-headers tr[id] {
+.table-freeze-headers > table > :is(tbody, tfoot) > tr[id] {
   scroll-margin-top: 2.1rem;
 }
 
