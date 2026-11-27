@@ -77,6 +77,8 @@ pub mod telemetry;
 pub mod telemetry_metrics;
 pub mod template_helpers;
 pub mod templates;
+#[cfg(test)]
+mod test_database;
 pub mod utils;
 pub mod webserver;
 
@@ -134,7 +136,7 @@ impl AppState {
 
         let oidc_state = webserver::oidc::initialize_oidc_state(config).await?;
         let telemetry_metrics =
-            TelemetryMetrics::new(&db.connection, db.info.database_type.otel_name());
+            TelemetryMetrics::new(db.connection.clone(), db.info.database_type().otel_name());
 
         Ok(AppState {
             db,

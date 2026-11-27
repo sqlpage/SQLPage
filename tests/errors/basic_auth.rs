@@ -1,7 +1,7 @@
 use crate::common::{request_for, response_for, response_from};
 use actix_web::http::StatusCode;
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_basic_auth_not_provided() {
     let resp = response_for("/tests/errors/basic_auth.sql").await;
     assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
@@ -20,7 +20,7 @@ async fn test_basic_auth_not_provided() {
     );
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_basic_auth_with_credentials() {
     let req = request_for("/tests/errors/basic_auth.sql") // log in with credentials "user:password"
         .append_header(("Authorization", "Basic dXNlcjpwYXNzd29yZA=="));

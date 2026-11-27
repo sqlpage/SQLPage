@@ -1,148 +1,117 @@
 use std::collections::HashMap;
 
 use anyhow::Context;
-use futures_util::StreamExt;
 use sqlparser::ast::{
     CopyLegacyCsvOption, CopyLegacyOption, CopyOption, CopySource, CopyTarget, Statement,
 };
-use sqlx::any::{AnyArguments, AnyConnection, AnyConnectionKind, AnyKind};
-use sqlx::arguments::Arguments;
-use sqlx::executor::Executor;
 use sqlx::postgres::PgConnection;
 use tokio::io::AsyncRead;
 
 use crate::webserver::http_request_info::RequestInfo;
 
-use super::make_placeholder;
+use super::{DatabaseConnection, DbInfo, Parameter};
 
 #[derive(Debug, PartialEq)]
 pub(super) struct CsvImport {
-    /// Used only in postgres
-    pub query: String,
-    pub table_name: String,
-    pub columns: Vec<String>,
-    pub delimiter: Option<char>,
-    pub quote: Option<char>,
-    // If true, the first line of the CSV file will be interpreted as a header
-    // If false, then the column order will be determined by the order of the columns in the table
-    pub header: Option<bool>,
-    // A string that will be interpreted as null
-    pub null_str: Option<String>,
-    pub escape: Option<char>,
-    /// Reference the the uploaded file name
-    pub uploaded_file: String,
+    /// Native PostgreSQL executes the COPY statement with STDIN as its source.
+    query: String,
+    pub(super) table_name: String,
+    columns: Vec<String>,
+    format: CsvFormat,
+    pub(super) uploaded_file: String,
 }
 
-enum CopyCsvOption<'a> {
-    Legacy(&'a CopyLegacyOption),
-    CopyLegacyCsvOption(&'a CopyLegacyCsvOption),
-    New(&'a CopyOption),
+#[derive(Debug, PartialEq)]
+struct CsvFormat {
+    delimiter: u8,
+    quote: u8,
+    header: bool,
+    null_str: String,
+    escape: Option<u8>,
 }
 
-impl CopyCsvOption<'_> {
-    fn delimiter(&self) -> Option<char> {
-        match self {
-            CopyCsvOption::Legacy(CopyLegacyOption::Delimiter(c))
-            | CopyCsvOption::New(CopyOption::Delimiter(c)) => Some(*c),
-            _ => None,
+impl CsvFormat {
+    fn from_options(options: &[CopyOption], legacy: &[CopyLegacyOption]) -> Self {
+        let mut format = Self {
+            delimiter: b',',
+            quote: b'"',
+            header: true,
+            null_str: String::new(),
+            escape: None,
+        };
+        // The first setting wins, with legacy COPY syntax taking precedence.
+        for option in options.iter().rev() {
+            match option {
+                CopyOption::Delimiter(c) => format.delimiter = u8::try_from(*c).unwrap_or(b','),
+                CopyOption::Quote(c) => format.quote = u8::try_from(*c).unwrap_or(b'"'),
+                CopyOption::Header(b) => format.header = *b,
+                CopyOption::Null(s) => format.null_str.clone_from(s),
+                CopyOption::Escape(c) => format.escape = u8::try_from(*c).ok(),
+                _ => {}
+            }
         }
-    }
-
-    fn quote(&self) -> Option<char> {
-        match self {
-            CopyCsvOption::CopyLegacyCsvOption(CopyLegacyCsvOption::Quote(c))
-            | CopyCsvOption::New(CopyOption::Quote(c)) => Some(*c),
-            _ => None,
+        for option in legacy.iter().rev() {
+            match option {
+                CopyLegacyOption::Delimiter(c) => {
+                    format.delimiter = u8::try_from(*c).unwrap_or(b',');
+                }
+                CopyLegacyOption::Csv(options) => {
+                    for option in options.iter().rev() {
+                        match option {
+                            CopyLegacyCsvOption::Header => format.header = true,
+                            CopyLegacyCsvOption::Quote(c) => {
+                                format.quote = u8::try_from(*c).unwrap_or(b'"');
+                            }
+                            CopyLegacyCsvOption::Escape(c) => format.escape = u8::try_from(*c).ok(),
+                            _ => {}
+                        }
+                    }
+                }
+                _ => {}
+            }
         }
-    }
-
-    fn header(&self) -> Option<bool> {
-        match self {
-            CopyCsvOption::CopyLegacyCsvOption(CopyLegacyCsvOption::Header) => Some(true),
-            CopyCsvOption::New(CopyOption::Header(b)) => Some(*b),
-            _ => None,
-        }
-    }
-
-    fn null(&self) -> Option<String> {
-        match self {
-            CopyCsvOption::New(CopyOption::Null(s)) => Some(s.clone()),
-            _ => None,
-        }
-    }
-
-    fn escape(&self) -> Option<char> {
-        match self {
-            CopyCsvOption::New(CopyOption::Escape(c))
-            | CopyCsvOption::CopyLegacyCsvOption(CopyLegacyCsvOption::Escape(c)) => Some(*c),
-            _ => None,
-        }
+        format
     }
 }
 
 pub(super) fn extract_csv_copy_statement(stmt: &mut Statement) -> Option<CsvImport> {
-    if let Statement::Copy {
+    let Statement::Copy {
         source: CopySource::Table {
             table_name,
             columns,
         },
         to: false,
-        target: source,
+        target,
         options,
         legacy_options,
         values,
     } = stmt
-    {
-        if !values.is_empty() {
-            log::warn!("COPY ... VALUES not compatible with SQLPage: {stmt}");
+    else {
+        return None;
+    };
+    if !values.is_empty() {
+        log::warn!("COPY ... VALUES not compatible with SQLPage: {stmt}");
+        return None;
+    }
+    let uploaded_file = match std::mem::replace(target, CopyTarget::Stdin) {
+        CopyTarget::File { filename } => filename,
+        other => {
+            log::warn!("COPY from {other} not compatible with SQLPage: {stmt}");
             return None;
         }
-        let uploaded_file = match std::mem::replace(source, CopyTarget::Stdin) {
-            CopyTarget::File { filename } => filename,
-            other => {
-                log::warn!("COPY from {other} not compatible with SQLPage: {stmt}");
-                return None;
-            }
-        };
-
-        let all_options: Vec<CopyCsvOption<'_>> = legacy_options
-            .iter()
-            .flat_map(|o| match o {
-                CopyLegacyOption::Csv(o) => {
-                    o.iter().map(CopyCsvOption::CopyLegacyCsvOption).collect()
-                }
-                o => vec![CopyCsvOption::Legacy(o)],
-            })
-            .chain(options.iter().map(CopyCsvOption::New))
-            .collect();
-
-        let table_name = table_name.to_string();
-        let columns = columns.iter().map(|ident| ident.value.clone()).collect();
-        let delimiter = all_options.iter().find_map(CopyCsvOption::delimiter);
-        let quote = all_options.iter().find_map(CopyCsvOption::quote);
-        let header = all_options.iter().find_map(CopyCsvOption::header);
-        let null = all_options.iter().find_map(CopyCsvOption::null);
-        let escape = all_options.iter().find_map(CopyCsvOption::escape);
-        let query = stmt.to_string();
-
-        Some(CsvImport {
-            query,
-            table_name,
-            columns,
-            delimiter,
-            quote,
-            header,
-            null_str: null,
-            escape,
-            uploaded_file,
-        })
-    } else {
-        None
-    }
+    };
+    Some(CsvImport {
+        table_name: table_name.to_string(),
+        columns: columns.iter().map(|ident| ident.value.clone()).collect(),
+        format: CsvFormat::from_options(options, legacy_options),
+        query: stmt.to_string(),
+        uploaded_file,
+    })
 }
 
 pub(super) async fn run_csv_import(
-    db: &mut AnyConnection,
+    db: &mut dyn DatabaseConnection,
+    driver: DbInfo,
     csv_import: &CsvImport,
     request: &RequestInfo,
 ) -> anyhow::Result<()> {
@@ -167,13 +136,10 @@ pub(super) async fn run_csv_import(
         )
     })?;
     let buffered = tokio::io::BufReader::new(file);
-    // private_get_mut is not supposed to be used outside of sqlx, but it is the only way to
-    // access the underlying connection
-    match db.private_get_mut() {
-        AnyConnectionKind::Postgres(pg_connection) => {
-            run_csv_import_postgres(pg_connection, csv_import, buffered).await
-        }
-        _ => run_csv_import_insert(db, csv_import, buffered).await,
+    if let Some(pg) = db.native().downcast_mut::<PgConnection>() {
+        run_csv_import_postgres(pg, csv_import, buffered).await
+    } else {
+        run_csv_import_insert(db, driver, csv_import, buffered).await
     }
     .with_context(|| {
         let table_name = &csv_import.table_name;
@@ -215,120 +181,86 @@ async fn run_csv_import_postgres(
 }
 
 async fn run_csv_import_insert(
-    db: &mut AnyConnection,
+    db: &mut dyn DatabaseConnection,
+    driver: DbInfo,
     csv_import: &CsvImport,
     file: impl AsyncRead + Unpin + Send,
 ) -> anyhow::Result<()> {
-    let insert_stmt = create_insert_stmt(db.kind(), csv_import);
+    let insert_stmt = create_insert_stmt(driver, csv_import);
     log::debug!("CSV data insert statement: {insert_stmt}");
-    let mut reader = make_csv_reader(csv_import, file);
-    let col_idxs = compute_column_indices(&mut reader, csv_import).await?;
-    let mut records = reader.into_records();
-    while let Some(record) = records.next().await {
-        let r = record.with_context(|| "reading csv record")?;
-        process_csv_record(r, db, &insert_stmt, csv_import, &col_idxs).await?;
+    let format = &csv_import.format;
+    let mut reader = csv_async::AsyncReaderBuilder::new()
+        .delimiter(format.delimiter)
+        .quote(format.quote)
+        .escape(format.escape)
+        .has_headers(format.header)
+        .create_reader(file);
+    let mut columns: Vec<_> = csv_import.columns.iter().enumerate().collect();
+    if format.header {
+        let by_name: HashMap<_, _> = reader.headers().await?.iter().zip(0..).collect();
+        for (index, name) in &mut columns {
+            *index = *by_name
+                .get(name.as_str())
+                .with_context(|| format!("CSV Column not found: {name}"))?;
+        }
+    }
+
+    let mut record = csv_async::StringRecord::new();
+    while reader
+        .read_record(&mut record)
+        .await
+        .context("reading csv record")?
+    {
+        let mut arguments = Vec::with_capacity(columns.len());
+        for &(index, name) in &columns {
+            let text = record.get(index).unwrap_or_default();
+            let value = (text != format.null_str).then_some(text);
+            log::trace!("CSV value: {name}={value:?}");
+            arguments.push(Parameter::Text(value));
+        }
+        db.execute_with(&insert_stmt, &arguments).await?;
     }
     Ok(())
 }
 
-async fn compute_column_indices<R: AsyncRead + Unpin + Send>(
-    reader: &mut csv_async::AsyncReader<R>,
-    csv_import: &CsvImport,
-) -> anyhow::Result<Vec<usize>> {
-    let mut col_idxs = Vec::with_capacity(csv_import.columns.len());
-    if csv_import.header.unwrap_or(true) {
-        let headers = reader
-            .headers()
-            .await?
-            .iter()
-            .enumerate()
-            .map(|(i, h)| (h, i))
-            .collect::<HashMap<&str, usize>>();
-        for column in &csv_import.columns {
-            let &idx = headers
-                .get(column.as_str())
-                .ok_or_else(|| anyhow::anyhow!("CSV Column not found: {column}"))?;
-            col_idxs.push(idx);
-        }
-    } else {
-        col_idxs.extend(0..csv_import.columns.len());
-    }
-    Ok(col_idxs)
-}
-
-fn create_insert_stmt(db_kind: AnyKind, csv_import: &CsvImport) -> String {
+fn create_insert_stmt(db_kind: DbInfo, csv_import: &CsvImport) -> String {
     let columns = csv_import.columns.join(", ");
-    let placeholders = csv_import
-        .columns
-        .iter()
-        .enumerate()
-        .map(|(i, _)| make_placeholder(db_kind, i + 1))
-        .fold(String::new(), |mut acc, f| {
-            if !acc.is_empty() {
-                acc.push_str(", ");
-            }
-            acc.push_str(&f);
-            acc
-        });
+    let placeholders = (1..=csv_import.columns.len())
+        .map(|i| db_kind.placeholder(i))
+        .collect::<Vec<_>>()
+        .join(", ");
     let table_name = &csv_import.table_name;
     format!("INSERT INTO {table_name} ({columns}) VALUES ({placeholders})")
 }
 
-async fn process_csv_record(
-    record: csv_async::StringRecord,
-    db: &mut AnyConnection,
-    insert_stmt: &str,
-    csv_import: &CsvImport,
-    column_indices: &[usize],
-) -> anyhow::Result<()> {
-    let mut arguments = AnyArguments::default();
-    let null_str = csv_import.null_str.as_deref().unwrap_or_default();
-    for (&i, column) in column_indices.iter().zip(csv_import.columns.iter()) {
-        let value = record.get(i).unwrap_or_default();
-        let value = if value == null_str { None } else { Some(value) };
-        log::trace!("CSV value: {column}={value:?}");
-        arguments.add(value);
-    }
-    db.execute((insert_stmt, Some(arguments))).await?;
-    Ok(())
-}
-
-fn make_csv_reader<R: AsyncRead + Unpin + Send>(
-    csv_import: &CsvImport,
-    file: R,
-) -> csv_async::AsyncReader<R> {
-    let delimiter = csv_import
-        .delimiter
-        .and_then(|c| u8::try_from(c).ok())
-        .unwrap_or(b',');
-    let quote = csv_import
-        .quote
-        .and_then(|c| u8::try_from(c).ok())
-        .unwrap_or(b'"');
-    let has_headers = csv_import.header.unwrap_or(true);
-    let escape = csv_import.escape.and_then(|c| u8::try_from(c).ok());
-    csv_async::AsyncReaderBuilder::new()
-        .delimiter(delimiter)
-        .quote(quote)
-        .has_headers(has_headers)
-        .escape(escape)
-        .create_reader(file)
+#[cfg(test)]
+fn parse_import(sql: &str) -> CsvImport {
+    let mut stmts =
+        sqlparser::parser::Parser::parse_sql(&sqlparser::dialect::GenericDialect {}, sql).unwrap();
+    extract_csv_copy_statement(&mut stmts[0]).unwrap()
 }
 
 #[test]
 fn test_make_statement() {
-    let csv_import = CsvImport {
-        query: "COPY my_table (col1, col2) FROM 'my_file.csv' WITH (DELIMITER ';', HEADER)".into(),
-        table_name: "my_table".into(),
-        columns: vec!["col1".into(), "col2".into()],
-        delimiter: Some(';'),
-        quote: None,
-        header: Some(true),
-        null_str: None,
-        escape: None,
-        uploaded_file: "my_file.csv".into(),
-    };
-    let insert_stmt = create_insert_stmt(AnyKind::Postgres, &csv_import);
+    let csv_import = parse_import(
+        "COPY my_table (col1, col2) FROM 'my_file.csv'
+        (DELIMITER '|', HEADER FALSE, NULL 'first', NULL 'second', QUOTE '+', ESCAPE '+')
+        DELIMITER ';' DELIMITER '?' NULL 'legacy' CSV HEADER QUOTE '!' QUOTE '?' ESCAPE '^'",
+    );
+    assert_eq!(
+        csv_import.format,
+        CsvFormat {
+            delimiter: b';',
+            quote: b'!',
+            escape: Some(b'^'),
+            header: true,
+            null_str: "first".into(),
+        }
+    );
+    let insert_stmt = create_insert_stmt(
+        DbInfo::Native(super::SupportedDatabase::Postgres),
+        &csv_import,
+    );
     assert_eq!(
         insert_stmt,
         "INSERT INTO my_table (col1, col2) VALUES ($1, $2)"
@@ -337,47 +269,41 @@ fn test_make_statement() {
 
 #[actix_web::test]
 async fn test_end_to_end() {
-    use sqlx::connection::ConnectOptions;
-
-    let mut copy_stmt = sqlparser::parser::Parser::parse_sql(
-        &sqlparser::dialect::GenericDialect {},
-        "COPY my_table (col1, col2) FROM 'my_file.csv' (DELIMITER ';', HEADER)",
-    )
-    .unwrap()
-    .into_iter()
-    .next()
-    .unwrap();
-    let csv_import = extract_csv_copy_statement(&mut copy_stmt).unwrap();
+    let csv_import =
+        parse_import("COPY my_table (col1, col2) FROM 'my_file.csv' (DELIMITER ';', HEADER)");
     assert_eq!(
         csv_import,
         CsvImport {
             query: "COPY my_table (col1, col2) FROM STDIN (DELIMITER ';', HEADER)".into(),
             table_name: "my_table".into(),
             columns: vec!["col1".into(), "col2".into()],
-            delimiter: Some(';'),
-            quote: None,
-            header: Some(true),
-            null_str: None,
-            escape: None,
+            format: CsvFormat {
+                delimiter: b';',
+                quote: b'"',
+                escape: None,
+                header: true,
+                null_str: String::new(),
+            },
             uploaded_file: "my_file.csv".into(),
         }
     );
-    let mut conn = "sqlite::memory:"
-        .parse::<sqlx::any::AnyConnectOptions>()
-        .unwrap()
-        .connect()
-        .await
-        .unwrap();
-    conn.execute("CREATE TABLE my_table (col1 TEXT, col2 TEXT)")
+    let pool = sqlx::SqlitePool::connect("sqlite::memory:").await.unwrap();
+    let mut conn = pool.acquire().await.unwrap();
+    conn.execute_with("CREATE TABLE my_table (col1 TEXT, col2 TEXT)", &[])
         .await
         .unwrap();
     let csv = "col2;col1\na;b\nc;d"; // order is different from the table
-    let file = csv.as_bytes();
-    run_csv_import_insert(&mut conn, &csv_import, file)
-        .await
-        .unwrap();
-    let rows: Vec<(String, String)> = sqlx::query_as::query_as("SELECT * FROM my_table")
-        .fetch_all(&mut conn)
+    run_csv_import_insert(
+        &mut conn,
+        DbInfo::Native(super::SupportedDatabase::Sqlite),
+        &csv_import,
+        csv.as_bytes(),
+    )
+    .await
+    .unwrap();
+    drop(conn);
+    let rows: Vec<(String, String)> = sqlx::query_as("SELECT * FROM my_table")
+        .fetch_all(&pool)
         .await
         .unwrap();
     assert_eq!(

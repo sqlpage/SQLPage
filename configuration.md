@@ -92,6 +92,7 @@ The `database_url` parameter sets all the connection parameters for the database
     - `sslcert=/path/to/cert.pem` to specify the path to the TLS client certificate file and `sslkey=/path/to/key.pem` to specify the path to the TLS client key file for PostgreSQL and MySQL.
     - `application_name=my_application` for PostgreSQL to set the application name, which can be useful for monitoring and logging on the database server side.
     - `collation=utf8mb4_unicode_ci` for MySQL to set the collation of the connection
+    - `encrypt=strict` for native SQL Server to require TLS for the entire session. The driver rejects login-only TLS (`encrypt=optional`, `false`, or `no`). To verify the server certificate and hostname, also set `trust_server_certificate=false` and `hostname_in_certificate=db.example.com` to the name on the certificate.
 
 All the parameters need to be properly [percent-encoded](https://developer.mozilla.org/en-US/docs/Glossary/percent-encoding) if they contain special characters like `@` (`%40`), `:` (`%3A`), `/` (`%2F`), `?` (`%3F`), `#` (`%23`).
 
@@ -313,7 +314,8 @@ EXEC sp_reset_connection;
 
 ## Migrations
 
-SQLPage allows you to run SQL scripts when the database schema changes, by creating a `sqlpage/migrations` directory.
+On native SQLite, PostgreSQL, MySQL, and SQL Server connections, SQLPage runs pending scripts from `sqlpage/migrations` at startup.
+For ODBC connections, apply the scripts with your database's migration tool.
 We have a guide on [how to create migrations](https://sql-page.com/your-first-sql-website/migrations.sql).
 
 ## Custom URL routes

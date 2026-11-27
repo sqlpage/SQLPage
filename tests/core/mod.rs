@@ -1,8 +1,5 @@
 use actix_web::http::StatusCode;
-use sqlpage::{
-    AppState,
-    webserver::{self, make_placeholder},
-};
+use sqlpage::{AppState, webserver};
 
 use crate::common::{
     make_app_data_from_config, response_for, response_with, response_with_data, test_config,
@@ -13,40 +10,36 @@ mod path_aliases;
 /// Creates the `sqlpage_files` table if needed and stores `contents` at `path`.
 /// Other tests share this database, so the table is never dropped.
 async fn store_file_in_db(state: &AppState, path: &str, contents: &[u8]) {
-    use sqlx::executor::Executor as _;
+    use sqlpage::webserver::database::Parameter;
 
     let create_table_sql =
-        sqlpage::filesystem::DbFsQueries::get_create_table_sql(state.db.info.database_type);
-    if state
-        .db
-        .connection
+        sqlpage::filesystem::DbFsQueries::get_create_table_sql(state.db.info.database_type());
+    let mut conn = state.db.connection.acquire().await.unwrap();
+    if conn
         .execute("SELECT 1 FROM sqlpage_files WHERE 1 = 0")
         .await
         .is_err()
     {
-        state.db.connection.execute(create_table_sql).await.unwrap();
+        conn.execute(create_table_sql).await.unwrap();
     }
-    let delete_sql = format!("DELETE FROM sqlpage_files WHERE path = '{path}'");
-    state
-        .db
-        .connection
-        .execute(delete_sql.as_str())
+    let path_param = state.db.info.placeholder(1);
+    let delete_sql = format!("DELETE FROM sqlpage_files WHERE path = {path_param}");
+    conn.execute_with(&delete_sql, &[Parameter::Text(Some(path))])
         .await
         .unwrap();
     let insert_sql = format!(
-        "INSERT INTO sqlpage_files(path, contents) VALUES ({}, {})",
-        make_placeholder(state.db.info.kind, 1),
-        make_placeholder(state.db.info.kind, 2)
+        "INSERT INTO sqlpage_files(path, contents) VALUES ({path_param}, {})",
+        state.db.info.placeholder(2)
     );
-    sqlx::query::query(&insert_sql)
-        .bind(path)
-        .bind(contents)
-        .execute(&state.db.connection)
-        .await
-        .unwrap();
+    conn.execute_with(
+        &insert_sql,
+        &[Parameter::Text(Some(path)), Parameter::Bytes(contents)],
+    )
+    .await
+    .unwrap();
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_concurrent_requests() {
     let components = [
         "table", "form", "card", "datagrid", "hero", "list", "timeline",
@@ -75,7 +68,7 @@ async fn test_concurrent_requests() {
     }
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_datagrid_description_presence_controls_placeholder() {
     let resp = response_for("/tests/components/datagrid_icon_only.sql").await;
     assert_eq!(resp.status(), StatusCode::OK);
@@ -87,7 +80,7 @@ async fn test_datagrid_description_presence_controls_placeholder() {
     assert_eq!(body.matches('–').count(), 1, "{body}");
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_routing_with_db_fs() {
     let mut config = test_config();
     if config.database_url.contains("memory") {
@@ -95,7 +88,7 @@ async fn test_routing_with_db_fs() {
     }
 
     config.site_prefix = "/prefix/".to_string();
-    let state = AppState::init(&config).await.unwrap();
+    let state = crate::test_database::app_state(&config).await.unwrap();
 
     if crate::common::supports_database(
         &state.db,
@@ -121,7 +114,7 @@ async fn test_routing_with_db_fs() {
 }
 
 #[cfg(unix)]
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_non_unicode_static_path_returns_bad_request_with_db_fs() {
     let mut config = test_config();
     if !config.database_url.starts_with("sqlite") {
@@ -130,7 +123,7 @@ async fn test_non_unicode_static_path_returns_bad_request_with_db_fs() {
     config.database_url =
         "sqlite://file:test_non_unicode_static_path?mode=memory&cache=shared".to_string();
 
-    let state = AppState::init(&config).await.unwrap();
+    let state = crate::test_database::app_state(&config).await.unwrap();
     let expected_db_path = "\u{FFFD}.txt";
     store_file_in_db(&state, expected_db_path, b"file from db fs").await;
 
@@ -143,7 +136,7 @@ async fn test_non_unicode_static_path_returns_bad_request_with_db_fs() {
     );
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_routing_with_prefix() {
     let mut config = test_config();
     config.site_prefix = "/prefix/".to_string();
@@ -188,7 +181,7 @@ async fn test_routing_with_prefix() {
     assert_eq!(location.to_str().unwrap(), format!("/prefix{path}"));
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_hidden_files() {
     let resp_result = response_with("/tests/core/.hidden.sql", test_config()).await;
     assert!(

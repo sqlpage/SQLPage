@@ -55,8 +55,7 @@ before making any change to your database, I can recommend [sqliteonline.com](ht
 Please read our [**introduction to database migrations**](./migrations.sql) to
 learn how to maintain your database schema in the long term.
 
-> **Note**: The migration system is not supported on Microsoft SQL Server databases.
-> If you are using a SQL Server database, you should create your tables using a different tool, such as _SQL Server Management Studio_.
+SQLPage runs startup migrations on native SQLite, PostgreSQL, MySQL, and SQL Server connections. For ODBC connections, apply the scripts using your database's migration tool.
 
 <h2 id="connect-to-a-custom-database">Connect to a custom database</h2>
 
@@ -76,10 +75,10 @@ If you then deploy your website online using a service like [DataPage.app](https
 
 Later, when you want to deploy your website online, you can switch back to a persistent database like
 
-- a SQLite file with `sqlite://your-database-file.db` ([see options](https://docs.rs/sqlx-oldapi/latest/sqlx_oldapi/sqlite/struct.SqliteConnectOptions.html)),
-- a PostgreSQL-compatible server with `postgres://user:password@host/database` ([see options](https://docs.rs/sqlx-oldapi/latest/sqlx_oldapi/postgres/struct.PgConnectOptions.html)),
-- a MySQL-compatible server with `mysql://user:password@host/database` ([see options](https://docs.rs/sqlx-oldapi/latest/sqlx_oldapi/mysql/struct.MySqlConnectOptions.html)),
-- a Microsoft SQL Server with `mssql://user:password@host/database` ([see options](https://docs.rs/sqlx-oldapi/latest/sqlx_oldapi/mssql/struct.MssqlConnectOptions.html#method.from_str), [note about named instances](https://github.com/sqlpage/SQLPage/issues/92)),
+- a SQLite file with `sqlite://your-database-file.db` ([see options](https://docs.rs/sqlx/0.9.1/sqlx/sqlite/struct.SqliteConnectOptions.html)),
+- a PostgreSQL-compatible server with `postgres://user:password@host/database` ([see options](https://docs.rs/sqlx/0.9.1/sqlx/postgres/struct.PgConnectOptions.html)),
+- a MySQL-compatible server with `mysql://user:password@host/database` ([see options](https://docs.rs/sqlx/0.9.1/sqlx/mysql/struct.MySqlConnectOptions.html)),
+- a Microsoft SQL Server with `mssql://user:password@host/database` ([see options](https://github.com/sqlpage/SQLPage/blob/main/configuration.md#database-connection-strings), [note about named instances](https://github.com/sqlpage/SQLPage/issues/92)),
 - any ODBC-compatible database like DuckDB, ClickHouse, Databricks, Snowflake, BigQuery, Oracle, Db2, and many more. See [ODBC database connection instructions](https://github.com/sqlpage/SQLPage#odbc-setup).
 
 > If `user` or `password` **contains special characters**, you should [**percent-encode**](https://en.wikipedia.org/wiki/Percent-encoding) them.

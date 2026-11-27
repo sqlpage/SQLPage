@@ -6,7 +6,7 @@ use actix_web::{
 
 use crate::common::{response_for, response_with, test_config};
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_index_ok() {
     let resp = response_for("/").await;
     assert_eq!(resp.status(), http::StatusCode::OK);
@@ -16,7 +16,7 @@ async fn test_index_ok() {
     assert!(!body.contains("error"));
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_access_config_forbidden() {
     let resp_result = response_with("/sqlpage/sqlpage.json", test_config()).await;
     assert!(
@@ -32,7 +32,7 @@ async fn test_access_config_forbidden() {
     );
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_static_files() {
     let resp = response_for("/tests/it_works.txt").await;
     assert_eq!(resp.status(), http::StatusCode::OK);
@@ -40,7 +40,7 @@ async fn test_static_files() {
     assert_eq!(&body, &b"It works !"[..]);
 }
 
-#[actix_web::test]
+#[actix_web::rt::test(system = "crate::test_database::System")]
 async fn test_spaces_in_file_names() {
     let resp = response_for("/tests/core/spaces%20in%20file%20name.sql").await;
     assert_eq!(resp.status(), http::StatusCode::OK);

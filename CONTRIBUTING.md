@@ -16,8 +16,9 @@ for a release build.
 
 Default builds require a system ODBC driver manager. On Linux and macOS,
 `--features odbc-static` bundles unixODBC, but database-specific drivers must still
-be installed separately. Windows uses its system ODBC driver manager. Published
-crates include browser assets and do not require Node.js.
+be installed separately. Windows uses its system ODBC driver manager. On Linux,
+building SQL Server support requires Perl and Make to compile the bundled
+OpenSSL. Published crates include browser assets and do not require Node.js.
 
 ### Optional: Nix dev shell
 
@@ -82,7 +83,9 @@ For examples with `test.hurl`, run
 For the official site, run `npm run site:build` first.
 
 Integration tests use the shared request helpers in [tests/common](./tests/common/mod.rs)
-to exercise production routes and middleware and drain request pools.
+to exercise production routes and middleware. Tests that open a database use
+`#[actix_web::rt::test(system = "crate::test_database::System")]` so their pools
+finish disconnecting before the runtime exits.
 
 Rust tests default to in-memory SQLite; `DATABASE_URL` selects another database.
 For example:
